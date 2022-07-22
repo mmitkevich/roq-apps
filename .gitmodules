@@ -1,0 +1,3 @@
+[submodule "src/umm"]
+	path = src/umm
+	url = git@gitlab.rencap.com:xroad/umm.git
