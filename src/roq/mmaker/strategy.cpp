@@ -1,56 +1,85 @@
 #include "roq/api.hpp"
+#include "roq/mmaker/best_price.hpp"
 #include "strategy.hpp"
+#include "best_price.hpp"
 
 namespace roq {
-namespace umm {
+namespace mmaker {
 
+
+Strategy::Strategy(client::Dispatcher& dispatcher, Context& context)
+: dispatcher_(dispatcher)
+, context_(context)
+{}
+
+template<class T> 
+cache::Market& Strategy::update_market(const Event<T> &event) {
+    auto [market, is_new] = cache_.get_market_or_create(event.value.exchange, event.value.symbol);
+    market(event);
+    return market;
+}
 
 void Strategy::operator()(const Event<Timer> &event) {
-  dispatch(event);
+  update_market(event);
 }
+
 void Strategy::operator()(const Event<Connected> &event) {
-  dispatch(event);
+  update_market(event);
 }
+
 void Strategy::operator()(const Event<Disconnected> &event) {
-  dispatch(event);
+  update_market(event);
 }
+
 void Strategy::operator()(const Event<DownloadBegin> &event) {
-  dispatch(event);
+  update_market(event);
 }
+
 void Strategy::operator()(const Event<DownloadEnd> &event) {
-  dispatch(event);
+  update_market(event);
 }
+
 void Strategy::operator()(const Event<GatewayStatus> &event) {
-  dispatch(event);
+  update_market(event);
 }
+
 void Strategy::operator()(const Event<ReferenceData> &event) {
-  dispatch(event);
+  context_(event, update_market(event));
 }
+
 void Strategy::operator()(const Event<MarketStatus> &event) {
-  dispatch(event);
+  update_market(event);
 }
+
 void Strategy::operator()(const Event<MarketByPriceUpdate> &event) {
-  dispatch(event);
+  context_(event, update_market(event));
 }
+
 void Strategy::operator()(const Event<OrderAck> &event) {
-  dispatch(event);
+  update_market(event);
 }
+
 void Strategy::operator()(const Event<OrderUpdate> &event) {
-  dispatch(event);
+  update_market(event);
 }
+
 void Strategy::operator()(const Event<TradeUpdate> &event) {
-  dispatch(event);
+  update_market(event);
 }
+
 void Strategy::operator()(const Event<PositionUpdate> &event) {
-  dispatch(event);
+  update_market(event);
 }
+
 void Strategy::operator()(const Event<FundsUpdate> &event) {
-  dispatch(event);
+  update_market(event);
 }
+
 void Strategy::operator()(const Event<RateLimitTrigger> &event) {
-  dispatch(event);
+  update_market(event);
 }
 
 
-} // umm
+
+} // mmaker
 } // roq

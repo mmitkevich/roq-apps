@@ -2,29 +2,23 @@
 
 #include "roq/client.hpp"
 
-#include "roq/umm/application.hpp"
-#include "roq/umm/flags/flags.h"
-#include "roq/umm/strategy.hpp"
+#include "application.hpp"
+#include "flags/flags.h"
+#include "strategy.hpp"
 
 using namespace std::chrono_literals;
 using namespace std::literals;
 
 namespace roq {
-namespace umm {
+namespace mmaker {
 
 Application::Application(int argc, char**argv)
-: Service(argc, argv, Info {}) {}
-
-
-void Application::ClientConfig::dispatch(client::Config::Handler &handler) const {
-
-}
+: Service(argc, argv, Info {})
+{}
 
 int Application::main(std::span<std::string_view> args) {
-  toml_config_.parse_file(Flags::config_file());
-  std::vector<std::string_view> connections;
-  ClientConfig client_config_ {toml_config_};
-  client::Trader(client_config_, std::span(connections)).dispatch<Strategy>(*this);
+  context.config = toml::parse_file(Flags::config_file());
+  client::Trader(context, args).dispatch<Strategy>(context);
   return EXIT_SUCCESS;
 }
 
@@ -41,5 +35,6 @@ int Application::main(int argc, char **argv) {
   return main(std::span(args).subspan(1));
 }
 
-}  // namespace shared
+}  // namespace mmaker
 }  // namespace roq
+

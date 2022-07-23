@@ -1,15 +1,19 @@
 #pragma once
 
 #include "roq/client/handler.hpp"
-#include "roq/umm/application.hpp"
+#include <roq/cache/manager.hpp>
 #include <roq/client/dispatcher.hpp>
 
+#include "application.hpp"
+
+#include "context.hpp"
+
 namespace roq {
-namespace umm {
+namespace mmaker {
 
-struct Strategy : client::Handler{
+struct Strategy : client::Handler {
 
-    Strategy(roq::client::Dispatcher&, roq::umm::Application&);
+    Strategy(client::Dispatcher&, Context&);
 
     void operator()(const Event<Timer> &) override;
     void operator()(const Event<Connected> &) override;
@@ -19,6 +23,7 @@ struct Strategy : client::Handler{
     void operator()(const Event<GatewayStatus> &) override;
     void operator()(const Event<ReferenceData> &) override;
     void operator()(const Event<MarketStatus> &) override;
+    void operator()(const Event<TopOfBook> &) override;
     void operator()(const Event<MarketByPriceUpdate> &) override;
     void operator()(const Event<OrderAck> &) override;
     void operator()(const Event<OrderUpdate> &) override;
@@ -28,8 +33,14 @@ struct Strategy : client::Handler{
     void operator()(const Event<RateLimitTrigger> &) override;
     void operator()(metrics::Writer &) const override;
 
-    template<class T> void dipatch(const Event<T> &);
-
+    template<class T> 
+    cache::Market& update_market(const Event<T> &event);
+private:
+    Context& context_;
+    std::unique_ptr<umm::Quoter> quoter_;
+    client::Dispatcher& dispatcher_;
+    cache::Manager cache_;
 };
-} // umm
+
+} // mmaker
 } // roq

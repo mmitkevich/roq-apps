@@ -5,7 +5,7 @@
 #include <string_view>
 
 namespace roq {
-inline namespace shared {
+namespace mmaker {
 
 struct Flags {
   static bool quoting();
@@ -16,5 +16,5 @@ struct Flags {
 };
 
 
-}  // namespace shared
+}  // namespace mmaker
 }  // namespace roq

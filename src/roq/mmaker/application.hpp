@@ -5,31 +5,21 @@
 #include <string_view>
 #include <span>
 #include <roq/service.hpp>
-#include <roq/umm/config.hpp>
-
-#include "umm/config/toml++.hpp"
+#include "umm/quoter.hpp"
+#include "context.hpp"
+#include <roq/client.hpp>
 
 namespace roq {
-namespace umm {
-
+namespace mmaker {
 
 struct Application final :  Service  {
-
-    struct ClientConfig : client::Config {
-        toml::Config& config_;
-        ClientConfig(toml::Config& config): config_(config) {}
-        void dispatch(Handler &) const override;
-    };
-
     Application(int argc, char**argv);
 
     int main(std::span<std::string_view> args);
 
     int main(int argc, char **argv) override;
 
-
-private:
-    toml::Config toml_config_;
+    mmaker::Context context;
 };
 
 }  // namespace mmaker

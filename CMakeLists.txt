@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(roq-umm)
+project(roq-mmaker)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -44,4 +44,4 @@ include_directories("${CMAKE_SOURCE_DIR}/src/umm/src")
 # sub-projects
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/umm/src")
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/umm")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/mmaker")

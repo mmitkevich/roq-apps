@@ -3,7 +3,7 @@ set(TARGET_NAME "${PROJECT_NAME}-app")
 add_library(
   "${TARGET_NAME}"
   "application.cpp"
-  "main.cpp"
+  "context.cpp"
 )
 
 target_link_libraries("${TARGET_NAME}" PRIVATE roq-client::roq-client roq-logging::roq-logging absl::flags fmt::fmt)
