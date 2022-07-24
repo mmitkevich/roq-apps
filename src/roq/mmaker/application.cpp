@@ -3,7 +3,7 @@
 #include "roq/client.hpp"
 
 #include "application.hpp"
-#include "flags/flags.h"
+#include "flags/flags.hpp"
 #include "strategy.hpp"
 
 using namespace std::chrono_literals;
@@ -17,7 +17,7 @@ Application::Application(int argc, char**argv)
 {}
 
 int Application::main(std::span<std::string_view> args) {
-  context.config = toml::parse_file(Flags::config_file());
+  context.configure(toml::parse_file(Flags::config_file()));
   client::Trader(context, args).dispatch<Strategy>(context);
   return EXIT_SUCCESS;
 }

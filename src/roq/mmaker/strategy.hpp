@@ -3,17 +3,19 @@
 #include "roq/client/handler.hpp"
 #include <roq/cache/manager.hpp>
 #include <roq/client/dispatcher.hpp>
-
+#include "context.hpp"
 #include "application.hpp"
 
-#include "context.hpp"
+
+#include "umm/quoter.hpp"
 
 namespace roq {
 namespace mmaker {
 
 struct Strategy : client::Handler {
 
-    Strategy(client::Dispatcher&, Context&);
+    Strategy(client::Dispatcher& dispatcher, Context& context);
+
 
     void operator()(const Event<Timer> &) override;
     void operator()(const Event<Connected> &) override;

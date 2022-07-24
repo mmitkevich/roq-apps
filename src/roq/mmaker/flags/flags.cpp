@@ -1,23 +1,10 @@
 /* Copyright (c) 2021 Mikhail Mitkevich */
 
-#include "flags.h"
-
+#include "flags.hpp"
 #include <absl/flags/flag.h>
 #include <string_view>
 #include <string>
-
-ABSL_FLAG(  //
-    bool,
-    quoting,
-    false,
-    "quoting should be explicitly enabled");
-
-ABSL_FLAG(  //
-    bool,
-    simulation,
-    false,
-    "requires an event-log");
-
+#include <roq/logging.hpp>
 ABSL_FLAG(  //
     std::string,
     config_file,
@@ -27,21 +14,23 @@ ABSL_FLAG(  //
 ABSL_FLAG(  //
     std::string,
     model,
-    "sine_test",
-    "model name");
+    "",
+    "model");
+
+/*ABSL_FLAG(  //
+    std::string,
+    log_path,
+    "",
+    "log path");*/
 
 namespace roq {
-inline namespace shared {
+namespace mmaker {
 
-bool Flags::quoting() {
-  static const bool result = absl::GetFlag(FLAGS_quoting);
+/*std::string_view Flags::log_path() {
+  static const std::string result = absl::GetFlag(FLAGS_log_path);
   return result;
-}
+}*/
 
-bool Flags::simulation() {
-  static const bool result = absl::GetFlag(FLAGS_simulation);
-  return result;
-}
 
 std::string_view Flags::config_file() {
   static const std::string result = absl::GetFlag(FLAGS_config_file);
