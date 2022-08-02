@@ -6,12 +6,12 @@ namespace roq {
 namespace mmaker {
 using namespace umm::literals;
 
-Strategy::Strategy(client::Dispatcher& dispatcher, Context& context)
+Strategy::Strategy(client::Dispatcher& dispatcher, Context& context, umm::Quoter quoter)
 : dispatcher_(dispatcher)
 , context_(context)
+, quoter_(quoter)
 , cache_(client::MarketByPriceFactory::create)
 {
-    quoter_ = context_.factory(context);
 }
 
 template<class T> 
@@ -61,7 +61,7 @@ void Strategy::operator()(const Event<MarketByPriceUpdate> &event) {
     if(context_(event, update_market(event))) {
       auto umm_id = context_.get_market_ident(event);
       log::info<1>("quoter update symbol={}, exchange={}, umm={} {}", event.value.symbol, event.value.exchange, umm_id.value, context_.markets(umm_id));
-      quoter_->update(umm_id, "Quotes"_id);
+      quoter_.update(umm_id, "Quotes"_id);
     }
 }
 

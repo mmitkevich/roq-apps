@@ -14,7 +14,7 @@ namespace mmaker {
 
 struct Strategy : client::Handler {
 
-    Strategy(client::Dispatcher& dispatcher, Context& context);
+    Strategy(client::Dispatcher& dispatcher, Context& context, umm::Quoter quoter);
 
 
     void operator()(const Event<Timer> &) override;
@@ -39,7 +39,7 @@ struct Strategy : client::Handler {
     cache::Market& update_market(const Event<T> &event);
 private:
     Context& context_;
-    std::unique_ptr<umm::Quoter> quoter_;
+    umm::Quoter quoter_;
     client::Dispatcher& dispatcher_;
     cache::Manager cache_;
 };

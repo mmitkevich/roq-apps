@@ -1,5 +1,6 @@
 /* Copyright (c) 2021 Mikhail Mitkevich */
 
+#include "quoters/quoters.hpp"
 #include "roq/client.hpp"
 
 #include "application.hpp"
@@ -17,8 +18,11 @@ Application::Application(int argc, char**argv)
 {}
 
 int Application::main(std::span<std::string_view> args) {
-  context.configure(toml::parse_file(Flags::config_file()));
-  client::Trader(context, args).dispatch<Strategy>(context);
+  toml::table toml = toml::parse_file(Flags::config_file());
+  umm::TomlConfig config { toml };
+  context.configure( config );
+  umm::Quoter quoter = umm::quoters::factory(context, config, config.get_string("app.model"));
+  client::Trader(context, args).dispatch<Strategy>(context, quoter);
   return EXIT_SUCCESS;
 }
 
