@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(roq-mmaker)
+project(roq-rencap-mmaker)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -13,7 +13,16 @@ if(DEFINED ENV{CONDA_PREFIX} AND NOT DEFINED ENV{CONDA_BUILD})
   set(CMAKE_FIND_ROOT_PATH $ENV{CONDA_PREFIX})
 endif()
 
+option(SANITIZE_BUILD "SANITIZE BUILD" ON)
+
 add_compile_options(-ftemplate-backtrace-limit=0)
+
+if(SANITIZE_BUILD)
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
+  add_compile_options(-fno-omit-frame-pointer -fsanitize=address)
+  message("SANITIZE BUILD = ON")
+endif (SANITIZE_BUILD)
+
 
 # rpath
 
@@ -39,12 +48,12 @@ find_package(roq-logging REQUIRED)
 find_package(roq-logging REQUIRED)
 find_package(tomlplusplus REQUIRED)
 
+#find_package(umm REQUIRED)
+
 # include
 
 include_directories("${CMAKE_SOURCE_DIR}/src")
-include_directories("${CMAKE_SOURCE_DIR}/src/umm/src")
 
 # sub-projects
 
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/umm/src")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/mmaker")

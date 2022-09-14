@@ -5,7 +5,6 @@ add_executable(
   "application.cpp"
   "context.cpp"
   "strategy.cpp"
-  "main.cpp"  
   "flags/flags.cpp"
 )
 

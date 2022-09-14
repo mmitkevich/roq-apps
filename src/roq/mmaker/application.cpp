@@ -1,11 +1,11 @@
 /* Copyright (c) 2021 Mikhail Mitkevich */
-
-#include "quoters/quoters.hpp"
+#include "umm/core/model_api.hpp"
+#include "umm/model/provider.hpp"
 #include "roq/client.hpp"
-
-#include "application.hpp"
-#include "flags/flags.hpp"
-#include "strategy.hpp"
+#include "./context.hpp"
+#include "./application.hpp"
+#include "./flags/flags.hpp"
+#include "./strategy.hpp"
 
 using namespace std::chrono_literals;
 using namespace std::literals;
@@ -18,11 +18,17 @@ Application::Application(int argc, char**argv)
 {}
 
 int Application::main(std::span<std::string_view> args) {
-  toml::table toml = toml::parse_file(Flags::config_file());
+  auto config_file = Flags::config_file();
+  log::info("config_file '{}'", config_file);
+  toml::table toml = toml::parse_file(config_file);
   umm::TomlConfig config { toml };
+  mmaker::Context context;
+  config.get_market_ident = [&](std::string_view market) -> umm::MarketIdent { return context.get_market_ident(market); };
+  config.get_portfolio_ident = [&](std::string_view folio) -> umm::PortfolioIdent { return context.get_portfolio_ident(folio); };
   context.configure( config );
-  umm::Quoter quoter = umm::quoters::factory(context, config, config.get_string("app.model"));
-  client::Trader(context, args).dispatch<Strategy>(context, quoter);
+  auto factory = umm::Provider::create(context.context(), config, config["app"]);
+  std::unique_ptr<umm::IQuoter> quoter = factory();
+  client::Trader(context, args).dispatch<Strategy>(context, *quoter);
   return EXIT_SUCCESS;
 }
 
@@ -42,3 +48,9 @@ int Application::main(int argc, char **argv) {
 }  // namespace mmaker
 }  // namespace roq
 
+
+
+int main(int argc, char **argv) {
+  auto app = roq::mmaker::Application(argc, argv);
+  return app.run();
+}

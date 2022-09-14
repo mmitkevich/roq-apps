@@ -1,21 +1,36 @@
 #pragma once
 
-#include "roq/client/handler.hpp"
-#include <roq/cache/manager.hpp>
+#include "roq/client.hpp"
+
+#include <roq/client/config.hpp>
 #include <roq/client/dispatcher.hpp>
-#include "context.hpp"
-#include "application.hpp"
 
+#include "umm/core/context.hpp"
+#include "umm/core/type.hpp"
+#include "umm/core/type/depth_level.hpp"
+#include "umm/core/event.hpp"
+#include "umm/core/model.hpp"
+//#include "application.hpp"
+#include "./context.hpp"
+#include "./markets.hpp"
 
-#include "umm/quoter.hpp"
 
 namespace roq {
 namespace mmaker {
 
+
+enum class BestPriceSource {
+    UNDEFINED,
+    TOP_OF_BOOK,
+    MARKET_BY_PRICE,
+    VWAP
+};
+
+struct Context;
+
 struct Strategy : client::Handler {
 
-    Strategy(client::Dispatcher& dispatcher, Context& context, umm::Quoter quoter);
-
+    Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, umm::IQuoter& quoter);
 
     void operator()(const Event<Timer> &) override;
     void operator()(const Event<Connected> &) override;
@@ -35,14 +50,22 @@ struct Strategy : client::Handler {
     void operator()(const Event<RateLimitTrigger> &) override;
     void operator()(metrics::Writer &) const override;
 
-    template<class T> 
-    cache::Market& update_market(const Event<T> &event);
+
 private:
-    Context& context_;
-    umm::Quoter quoter_;
+    umm::Event<umm::DepthUpdate> get_depth_event(umm::MarketIdent market, const roq::Event<roq::MarketByPriceUpdate>& event);
+private:
+    mmaker::Context& context;
+    umm::IQuoter& quoter_;    
+    std::vector<roq::MBPUpdate> bids_storage_;
+    std::vector<roq::MBPUpdate> asks_storage_;
+    std::vector<umm::DepthLevel> depth_bid_update_storage_;
+    std::vector<umm::DepthLevel> depth_ask_update_storage_;
+    BestPriceSource best_price_source {BestPriceSource::MARKET_BY_PRICE};
     client::Dispatcher& dispatcher_;
     cache::Manager cache_;
 };
+
+
 
 } // mmaker
 } // roq
