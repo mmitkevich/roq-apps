@@ -10,7 +10,8 @@
 #include "umm/core/type.hpp"
 #include "umm/core/type/depth_level.hpp"
 #include "umm/core/event.hpp"
-#include "umm/core/model.hpp"
+#include "umm/core/model_api.hpp"
+//#include "umm/core/model.hpp"
 //#include "application.hpp"
 #include "./context.hpp"
 #include "./markets.hpp"
@@ -29,10 +30,11 @@ enum class BestPriceSource {
 
 struct Context;
 
-struct Strategy : client::Handler {
+struct Strategy : client::Handler, umm::IQuoter::Handler {
 
     Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, umm::IQuoter& quoter, mmaker::IOrderManager& order_manager);
 
+    /// client::Handler
     void operator()(const Event<Timer> &) override;
     void operator()(const Event<Connected> &) override;
     void operator()(const Event<Disconnected> &) override;
@@ -51,7 +53,8 @@ struct Strategy : client::Handler {
     void operator()(const Event<RateLimitTrigger> &) override;
     void operator()(metrics::Writer &) const override;
 
-
+    /// IQuoter::Handler
+    void dispatch(const umm::Event<umm::QuotesUpdate> &) override;
 private:
     umm::Event<umm::DepthUpdate> get_depth_event(umm::MarketIdent market, const roq::Event<roq::MarketByPriceUpdate>& event);
 private:
@@ -65,6 +68,7 @@ private:
     BestPriceSource best_price_source {BestPriceSource::MARKET_BY_PRICE};
     client::Dispatcher& dispatcher_;
     cache::Manager cache_;
+    bool ready_ = false;
 };
 
 

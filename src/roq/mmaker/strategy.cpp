@@ -13,7 +13,9 @@ Strategy::Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, umm
 , cache_(client::MarketByPriceFactory::create)
 , order_manager_(order_manager)
 {
-  order_manager.set_dispatcher(dispatcher);
+    order_manager.set_dispatcher(dispatcher);
+    umm::IQuoter::Handler& h = *this;
+    quoter_.set_handler(h);
 }
 
 
@@ -30,15 +32,16 @@ void Strategy::operator()(const Event<Disconnected> &event) {
 }
 
 void Strategy::operator()(const Event<DownloadBegin> &event) {
-  
+    ready_ = false;  
 }
 
 void Strategy::operator()(const Event<DownloadEnd> &event) {
-  
+    order_manager_(event);
+    ready_ = true;
 }
 
 void Strategy::operator()(const Event<GatewayStatus> &event) {
-  
+    order_manager_(event);
 }
 
 void Strategy::operator()(const Event<ReferenceData> &event) {
@@ -88,11 +91,17 @@ void Strategy::operator()(const Event<MarketByPriceUpdate> &event) {
     
     if(best_price_source==BestPriceSource::MARKET_BY_PRICE) {
         umm::BestPrice& best_price = context.best_price[market];
-        best_price.bid_price = bids[0].price;
-        best_price.bid_volume = bids[0].quantity;
-        best_price.ask_price = asks[0].price;
-        best_price.ask_volume = asks[0].quantity;
+        if(bids.size()>0) {
+          best_price.bid_price = bids[0].price;
+          best_price.bid_volume = bids[0].quantity;
+        }
+        if(asks.size()>0) {
+          best_price.ask_price = asks[0].price;
+          best_price.ask_volume = asks[0].quantity;
+        }
     }
+    if(!ready_)
+      return;
     umm::Event<umm::DepthUpdate> depth_event = get_depth_event(market, event);
     //FIXME store to the cache: this->depth[market].
     quoter_.dispatch(depth_event);
@@ -100,6 +109,25 @@ void Strategy::operator()(const Event<MarketByPriceUpdate> &event) {
     umm::Event<umm::QuotesUpdate> quotes_event;
     quotes_event->market = market;
     quoter_.dispatch(quotes_event);
+}
+
+void Strategy::dispatch(const umm::Event<umm::QuotesUpdate> &event) {
+    umm::MarketIdent market = event->market;
+    context.get_market(market, [&](Markets::Item const& item) {
+      context.get_account(item.exchange, [&](std::string_view account) {
+        umm::QuotesView quotes = quoter_.get_quotes(market);
+        TargetQuotes target_quotes {
+          .market = market,
+          .account = account,
+          .exchange = item.exchange,
+          .symbol = item.symbol,
+          .portfolio = "FIXME",       
+          .bids = quotes.bids,
+          .asks = quotes.asks,
+        };
+        order_manager_.dispatch(target_quotes);
+      });
+    });
 }
 
 void Strategy::operator()(const Event<OrderAck> &event) {

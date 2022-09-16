@@ -1,70 +1,86 @@
 #pragma once
-#include "./markets.hpp"
 #include "umm/prologue.hpp"
 #include "umm/core/context.hpp"
 #include "umm/core/type.hpp"
 #include <roq/cache/manager.hpp>
+#include <roq/position_update.hpp>
 #include <roq/string_types.hpp>
 #include <sstream>
 #include "roq/logging.hpp"
 #include "roq/client.hpp"
+#include "./markets.hpp"
 
 namespace roq {
 namespace mmaker {
 
+
 struct Context : umm::Context, client::Config {
+    using Base = umm::Context;
+
     Context() = default;
     
     template<class Config>
-    void configure(const Config& config);
+    void configure(umm::IQuoter& quoter, const Config& config);
+
     using umm::Context::get_market_ident;
 
 
-    inline umm::MarketIdent get_market_ident(roq::cache::Market const & market) {
-        return get_market_ident(market.context.symbol, market.context.exchange);
-        //return markets_map_.get_market_ident(market.context.symbol, market.context.exchange);
+    umm::MarketIdent get_market_ident(std::string_view symbol, std::string_view exchange) {
+        return markets_.get_market_ident(symbol, exchange);
+    }
+
+    umm::MarketIdent get_market_ident(roq::cache::Market const & market) {
+        return this->get_market_ident(market.context.symbol, market.context.exchange);
     }
 
     template<class T>
-    inline umm::MarketIdent get_market_ident(const Event<T> &event) {
-        return get_market_ident(event.symbol, event.exchange);
-        //return markets_map_.get_market_ident(event.value.symbol, event.value.exchange);
+    umm::MarketIdent get_market_ident(const Event<T> &event) {
+        return this->get_market_ident(event.value.symbol, event.value.exchange);
+    }
+
+    template<class Fn>
+    bool get_account(std::string_view exchange, Fn&& fn) const {
+        auto it = accounts_.find(exchange);
+        if(it==std::end(accounts_))
+            return false;
+        fn(it->second);
+        return true;
+    }
+
+    template<class Fn>
+    bool get_market(MarketIdent market, Fn&& fn) const {
+        return markets_.get_market(market, std::forward<Fn>(fn));
     }
 
     /// client::Config
     void dispatch(roq::client::Config::Handler &) const;
-
-    std::unordered_set<std::string> accounts_;
-    Markets markets_map_;
+private:
+    absl::flat_hash_map<roq::Exchange, roq::Account> accounts_;
+    Markets markets_;
 };
 
 template<class ConfigT>
-void Context::configure(const ConfigT& config) {
-    markets_map_.clear();
-    config.get_nodes("market",[&](auto market_node) {
-        auto symbol = config.get_string(market_node, "symbol");
-        auto exchange = config.get_string(market_node, "exchange");
-        auto market_str = config.get_string(market_node, "market");
-        umm::MarketIdent market = get_market_ident(market_str);
-        log::info<1>("symbol {}, exchange {}, market {} {}", symbol, exchange, market.value, markets(market));
-        markets_map_.emplace({.symbol=symbol, .exchange=exchange, .market=market});
-    });
-
+void Context::configure(umm::IQuoter& quoter, const ConfigT& config) {
+    markets_.configure(*this, config);
+    
     portfolios.clear();
     config.get_nodes("position", [&]( auto position_node) {
         auto folio = umm::PortfolioIdent {config.get_string(position_node, "portfolio") };
         config.template get_pairs(umm::type_c<umm::Volume>{}, position_node, "market", "position", [&](auto market_str, auto position) {
-            auto market = get_market_ident(market_str);
-            log::info<1>("market {} position {}", markets(market), position);
+            auto market = this->get_market_ident(market_str);
+            UMM_INFO("market {} position {}", this->markets(market), position);
             portfolios[folio][market] = position;
+            umm::Event<umm::PositionUpdate> event;
+            quoter.dispatch(event);
         });
     });
-    
+
     accounts_.clear();
     config.get_nodes("account", [&](auto account_node) {
         auto account_str = config.get_string(account_node, "account");
-        //log::info<1>("account={}", account_str);
-        accounts_.emplace(account_str);
+        auto exchange_str = config.get_string(account_node, "exchange");
+        log::info<1>("account {} exchange {}", account_str, exchange_str);
+        accounts_.emplace(exchange_str, account_str);
     });
 }
 

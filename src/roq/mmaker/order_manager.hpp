@@ -3,23 +3,46 @@
 #include <roq/client.hpp>
 #include <roq/client/dispatcher.hpp>
 #include <roq/create_order.hpp>
+#include <roq/download_end.hpp>
 #include <roq/error.hpp>
 #include <roq/execution_instruction.hpp>
+#include <roq/string_types.hpp>
 #include <string>
-#include "umm/core/type.hpp"
+#include "roq/mmaker/context.hpp"
 #include "markets.hpp"
 #include "clock.hpp"
+
+#include "umm/core/type.hpp"
+#include "umm/core/type/quote.hpp"
+
 
 namespace roq::mmaker 
 {
 
+// TODO struct Quote { double price; double quantity;  uint64_t flags; }
+using Quote = umm::Quote;
 
-using TargetOrder = roq::CreateOrder;
+struct TargetOrder {
+    MarketIdent market {};
+    Side side {Side::UNDEFINED};
+    double quantity {NaN};    
+    double price {NaN};
+};
+
+struct TargetQuotes {
+    MarketIdent market {};
+    std::string_view account {};
+    std::string_view exchange {};
+    std::string_view symbol {};
+    std::string_view portfolio {};
+    std::span<const Quote> bids = {};
+    std::span<const Quote> asks = {};
+};
 
 struct IOrderManager : client::Handler {
     virtual ~IOrderManager() = default;
     virtual void set_dispatcher(client::Dispatcher& dispatcher) = 0;
-    virtual void dispatch(TargetOrder const&) = 0;
+    virtual void dispatch(TargetQuotes const &quotes) = 0;
 };
 
 struct OrderRef {
@@ -88,8 +111,9 @@ struct OrderManager final : IOrderManager {
         OrdersMap orders;
         LevelsMap bids;
         LevelsMap asks;
-        std::string_view exchange;
-        std::string_view symbol;
+        roq::Exchange exchange;
+        roq::Symbol symbol;
+        roq::Account account;
         double tick_size = NAN;
         double min_trade_vol = NAN;
         umm::MarketIdent market {};
@@ -97,17 +121,23 @@ struct OrderManager final : IOrderManager {
         int64_t to_price_index(double price) { return std::roundl(price/tick_size);}
     };
 private:
-    uint32_t last_order_id = 0;
-    absl::flat_hash_map<umm::MarketIdent, State> state_;
-public:
+    uint32_t max_order_id = 0;
+    absl::flat_hash_map<MarketIdent, State> state_;
     client::Dispatcher *dispatcher = nullptr;
+    mmaker::Context& context;
 public:
+    OrderManager(mmaker::Context& context) : context(context) {}
+
+    State& operator[](MarketIdent market) {
+        return state_[market];
+    }
     void process();
     void process(umm::MarketIdent market, State& state);
     void set_dispatcher(client::Dispatcher& dispatcher);
-    void dispatch(TargetOrder const& target);
+    void dispatch(TargetQuotes const& target_quotes);
     void operator()(Event<OrderUpdate> const& event);
     void operator()(Event<OrderAck> const& event);
+    void operator()(Event<DownloadEnd> const& event);
 private:
 
     OrderRef to_order_ref(const OrderAck& u) const;
@@ -120,10 +150,12 @@ private:
     OrderRef create_order(TargetOrder const& target);
     void modify_order(const OrderRef& ref, const TargetOrder& target);
     void cancel_order(const OrderRef& ref);
-    void reject_order(const OrderAck& u);
-    void accept_order(const OrderAck& u);
-    void confirm_order(const OrderUpdate& u);
-    void complete_order(const OrderUpdate& u);
+    
+    void order_reject(const OrderAck& u);
+    void order_accept(const OrderAck& u);
+    void order_confirm(const OrderUpdate& u);
+    void order_complete(const OrderUpdate& u);
+    void order_canceled(const OrderUpdate& u);
 };
 
 } // roq::mmaker
