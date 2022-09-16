@@ -26,9 +26,10 @@ int Application::main(std::span<std::string_view> args) {
   config.get_market_ident = [&](std::string_view market) -> umm::MarketIdent { return context.get_market_ident(market); };
   config.get_portfolio_ident = [&](std::string_view folio) -> umm::PortfolioIdent { return context.get_portfolio_ident(folio); };
   context.configure( config );
-  auto factory = umm::Provider::create(context.context(), config, config["app"]);
+  auto factory = umm::Provider::create(context, config, config["app"]);
   std::unique_ptr<umm::IQuoter> quoter = factory();
-  client::Trader(context, args).dispatch<Strategy>(context, *quoter);
+  std::unique_ptr<mmaker::OrderManager> order_manager = std::make_unique<mmaker::OrderManager>();
+  client::Trader(context, args).dispatch<Strategy>(context, *quoter, *order_manager);
   return EXIT_SUCCESS;
 }
 

@@ -1,7 +1,11 @@
 #pragma once
 #include "./markets.hpp"
+#include "umm/prologue.hpp"
 #include "umm/core/context.hpp"
+#include "umm/core/type.hpp"
 #include <roq/cache/manager.hpp>
+#include <roq/string_types.hpp>
+#include <sstream>
 #include "roq/logging.hpp"
 #include "roq/client.hpp"
 
@@ -14,13 +18,17 @@ struct Context : umm::Context, client::Config {
     template<class Config>
     void configure(const Config& config);
     using umm::Context::get_market_ident;
+
+
     inline umm::MarketIdent get_market_ident(roq::cache::Market const & market) {
-        return markets_map_.get_market_ident(market.context.symbol, market.context.exchange);
+        return get_market_ident(market.context.symbol, market.context.exchange);
+        //return markets_map_.get_market_ident(market.context.symbol, market.context.exchange);
     }
 
     template<class T>
     inline umm::MarketIdent get_market_ident(const Event<T> &event) {
-        return markets_map_.get_market_ident(event.value.symbol, event.value.exchange);
+        return get_market_ident(event.symbol, event.exchange);
+        //return markets_map_.get_market_ident(event.value.symbol, event.value.exchange);
     }
 
     /// client::Config

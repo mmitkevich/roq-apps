@@ -48,7 +48,11 @@ find_package(roq-logging REQUIRED)
 find_package(roq-logging REQUIRED)
 find_package(tomlplusplus REQUIRED)
 
+add_compile_options(-DUMM_USE_ROQ -DUMM_USE_ABSL -DUMM_USE_TOML)
+
 #find_package(umm REQUIRED)
+
+link_libraries(${CMAKE_DL_LIBS})
 
 # include
 
