@@ -5,6 +5,7 @@
 #include <roq/client/config.hpp>
 #include <roq/client/dispatcher.hpp>
 
+#include "roq/mmaker/order_manager.hpp"
 #include "umm/core/context.hpp"
 #include "umm/core/type.hpp"
 #include "umm/core/type/depth_level.hpp"
@@ -30,7 +31,7 @@ struct Context;
 
 struct Strategy : client::Handler {
 
-    Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, umm::IQuoter& quoter);
+    Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, umm::IQuoter& quoter, mmaker::IOrderManager& order_manager);
 
     void operator()(const Event<Timer> &) override;
     void operator()(const Event<Connected> &) override;
@@ -55,6 +56,7 @@ private:
     umm::Event<umm::DepthUpdate> get_depth_event(umm::MarketIdent market, const roq::Event<roq::MarketByPriceUpdate>& event);
 private:
     mmaker::Context& context;
+    mmaker::IOrderManager& order_manager_;
     umm::IQuoter& quoter_;    
     std::vector<roq::MBPUpdate> bids_storage_;
     std::vector<roq::MBPUpdate> asks_storage_;

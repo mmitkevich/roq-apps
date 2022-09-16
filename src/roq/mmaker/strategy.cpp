@@ -1,16 +1,19 @@
 #include "./strategy.hpp"
 #include "roq/client.hpp"
+#include "roq/mmaker/order_manager.hpp"
 
 namespace roq {
 namespace mmaker {
 using namespace umm::literals;
 
-Strategy::Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, umm::IQuoter& quoter)
+Strategy::Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, umm::IQuoter& quoter, mmaker::IOrderManager& order_manager)
 : dispatcher_(dispatcher)
 , context( context )
 , quoter_(quoter)
 , cache_(client::MarketByPriceFactory::create)
+, order_manager_(order_manager)
 {
+  order_manager.set_dispatcher(dispatcher);
 }
 
 
@@ -100,11 +103,11 @@ void Strategy::operator()(const Event<MarketByPriceUpdate> &event) {
 }
 
 void Strategy::operator()(const Event<OrderAck> &event) {
-
+    order_manager_(event);
 }
 
 void Strategy::operator()(const Event<OrderUpdate> &event) {
- 
+    order_manager_(event);
 }
 
 void Strategy::operator()(const Event<TradeUpdate> &event) {
