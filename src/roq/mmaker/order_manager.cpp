@@ -1,10 +1,13 @@
-#include "order_manager.hpp"
+#include "./order_manager.hpp"
 #include "umm/prologue.hpp"
 #include "umm/core/type.hpp"
+#include <chrono>
 #include <roq/order_update.hpp>
 #include "roq/utils/compare.hpp"
 #include <compare>
+#include <roq/request_status.hpp>
 #include <roq/time_in_force.hpp>
+#include "clock.hpp"
 
 namespace roq::mmaker {
 
@@ -24,107 +27,129 @@ inline bool is_empty_quote(const Quote& quote) {
 
 void OrderManager::dispatch(TargetQuotes const & target_quotes) {
     auto market = target_quotes.market;
-    auto& state = state_[market];
+    auto [state,is_new_state] = get_market_or_create(market);
     state.account = target_quotes.account;
     state.exchange = target_quotes.exchange;
     state.symbol = target_quotes.symbol;
+
+    log::info<1>("TargetQuotes {}", target_quotes);
+
     for(auto& [price_index, quote]: state.bids) {
         quote.target_quantity = 0;
     }
     for(auto& quote: target_quotes.bids) {
         if(!is_empty_quote(quote)) {
-            int64_t index = state.to_price_index(quote.price);
-            auto & level = state.bids[index];
-            level.price = quote.price;
+            auto [level,is_new] = state.get_level_or_create(Side::BUY, quote.price);
             level.target_quantity = quote.volume;
         }
     }
     for(auto& [price_index, quote]: state.asks) {
         quote.target_quantity = 0;
     }
-    for(auto& quote: target_quotes.bids) {
+    for(auto& quote: target_quotes.asks) {
         if(!is_empty_quote(quote)) {
-            int64_t index = state.to_price_index(quote.price);
-            auto & level = state.bids[index];
-            level.price = quote.price;
+            auto [level,is_new] = state.get_level_or_create(Side::SELL, quote.price);
             level.target_quantity = quote.volume;
         }
     }
-    process();
-}
-
-void OrderManager::process() {
     for(auto& [market, state] : state_) {
-        process(market, state);
+        state.process(*this);
     }
 }
 
-bool OrderManager::is_throttled(RequestType req, State& state) {
+
+bool OrderManager::State::is_throttled(Self& self, RequestType req) {
     return false;
 }
 
-bool OrderManager::can_create(TargetOrder const& order, State& state) {
+bool OrderManager::State::can_create(Self& self, const TargetOrder & target_order) {
+    if(pending[target_order.side==Side::SELL]>0)
+        return false;
 
-    if(is_throttled(RequestType::CREATE_ORDER, state)) {
+    if(is_throttled(self, roq::RequestType::CREATE_ORDER)) {
         return false;
     }
-    if(order.quantity < state.min_trade_vol) {
+    if(target_order.quantity < min_trade_vol) {
         return false;
     }
     return true;
 }
 
-bool OrderManager::can_cancel(OrderState& order) {
+bool OrderManager::State::can_cancel(Self&self, OrderState& order) {
     if(!order.confirmed.version)
         return false;   // still pending
-    if(order.confirmed.version != order.sent.version)
+    if(order.is_pending())
         return false;   // something in-flight
     return true;
 }
 
-bool OrderManager::can_modify(OrderState& order) {
+bool OrderManager::State::can_modify(Self&self, OrderState& order, const TargetOrder* target_order/*=nullptr*/) {
     return false;
-    if(!order.confirmed.version)
+    if(order.is_confirmed())
         return false;   // still pending    
-    if(order.confirmed.version != order.sent.version)
+    if(order.is_pending())
         return false;   // something in-flight
     return true;
 }
 
-void OrderManager::process(umm::MarketIdent market, State& state) {
+void OrderManager::State::process(Self& self) {
+    auto now = Clock::now();
+    if(now < ban_until) {
+        return;
+    } else {
+        ban_until = {};
+    }
+
     for(Side side: std::array {Side::BUY, Side::SELL}) {
-        auto& levels = (side==Side::BUY) ? state.bids : state.asks;
+        auto& levels = get_levels(side);
         for(auto& [price_index, level]: levels) {
             level.expected_quantity = 0;
         }
     }
-
-    for(auto& [order_id, order] : state.orders) {
-        auto& levels = (order.side==Side::BUY) ? state.bids : state.asks;
-        auto& level = levels[state.to_price_index(order.price)];
-        level.price = order.price;
-        assert(!std::isnan(level.expected_quantity));          
+    pending = {0,0};
+    for(auto& [order_id, order] : orders) {
+        if(order.confirmed.status == OrderStatus::COMPLETED || order.confirmed.status == OrderStatus::CANCELED)
+            continue;
+        assert(order.confirmed.status!=OrderStatus::COMPLETED);
+        assert(order.confirmed.status!=OrderStatus::CANCELED);
         assert(!std::isnan(order.expected.quantity));
-        level.expected_quantity += order.expected.quantity;
-    }
+        if(order.is_pending())
+            pending[order.side==Side::SELL]++;
 
-    for(auto& [order_id, order] : state.orders) {
-        auto& levels = (order.side==Side::BUY) ? state.bids : state.asks;
-        auto& level = levels[state.to_price_index(order.price)];
-        OrderRef ref {
-            .market = market,
-            .order_id = order_id,  
-            .version = order.confirmed.version 
-        };
-        if(level.expected_quantity>level.target_quantity) {
-            if(can_modify(order)) {
-                for(auto& [new_price_index, new_level]: levels) {
+        //assert(utils::compare(order.expected.quantity,0)==std::strong_ordering::greater);
+        auto [level,is_new_level] = get_level_or_create(order.side, order.price);
+        assert(!std::isnan(level.expected_quantity));          
+        level.expected_quantity += order.expected.quantity;
+        log::info<1>("OMS order_state order_id={}.{}.{} side={} req={}  price={}  quantity={}"
+            " c.status.{} c.price={}  c.quantity={}"
+            " symbol={} exchange={} market={}",
+            order.order_id, order.pending.version, order.confirmed.version,order.side,order.pending.type, order.pending.price,order.pending.quantity,
+            order.confirmed.status, order.confirmed.price, order.confirmed.quantity,
+            symbol, exchange, self.context.prn(this->market));
+    }
+    log::info<1>("OMS order_state BUY count {} pending {}  SELL count {} pending {}", 
+        bids.size(), pending[0],
+        asks.size(), pending[1]);
+
+    for(Side side: std::array {Side::BUY, Side::SELL}) {
+        auto& levels = (side==Side::BUY) ? bids : asks;
+        for(const auto& [price_index, level]: levels) {
+            log::info<1>("OMS level_state {} {} T {} E {}", side, level.price, level.target_quantity, level.expected_quantity);
+        }
+    }
+    std::size_t orders_count = orders.size();
+    for(auto& [order_id, order] : orders) {
+        auto [level,is_new_level] = get_level_or_create(order.side, order.price);
+        if(utils::compare(level.expected_quantity, level.target_quantity)==std::strong_ordering::greater) {
+            if(can_modify(self, order)) {
+                const auto& levels = get_levels(order.side);                
+                for(const auto& [new_price_index, new_level]: levels) {
                     assert(!std::isnan(new_level.target_quantity));
                     assert(!std::isnan(new_level.expected_quantity));                    
                     assert(!std::isnan(order.confirmed.quantity));
                     if(utils::compare(new_level.target_quantity,new_level.expected_quantity+order.confirmed.quantity)!=std::strong_ordering::less) {
                         ///
-                        modify_order(ref, TargetOrder {
+                        modify_order(self, order, TargetOrder {
                             .quantity = order.confirmed.quantity,    // can_modify_qty?new_level.target_quantity-new_level.expected_quantity : order.confirmed.quantity
                             .price = new_level.price,
 
@@ -133,8 +158,8 @@ void OrderManager::process(umm::MarketIdent market, State& state) {
                     }
                 }
             }
-            if(can_cancel(order)) {
-                cancel_order(ref);
+            if(can_cancel(self, order)) {
+                cancel_order(self, order);
                 goto orders_continue;
             }
             // can't do anything with this order (yet)
@@ -142,7 +167,7 @@ void OrderManager::process(umm::MarketIdent market, State& state) {
         orders_continue:;
     }
     for(auto side: std::array {Side::BUY, Side::SELL}) {
-        auto& levels = (side==Side::BUY) ? state.bids : state.asks;
+        auto& levels = (side==Side::BUY) ? bids : asks;
         for(auto& [price_index, level] : levels) {
             assert(!std::isnan(level.target_quantity));
             assert(!std::isnan(level.expected_quantity));
@@ -153,190 +178,370 @@ void OrderManager::process(umm::MarketIdent market, State& state) {
                     .quantity = level.target_quantity - level.expected_quantity,
                     .price = level.price,
                 };
-                if(can_create(target_order, state)) {
-                    create_order(target_order);
+                if(can_create(self, target_order)) {
+                    //queue_.push_back(target_order); 
+                    create_order(self, target_order);
                 }
             }
         }
     }
+   /* while(!queue_.empty()) {
+        create_order(queue_.front());
+        queue_.pop_front();
+    }*/
+    
     for(auto side: std::array {Side::BUY, Side::SELL}) {
-        auto& levels = (side==Side::BUY) ? state.bids : state.asks;
+        auto& levels = get_levels(side);
 
-        for(auto it = levels.begin(); it!=levels.end(); it++) {
+        for(auto it = levels.begin(); it!=levels.end();) {
             auto& level = it->second;
+            assert(!std::isnan(level.price));
             assert(!std::isnan(level.target_quantity));
             assert(!std::isnan(level.expected_quantity));            
             if(roq::utils::compare(level.target_quantity,0.) == std::strong_ordering::equal && 
                 roq::utils::compare(level.expected_quantity, 0.) == std::strong_ordering::equal ) {
-                levels.erase(it);
+                auto price = level.price;
+                levels.erase(it++);
+                log::info<1>("OMS erase_level {} price={} count={}", side, price, levels.size());
+            } else {
+                it++;
             }
         }
     }
 }
 
-OrderRef OrderManager::create_order(TargetOrder const& target) {
-    OrderRef ref {
-        .market = target.market,
-        .order_id = ++max_order_id
-    };
-    assert(state_.find(ref.market)!=std::end(state_));
-    auto& state = state_[ref.market];
-    auto& order = state.orders[ref.order_id] = OrderState {
-        .order_id = ref.order_id,
+OrderManager::OrderState& OrderManager::State::create_order(Self& self, const TargetOrder& target) {
+    assert(market == target.market);
+    auto order_id = ++self.max_order_id;
+    assert(orders.find(order_id)==std::end(orders));
+    auto& order = orders[order_id] = OrderState {
+        .order_id = order_id,
         .side = target.side,
         .price = target.price,
         .quantity = target.quantity,
         .traded_quantity = target.quantity,
         .remaining_quantity = target.quantity,
-        .sent = {
+        .pending = {
             .type = RequestType::CREATE_ORDER,
             .status = OrderStatus::UNDEFINED,
             .version = 1,
             .price = target.price,
             .quantity = target.quantity,
             .created_time = {},
-        }
+        },
+//        .confirmed = {.version = 0},
+//        .expected = {.version = 0},
+//        .accept_version = 0,
+//        .reject_version = 0,
     };    
-    order.pending = order.sent;
-    order.expected = order.sent;
+    order.expected = order.pending;
+    assert(order.pending.version==1);
+    assert(order.order_id!=0);
     assert(!std::isnan(order.expected.quantity));
-    int source_id = 0;
-    dispatcher->send(CreateOrder {
-        .account = state.account,
-        .order_id = ref.order_id,
-        .exchange = state.exchange,
-        .symbol = state.symbol,
+    auto r = fmt::format_to_n(self.routing_id.begin(), self.routing_id.size()-1, "{}.{}",order.order_id, order.pending.version);
+    auto routing_id_v = std::string_view { self.routing_id.data(), r.size };
+
+    auto create_order = roq::CreateOrder {
+        .account = account,
+        .order_id = order_id,
+        .exchange = exchange,
+        .symbol = symbol,
         .side = target.side,
         //.execution_instructions = target.execution_instructions,
         .order_type = OrderType::LIMIT,
         .time_in_force = TimeInForce::GTC,
         .quantity = target.quantity,        
-        .price = target.price,
-        //.routing_id = "mmaker"
-    }, source_id);
-    return ref;
-}
-
-void OrderManager::modify_order(const OrderRef& ref, const TargetOrder & target) {
-    auto& state = state_[ref.market];
-
-    auto& order = state.orders[ref.order_id];
-    ++order.sent.version;
-    order.sent.price = target.price;
-    order.sent.quantity = target.quantity;
-
-    order.pending = order.sent;
-    order.expected = order.sent;
-}
-
-void OrderManager::cancel_order(const OrderRef& ref) {
-    auto& state = state_[ref.market];    
-    auto& order = state.orders[ref.order_id];
-    ++order.sent.version;
-    order.sent.type = RequestType::CANCEL_ORDER;
-    order.sent.price = order.price;
-    order.sent.quantity = 0;
-
-    order.expected = order.sent;
-}
-
-OrderRef OrderManager::to_order_ref(const OrderAck& u) const {
-    OrderRef ref {
-        .market = umm::get_market_ident(u.symbol,u.exchange),
-        .order_id = u.order_id,
-        .version = u.version
+        .price = target.price, 
+        .routing_id = routing_id_v
     };
-    return ref;
+    self.market_by_order_[order_id] = market;
+    log::info<1>("OMS create_order {{ order_id={}.{} side={} price={} qty={} symbol={} exchange={} market {}, account={} }}", 
+        order_id, order.pending.version, target.side, target.price, target.quantity, symbol, exchange, self.context.prn(market), account);
+    self.dispatcher->send(create_order, self.source_id);
+    return order;
 }
 
-OrderRef OrderManager::to_order_ref(const OrderUpdate& u) const {
-    OrderRef ref {
-        .market = umm::get_market_ident(u.symbol,u.exchange),
-        .order_id = u.order_id,
-        .version = u.max_response_version
+void OrderManager::State::modify_order(Self& self, OrderState& order, const TargetOrder & target) {
+    ++order.pending.version;
+    order.pending.price = target.price;
+    order.pending.quantity = target.quantity;
+
+    order.expected = order.pending;
+    // TODO
+}
+
+void OrderManager::State::cancel_order(Self& self, OrderState& order) {
+    assert(orders.find(order.order_id)!=std::end(orders));
+    ++order.pending.version;
+    order.pending.type = RequestType::CANCEL_ORDER;
+    order.pending.price = order.price;
+    order.pending.quantity = 0;
+
+    auto cancel_order = CancelOrder {
+        .account = account,
+        .order_id = order.order_id,
+        .version = order.pending.version,
+        .conditional_on_version = order.confirmed.version,
     };
-    return ref;
+    
+    log::info<1>("OMS cancel_order {{ order_id={}.{}/{}, side={} price={} qty={} market={} symbol={} exchange={} account={} }}", 
+        cancel_order.order_id, cancel_order.version, cancel_order.conditional_on_version, 
+        order.side, order.price, order.quantity, self.context.prn(this->market), symbol, this->exchange, this->account);
+    
+    order.expected = order.pending;
+
+    self.dispatcher->send(cancel_order, self.source_id);
 }
 
-void OrderManager::order_reject(const OrderAck& u) {
-    auto ref = to_order_ref(u);
-    auto& state = state_[ref.market];
-    auto& order = state.orders[ref.order_id];
+
+void OrderManager::State::order_create_reject(Self&self, OrderState& order, const OrderAck& u) {
+    assert(order.order_id == u.order_id);
+    assert(u.type == RequestType::CREATE_ORDER);
     order.reject_version = u.version;
     order.reject_error = u.error;
     order.reject_reason = u.text;
+    order.confirmed = order.pending;
+    order.pending.type = RequestType::UNDEFINED;
+    order.confirmed.quantity = 0;
+    order.confirmed.status = OrderStatus::REJECTED;
+
+    // nothing is pending
+    order.pending.version = order.confirmed.version;
 
     order.expected = order.confirmed;
+
+    this->ban_until = Clock::now() + std::chrono::seconds(5);
+    erase_order(self, order.order_id);
 }
 
-void OrderManager::order_accept(const OrderAck& u) {
-    auto ref = to_order_ref(u);
-    auto& state = state_[ref.market];
-    auto& order = state.orders[ref.order_id]; 
+void OrderManager::State::order_modify_reject(Self&self, OrderState& order, const OrderAck& u) {
+    assert(order.order_id == u.order_id);
+    assert(u.type == RequestType::MODIFY_ORDER);
+    order.reject_version = u.version;
+    order.reject_error = u.error;
+    order.reject_reason = u.text;
+    order.expected = order.confirmed;
+    order.pending.type = RequestType::UNDEFINED;
+}
+
+void OrderManager::State::order_cancel_reject(Self&self, OrderState& order, const OrderAck& u) {
+    assert(order.order_id == u.order_id);
+    assert(u.type == RequestType::CANCEL_ORDER);
+    order.expected = order.confirmed;
+    order.pending.type = RequestType::UNDEFINED;    
+}
+
+void OrderManager::State::order_fwd(Self&self, OrderState& order, const OrderAck& u) {
+    assert(order.order_id == u.order_id);
+}
+
+void OrderManager::State::order_accept(Self&self, OrderState& order, const OrderAck& u) {
+    assert(order.order_id == u.order_id);
     order.accept_version = u.version;
 }
 
-void OrderManager::order_confirm(const OrderUpdate& u) {
-    auto ref = to_order_ref(u);
-    auto& state = state_[ref.market];
-    auto& order = state.orders[u.order_id];
+void OrderManager::State::order_confirm(Self&self, OrderState& order, const OrderUpdate& u) {
+    assert(order.order_id == u.order_id);
     order.confirmed.status = u.status;
     order.confirmed.price = u.price;
     order.confirmed.quantity = u.remaining_quantity;
-    order.confirmed.version = u.max_response_version;
+    order.confirmed.version = u.max_accepted_version;
     
+    order.pending.type = RequestType::UNDEFINED;
+
     order.expected = order.confirmed;
     assert(!std::isnan(order.expected.quantity));
 }
 
-void OrderManager::order_complete(const OrderUpdate& u) {
-    auto ref = to_order_ref(u);
-    auto& state = state_[ref.market];
-    auto& order = state.orders[u.order_id];
+void OrderManager::State::order_complete(Self&self, OrderState& order, const OrderUpdate& u) {
+    assert(order.order_id == u.order_id);
     order.confirmed.status = u.status;
     order.confirmed.price = u.price;
     order.confirmed.quantity = 0;
-    order.confirmed.version = u.max_response_version;
-    
+    order.confirmed.version = u.max_accepted_version;
+    order.confirmed.type = RequestType::UNDEFINED;
+    order.pending.type = RequestType::UNDEFINED;
     order.expected = order.confirmed;
     assert(!std::isnan(order.expected.quantity));
+    
+    erase_order(self, order.order_id);
 }
 
-void OrderManager::order_canceled(const OrderUpdate& u) {
-    auto ref = to_order_ref(u);   
-    auto& state = state_[ref.market];
-    auto& order = state.orders[u.order_id];
+void OrderManager::State::order_canceled(Self&self, OrderState& order, const OrderUpdate& u) {
+    assert(order.order_id == u.order_id);
     order.confirmed.status = u.status;
+    order.confirmed.type = RequestType::UNDEFINED;
     order.confirmed.price = u.price;
     order.confirmed.quantity = 0;
-    order.confirmed.version = u.max_response_version;    
+    order.confirmed.version = u.max_accepted_version;    
+    
+    order.pending.type = RequestType::UNDEFINED;
 
     order.expected = order.confirmed;
     assert(!std::isnan(order.expected.quantity));    
+
+    erase_order(self, order.order_id);
 }
 
-void OrderManager::operator()(Event<OrderUpdate> const& event) {
+void OrderManager::operator()(roq::Event<ReferenceData> const& event) {
     auto& u = event.value;
+    auto market = context.get_market_ident(u.symbol,u.exchange);
+    auto [state,is_new_state] = get_market_or_create(market);
+    state.tick_size = u.tick_size;
+    state.min_trade_vol = u.min_trade_vol;
+}
+
+
+bool OrderManager::State::erase_order(Self& self, uint32_t order_id) {
+    auto iter = orders.find(order_id);
+    assert(iter!=std::end(orders));
+    if(iter==std::end(orders))
+        return false;
+    auto& order = iter->second;
+    log::info<1>("OMS erase_order order_id={}.{} side={} price={} remaining_quantity={} status={} symbol={} exchange={} market={}", 
+        order_id, order.pending.version, order.side, order.price, order.quantity, 
+        order.confirmed.status, 
+        symbol, exchange, self.context.prn(market));    
+    orders.erase(iter);
+    self.market_by_order_.erase(order_id);
+    return true;
+}
+
+void OrderManager::operator()(roq::Event<OrderUpdate> const& event) {
+    auto& u = event.value;
+    auto market = context.get_market_ident(u.symbol, u.exchange);
+    auto [state,is_new_state] = get_market_or_create(market);
+    auto [order,is_new_order] =  state.get_order_or_create(u.order_id);
+    assert(order.order_id == u.order_id);
+
+    if(is_new_order) {
+        log::info<1>("OMS order_recover order_id={}.{} side={} price={} remaining_quantity={} status={} symbol={} exchange={} market={}", 
+            u.order_id, u.max_accepted_version, u.side, u.price, u.remaining_quantity, u.status, u.symbol, u.exchange, context.prn(market));
+        order.pending.version = u.max_request_version;
+    } else {
+        log::info<1>("OMS order_update order_id={}.{} side={} price={} remaining_quantity={} status={} symbol={} exchange={} market={}", 
+            u.order_id, u.max_accepted_version, u.side, u.price, u.remaining_quantity, u.status, u.symbol, u.exchange, context.prn(market));    
+    }
+
     if(u.status==OrderStatus::WORKING) {
-        order_confirm(u);
+        state.order_confirm(*this, order, u);
     } else if(u.status == OrderStatus::COMPLETED) {
-        //order_confirm(u);
-        order_complete(u);
+        //order_confirm(order, u);
+        state.order_complete(*this, order, u);
     } else if(u.status == OrderStatus::CANCELED) {
-        order_canceled(u);
+        state.order_canceled(*this, order, u);
+    } else if(u.status == OrderStatus::REJECTED) {
+        state.erase_order(*this, order.order_id);
+    }
+    state.process(*this);
+}
+
+std::pair<OrderManager::OrderState&,bool> OrderManager::State::get_order_or_create(uint32_t order_id) {
+    auto iter = orders.find(order_id);
+    if(iter==std::end(orders)) {
+        auto& order = orders[order_id];
+        order.order_id = order_id;
+        return {order, true};
+    } else {
+        return {iter->second, false};
     }
 }
 
-void OrderManager::operator()(Event<OrderAck> const& event) {
+std::pair<OrderManager::State&, bool> OrderManager::get_market_or_create(MarketIdent market) {
+    auto iter = state_.find(market);
+    if(iter!=std::end(state_)) {
+        return {iter->second, false};
+    } else {
+        auto& state = state_[market];
+        state.market = market;
+        return {state, true};
+    }
+}
+
+OrderManager::LevelsMap& OrderManager::State::get_levels(Side side) {
+    switch(side){
+        case Side::BUY: return bids;
+        case Side::SELL: return asks;
+        default: assert(false); return *(OrderManager::LevelsMap*)nullptr;
+    }
+}
+
+std::pair<OrderManager::LevelState&, bool> OrderManager::State::get_level_or_create(Side side, double price) {
+    assert(!std::isnan(price));
+    auto index = to_price_index(price);
+    auto& levels = get_levels(side);
+    auto iter = levels.find(index);
+    if(iter!=std::end(levels)) {
+        assert(utils::compare(iter->second.price, price)==std::strong_ordering::equal);
+        return {iter->second, false};
+    } else {
+        auto & level = levels[index];
+        log::info<1>("OMS new_level {} price={} count={}", side, price, levels.size());
+        level.price = price;
+        return {level, true};
+    }
+}
+
+void OrderManager::operator()(roq::Event<OrderAck> const& event) {
     auto& u = event.value;
-    if(u.status == RequestStatus::REJECTED) {
-        order_reject(u);
-    } else if(u.status == RequestStatus::ACCEPTED) {
-        order_accept(u);
+    auto iter = market_by_order_.find(u.order_id);
+    MarketIdent market;
+    if(iter!=market_by_order_.end())
+        market = iter->second;
+    else {
+        log::info<1>("OMS order_ack not_found {} order_id={}.{} side={}, status={} symbol={} exchange={} market={}", 
+            u.type, u.order_id, u.version, u.side, u.status, u.symbol, u.exchange, context.prn(market));                    
+        return;
+    }
+    auto [state,is_new_state] = get_market_or_create(market);
+    if(!state.get_order(u.order_id, [&](auto& order) {
+        assert(order.order_id == u.order_id);
+        log::info<1>("OMS order_ack {} order_id={}.{} side={}, status={} symbol={} exchange={} market={}, error={}, text={}", 
+            u.type, u.order_id, u.version, u.side, u.status, u.symbol, u.exchange, context.prn(market), u.error, u.text);            
+
+        if(u.status == RequestStatus::REJECTED) {
+            if(u.type==RequestType::CANCEL_ORDER) {
+                state.order_cancel_reject(*this, order, u);
+            } else if(u.type==RequestType::CREATE_ORDER) {
+                state.order_create_reject(*this, order, u);
+            } else if(u.type==RequestType::MODIFY_ORDER) {
+                state.order_modify_reject(*this, order, u);
+            }
+            if(u.error==Error::REQUEST_RATE_LIMIT_REACHED) {
+                state.ban_until = Clock::now() + std::chrono::seconds(2);
+            }
+            state.process(*this);
+        } else if(u.status == RequestStatus::ACCEPTED) {
+            state.order_accept(*this, order, u);
+        } else if(u.status == RequestStatus::FORWARDED) {
+            state.order_fwd(*this, order, u);
+        }
+    })) {
+        log::info<1>("OMS order_ack not_found {} order_id={}.{} side={}, status={} symbol={} exchange={} market={}", 
+            u.type, u.order_id, u.version, u.side, u.status, u.symbol, u.exchange, context.prn(market));            
     }
 }
 
-void OrderManager::operator()(Event<DownloadEnd> const& event) {
+void OrderManager::operator()(roq::Event<GatewayStatus> const& event) {
+
+}
+
+void OrderManager::operator()(roq::Event<Disconnected> const& event) {
+
+}
+
+void OrderManager::operator()(roq::Event<Connected> const& event) {
+
+}
+
+void OrderManager::operator()(roq::Event<StreamStatus> const& event) {
+}
+
+void OrderManager::operator()(roq::Event<DownloadBegin> const& event) {
+
+}
+
+void OrderManager::operator()(roq::Event<DownloadEnd> const& event) {
     max_order_id  = std::max(max_order_id, event.value.max_order_id);
 }
 

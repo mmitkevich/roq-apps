@@ -6,6 +6,8 @@
 #include <roq/download_end.hpp>
 #include <roq/error.hpp>
 #include <roq/execution_instruction.hpp>
+#include <roq/gateway_status.hpp>
+#include <roq/stream_status.hpp>
 #include <roq/string_types.hpp>
 #include <string>
 #include "roq/mmaker/context.hpp"
@@ -45,14 +47,9 @@ struct IOrderManager : client::Handler {
     virtual void dispatch(TargetQuotes const &quotes) = 0;
 };
 
-struct OrderRef {
-    umm::MarketIdent market {};
-    uint32_t order_id = 0;
-    uint32_t version = 0;
-};
-
 struct OrderManager final : IOrderManager {
-
+    using Self = OrderManager;
+    
     struct OrderVersion  {
         RequestType type {RequestType::UNDEFINED};   // CREATE, MODIFY, CANCEL
         OrderStatus status {OrderStatus::UNDEFINED};
@@ -68,7 +65,6 @@ struct OrderManager final : IOrderManager {
             version = 0;
             created_time = {};
         }
-        bool empty() const { return version == 0; }
         
         std::chrono::nanoseconds latency() const { 
             return Clock::now() - created_time;
@@ -83,31 +79,28 @@ struct OrderManager final : IOrderManager {
         double traded_quantity = NaN;
         double remaining_quantity = NaN;
 
-        OrderVersion    sent {};        // last sent version
+        bool is_pending() const { return pending.type!=RequestType::UNDEFINED ; }
+        bool is_confirmed() const { return confirmed.type!=RequestType::UNDEFINED; }
+
+        OrderVersion    pending {};     // pending order state (create/cancel/modify) and associated request type
+        OrderVersion    confirmed {};   // cofirmed (via OrderUpdate) order state and request type succeeded
+        OrderVersion    expected {};    // expected order state, which could be either pending or confirmed, including request type
         uint32_t    accept_version {0};
         uint32_t    reject_version {0};
-        roq::Error  reject_error {};
+        roq::Error  reject_error {roq::Error::UNDEFINED};
         std::string reject_reason {};
-        OrderVersion    confirmed {};   // last version confirmed via OrderUpdate
-        OrderVersion    pending {};     // last CreateOrder or ModifyOrder sent
-        OrderVersion    expected {};    // expected active version of the order on the exchange in short time
-        // CreateOrder => expected = sent = pending = CreatedOrder; confirmed = EmptyOrder
-        // ModifyOrder => expected = sent = pending = ModifiedOrder;
-        // CancelOrder => expected = sent = CanceledOrder;
-        // OrderUpdate => expected = confirmed = pending
-        // OrderReject => expected = confirmed
-        // OrderCancelReject => expected = confirmed
-        // OrderFill   =>  
     };
+
     struct LevelState {
         double price = NaN;
         double quantity = 0;
         double target_quantity = 0;
         double expected_quantity = 0;
     };
+    using LevelsMap = absl::flat_hash_map<int64_t, LevelState>;
+    using OrdersMap = absl::flat_hash_map<uint32_t, OrderState>;
+    
     struct State {
-        using LevelsMap = absl::flat_hash_map<int64_t, LevelState>;
-        using OrdersMap = absl::flat_hash_map<uint32_t, OrderState>;
         OrdersMap orders;
         LevelsMap bids;
         LevelsMap asks;
@@ -117,45 +110,99 @@ struct OrderManager final : IOrderManager {
         double tick_size = NAN;
         double min_trade_vol = NAN;
         umm::MarketIdent market {};
+        std::chrono::nanoseconds ban_until {};
+        std::array<uint16_t,2> pending={0,0};
+      public:
+        int64_t to_price_index(double price) { 
+            assert(!std::isnan(tick_size));
+            return std::roundl(price/tick_size);
+        }
+        std::pair<LevelState&, bool> get_level_or_create(Side side, double price);        
+        LevelsMap& get_levels(Side side);
+        // order&, is_new
+        std::pair<OrderState&,bool> get_order_or_create(uint32_t order_id);
+        template<class Fn>
+        bool get_order(uint32_t order_id, Fn&& fn);
+        bool erase_order(Self& self, uint32_t order_id);
 
-        int64_t to_price_index(double price) { return std::roundl(price/tick_size);}
+        void order_create_reject(Self& self, OrderState& order, const OrderAck& u);
+        void order_modify_reject(Self& self, OrderState& order, const OrderAck& u);
+        void order_cancel_reject(Self& self, OrderState& order, const OrderAck& u);
+        void order_fwd(Self& self, OrderState& order, const OrderAck& u);
+        void order_accept(Self& self, OrderState& order, const OrderAck& u);
+        void order_confirm(Self& self, OrderState& order, const OrderUpdate& u);
+        void order_complete(Self& self, OrderState& order, const OrderUpdate& u);
+        void order_canceled(Self& self, OrderState& order, const OrderUpdate& u);
+
+        bool is_throttled(Self& self, RequestType req);
+        bool can_create(Self& self, const TargetOrder & target_order);
+        bool can_cancel(Self& self, OrderState& order);
+        bool can_modify(Self& self, OrderState& order, const TargetOrder* target_order=nullptr);
+
+        OrderState& create_order(Self& self, const TargetOrder& target);
+        void modify_order(Self& self, OrderState& order, const TargetOrder& target);
+        void cancel_order(Self& self, OrderState& order);
+        void process(Self& self);
     };
+
 private:
     uint32_t max_order_id = 0;
+    std::array<char, 32> routing_id;
+    absl::flat_hash_map<uint32_t, umm::MarketIdent> market_by_order_;
     absl::flat_hash_map<MarketIdent, State> state_;
     client::Dispatcher *dispatcher = nullptr;
     mmaker::Context& context;
+    std::deque<TargetOrder> queue_;
+    int source_id = 0;
 public:
     OrderManager(mmaker::Context& context) : context(context) {}
 
-    State& operator[](MarketIdent market) {
-        return state_[market];
-    }
-    void process();
-    void process(umm::MarketIdent market, State& state);
+    std::pair<State&, bool> get_market_or_create(MarketIdent market);
+
     void set_dispatcher(client::Dispatcher& dispatcher);
     void dispatch(TargetQuotes const& target_quotes);
-    void operator()(Event<OrderUpdate> const& event);
-    void operator()(Event<OrderAck> const& event);
-    void operator()(Event<DownloadEnd> const& event);
-private:
-
-    OrderRef to_order_ref(const OrderAck& u) const;
-    OrderRef to_order_ref(const OrderUpdate& u) const;
-
-    bool is_throttled(RequestType req, State& state);
-    bool can_create(TargetOrder const& order, State& state);
-    bool can_cancel(OrderState& state);
-    bool can_modify(OrderState& order);
-    OrderRef create_order(TargetOrder const& target);
-    void modify_order(const OrderRef& ref, const TargetOrder& target);
-    void cancel_order(const OrderRef& ref);
-    
-    void order_reject(const OrderAck& u);
-    void order_accept(const OrderAck& u);
-    void order_confirm(const OrderUpdate& u);
-    void order_complete(const OrderUpdate& u);
-    void order_canceled(const OrderUpdate& u);
+    void operator()(roq::Event<OrderUpdate> const& event);
+    void operator()(roq::Event<OrderAck> const& event);
+    void operator()(roq::Event<GatewayStatus> const& event);
+    void operator()(roq::Event<Disconnected> const& event);
+    void operator()(roq::Event<Connected> const& event);
+    void operator()(roq::Event<StreamStatus> const& event);
+    void operator()(roq::Event<DownloadBegin> const& event);
+    void operator()(roq::Event<DownloadEnd> const& event);
+    void operator()(roq::Event<ReferenceData> const& event);
 };
 
+
+template<class Fn>
+inline bool OrderManager::State::get_order(uint32_t order_id, Fn&& fn) {
+    auto iter = orders.find(order_id);
+    if(iter!=orders.end()) {
+        fn(iter->second);
+        return true;
+    }
+    return false;
+}
+
+
+
 } // roq::mmaker
+
+template <>
+struct fmt::formatter<roq::mmaker::TargetQuotes> {
+  template <typename Context>
+  constexpr auto parse(Context &context) {
+    return std::begin(context);
+  }
+  template <typename Context>
+  auto format(const roq::mmaker::TargetQuotes &value, Context &context) const {
+    using namespace std::literals;
+    return fmt::format_to(
+        context.out(),
+        "market {} bid_price {} ask_price {} bid_volume {} ask_volume {}"sv,
+        value.market,
+        value.bids.size()>0 ? value.bids[0].price.value : NAN,
+        value.asks.size()>0 ? value.asks[0].price.value : NAN,
+        value.bids.size()>0 ? value.bids[0].volume.value : NAN,
+        value.asks.size()>0 ? value.asks[0].volume.value : NAN);
+  }
+};

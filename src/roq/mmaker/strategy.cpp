@@ -51,6 +51,7 @@ void Strategy::operator()(const Event<ReferenceData> &event) {
     auto& reference_data = market_data.reference_data;
     context.tick_rules.min_trade_vol[market] =  reference_data.min_trade_vol;
     context.tick_rules.tick_size[market] =  reference_data.tick_size;
+    order_manager_(event);
 }
 
 void Strategy::operator()(const Event<MarketStatus> &event) {
@@ -131,10 +132,14 @@ void Strategy::dispatch(const umm::Event<umm::QuotesUpdate> &event) {
 }
 
 void Strategy::operator()(const Event<OrderAck> &event) {
+   if(!ready_)
+      return;
     order_manager_(event);
 }
 
 void Strategy::operator()(const Event<OrderUpdate> &event) {
+   if(!ready_)
+      return;
     order_manager_(event);
 }
 
