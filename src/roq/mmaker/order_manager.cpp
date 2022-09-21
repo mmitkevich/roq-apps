@@ -93,7 +93,10 @@ bool OrderManager::State::can_modify(Self&self, OrderState& order, const TargetO
 }
 
 void OrderManager::State::process(Self& self) {
-    auto now = Clock::now();
+    auto now = self.now();
+    log::info<1>("OMS process now {} symbol {} exchange {} ban {} ready {}", now, symbol, exchange, ban_until.count() ? (ban_until-now).count()/1E9:NaN, self.ready_);
+    if(!self.ready_)
+        return;
     if(now < ban_until) {
         return;
     } else {
@@ -104,6 +107,7 @@ void OrderManager::State::process(Self& self) {
         auto& levels = get_levels(side);
         for(auto& [price_index, level]: levels) {
             level.expected_quantity = 0;
+            level.confirmed_quantity = 0;
         }
     }
     pending = {0,0};
@@ -120,12 +124,13 @@ void OrderManager::State::process(Self& self) {
         auto [level,is_new_level] = get_level_or_create(order.side, order.price);
         assert(!std::isnan(level.expected_quantity));          
         level.expected_quantity += order.expected.quantity;
+        level.confirmed_quantity += order.confirmed.quantity;
         log::info<1>("OMS order_state order_id={}.{}.{} side={} req={}  price={}  quantity={}"
-            " c.status.{} c.price={}  c.quantity={}"
+            " c.status.{} c.price={}  c.quantity={} external_id={}"
             " symbol={} exchange={} market={}",
             order.order_id, order.pending.version, order.confirmed.version,order.side,order.pending.type, order.pending.price,order.pending.quantity,
             order.confirmed.status, order.confirmed.price, order.confirmed.quantity,
-            symbol, exchange, self.context.prn(this->market));
+            order.external_order_id, symbol, exchange, self.context.prn(this->market));
     }
     log::info<1>("OMS order_state BUY count {} pending {}  SELL count {} pending {}", 
         bids.size(), pending[0],
@@ -134,7 +139,7 @@ void OrderManager::State::process(Self& self) {
     for(Side side: std::array {Side::BUY, Side::SELL}) {
         auto& levels = (side==Side::BUY) ? bids : asks;
         for(const auto& [price_index, level]: levels) {
-            log::info<1>("OMS level_state {} {} T {} E {}", side, level.price, level.target_quantity, level.expected_quantity);
+            log::info<1>("OMS level_state {} {} target {} expected {} confirmed {}", side, level.price, level.target_quantity, level.expected_quantity, level.confirmed_quantity);
         }
     }
     std::size_t orders_count = orders.size();
@@ -199,7 +204,8 @@ void OrderManager::State::process(Self& self) {
             assert(!std::isnan(level.target_quantity));
             assert(!std::isnan(level.expected_quantity));            
             if(roq::utils::compare(level.target_quantity,0.) == std::strong_ordering::equal && 
-                roq::utils::compare(level.expected_quantity, 0.) == std::strong_ordering::equal ) {
+                roq::utils::compare(level.expected_quantity, 0.) == std::strong_ordering::equal && 
+                roq::utils::compare(level.confirmed_quantity, 0.) == std::strong_ordering::equal) {
                 auto price = level.price;
                 levels.erase(it++);
                 log::info<1>("OMS erase_level {} price={} count={}", side, price, levels.size());
@@ -219,7 +225,7 @@ OrderManager::OrderState& OrderManager::State::create_order(Self& self, const Ta
         .side = target.side,
         .price = target.price,
         .quantity = target.quantity,
-        .traded_quantity = target.quantity,
+        .traded_quantity = 0,
         .remaining_quantity = target.quantity,
         .pending = {
             .type = RequestType::CREATE_ORDER,
@@ -284,9 +290,9 @@ void OrderManager::State::cancel_order(Self& self, OrderState& order) {
         .conditional_on_version = order.confirmed.version,
     };
     
-    log::info<1>("OMS cancel_order {{ order_id={}.{}/{}, side={} price={} qty={} market={} symbol={} exchange={} account={} }}", 
+    log::info<1>("OMS cancel_order {{ order_id={}.{}/{}, side={} price={} qty={} external_id={} market={} symbol={} exchange={} account={} }}", 
         cancel_order.order_id, cancel_order.version, cancel_order.conditional_on_version, 
-        order.side, order.price, order.quantity, self.context.prn(this->market), symbol, this->exchange, this->account);
+        order.side, order.price, order.quantity, order.external_order_id, self.context.prn(this->market), symbol, this->exchange, this->account);
     
     order.expected = order.pending;
 
@@ -310,7 +316,7 @@ void OrderManager::State::order_create_reject(Self&self, OrderState& order, cons
 
     order.expected = order.confirmed;
 
-    this->ban_until = Clock::now() + std::chrono::seconds(5);
+    this->ban_until = self.now() + std::chrono::seconds(2);
     erase_order(self, order.order_id);
 }
 
@@ -342,6 +348,7 @@ void OrderManager::State::order_accept(Self&self, OrderState& order, const Order
 
 void OrderManager::State::order_confirm(Self&self, OrderState& order, const OrderUpdate& u) {
     assert(order.order_id == u.order_id);
+    order.external_order_id = u.external_order_id;
     order.confirmed.status = u.status;
     order.confirmed.price = u.price;
     order.confirmed.quantity = u.remaining_quantity;
@@ -383,10 +390,19 @@ void OrderManager::State::order_canceled(Self&self, OrderState& order, const Ord
     erase_order(self, order.order_id);
 }
 
+void OrderManager::operator()(roq::Event<Timer> const& event) {
+    now_ = event.value.now;
+    if(now_ - last_process_ >= std::chrono::seconds(1)) {
+        for(auto& [market, state] : state_) {
+            state.process(*this);
+        }
+        last_process_ = now_;        
+    }
+}
+
 void OrderManager::operator()(roq::Event<ReferenceData> const& event) {
     auto& u = event.value;
-    auto market = context.get_market_ident(u.symbol,u.exchange);
-    auto [state,is_new_state] = get_market_or_create(market);
+    auto [state,is_new_state] = get_market_or_create(u.symbol, u.exchange);
     state.tick_size = u.tick_size;
     state.min_trade_vol = u.min_trade_vol;
 }
@@ -411,29 +427,59 @@ void OrderManager::operator()(roq::Event<OrderUpdate> const& event) {
     auto& u = event.value;
     auto market = context.get_market_ident(u.symbol, u.exchange);
     auto [state,is_new_state] = get_market_or_create(market);
+    if(is_new_state) {
+        state.exchange = u.exchange;
+        state.symbol = u.symbol;
+        context.get_account(u.exchange, [&](auto& account) {
+            state.account = account;
+        });
+        log::info<1>("OMS new_state symbol {} exchange {} account {} market {}", state.symbol, state.exchange, state.account, context.prn(market));
+    }
     auto [order,is_new_order] =  state.get_order_or_create(u.order_id);
     assert(order.order_id == u.order_id);
 
     if(is_new_order) {
-        log::info<1>("OMS order_recover order_id={}.{} side={} price={} remaining_quantity={} status={} symbol={} exchange={} market={}", 
-            u.order_id, u.max_accepted_version, u.side, u.price, u.remaining_quantity, u.status, u.symbol, u.exchange, context.prn(market));
-        order.pending.version = u.max_request_version;
+        order.side = u.side;
+        order.order_id = u.order_id;
+        order.price = u.price;
+        order.remaining_quantity = u.remaining_quantity;
+        order.traded_quantity = u.traded_quantity;
+        order.confirmed.type = RequestType::CREATE_ORDER;
+        order.confirmed.version = u.max_accepted_version;
+        order.confirmed.status = u.status;
+        order.confirmed.price = u.price;
+        order.confirmed.quantity = u.remaining_quantity;
+        order.external_order_id = u.external_order_id;
+        order.pending.version = u.max_accepted_version;
+        order.pending.type = RequestType::UNDEFINED;
+        order.expected = order.confirmed;
+        market_by_order_[order.order_id] = market;
+        
+        if(u.status!=OrderStatus::WORKING) {
+            log::info<1>("OMS order_no_recover order_id={}.{} side={} price={} remaining_quantity={} status={} symbol={} exchange={} market={}", 
+                u.order_id, u.max_accepted_version, u.side, u.price, u.remaining_quantity, u.status, u.symbol, u.exchange, context.prn(market));
+            // keep only working
+            state.erase_order(*this, order.order_id);
+        } else {
+            log::info<1>("OMS order_recover order_id={}.{} side={} price={} remaining_quantity={} status={} symbol={} exchange={} market={}", 
+                u.order_id, u.max_accepted_version, u.side, u.price, u.remaining_quantity, u.status, u.symbol, u.exchange, context.prn(market));
+        }
     } else {
         log::info<1>("OMS order_update order_id={}.{} side={} price={} remaining_quantity={} status={} symbol={} exchange={} market={}", 
             u.order_id, u.max_accepted_version, u.side, u.price, u.remaining_quantity, u.status, u.symbol, u.exchange, context.prn(market));    
-    }
-
-    if(u.status==OrderStatus::WORKING) {
-        state.order_confirm(*this, order, u);
-    } else if(u.status == OrderStatus::COMPLETED) {
-        //order_confirm(order, u);
-        state.order_complete(*this, order, u);
-    } else if(u.status == OrderStatus::CANCELED) {
-        state.order_canceled(*this, order, u);
-    } else if(u.status == OrderStatus::REJECTED) {
-        state.erase_order(*this, order.order_id);
+        if(u.status==OrderStatus::WORKING) {
+            state.order_confirm(*this, order, u);
+        } else if(u.status == OrderStatus::COMPLETED) {
+            //order_confirm(order, u);
+            state.order_complete(*this, order, u);
+        } else if(u.status == OrderStatus::CANCELED) {
+            state.order_canceled(*this, order, u);
+        } else if(u.status == OrderStatus::REJECTED) {
+            state.erase_order(*this, order.order_id);
+        }
     }
     state.process(*this);
+
 }
 
 std::pair<OrderManager::OrderState&,bool> OrderManager::State::get_order_or_create(uint32_t order_id) {
@@ -445,6 +491,16 @@ std::pair<OrderManager::OrderState&,bool> OrderManager::State::get_order_or_crea
     } else {
         return {iter->second, false};
     }
+}
+
+std::pair<OrderManager::State&, bool> OrderManager::get_market_or_create(std::string_view symbol, std::string_view exchange) {
+    auto market = context.get_market_ident(symbol, exchange);
+    auto [state, is_new] = get_market_or_create(market);
+    if(is_new) {
+        state.symbol = symbol;
+        state.exchange = exchange;
+    }
+    return {state, is_new};
 }
 
 std::pair<OrderManager::State&, bool> OrderManager::get_market_or_create(MarketIdent market) {
@@ -494,10 +550,14 @@ void OrderManager::operator()(roq::Event<OrderAck> const& event) {
         return;
     }
     auto [state,is_new_state] = get_market_or_create(market);
+    if(state.symbol.empty()) {
+        state.symbol = u.symbol;
+        state.exchange = u.exchange;
+    }
     if(!state.get_order(u.order_id, [&](auto& order) {
         assert(order.order_id == u.order_id);
-        log::info<1>("OMS order_ack {} order_id={}.{} side={}, status={} symbol={} exchange={} market={}, error={}, text={}", 
-            u.type, u.order_id, u.version, u.side, u.status, u.symbol, u.exchange, context.prn(market), u.error, u.text);            
+        log::info<1>("OMS order_ack {} order_id={}.{} side={}, status={} external_id={}, symbol={} exchange={} market={}, error={}, text={}", 
+            u.type, u.order_id, u.version, u.side, u.status, order.external_order_id, u.symbol, u.exchange, context.prn(market), u.error, u.text);            
 
         if(u.status == RequestStatus::REJECTED) {
             if(u.type==RequestType::CANCEL_ORDER) {
@@ -508,7 +568,7 @@ void OrderManager::operator()(roq::Event<OrderAck> const& event) {
                 state.order_modify_reject(*this, order, u);
             }
             if(u.error==Error::REQUEST_RATE_LIMIT_REACHED) {
-                state.ban_until = Clock::now() + std::chrono::seconds(2);
+                state.ban_until = now_ + std::chrono::seconds(2);
             }
             state.process(*this);
         } else if(u.status == RequestStatus::ACCEPTED) {
@@ -538,11 +598,12 @@ void OrderManager::operator()(roq::Event<StreamStatus> const& event) {
 }
 
 void OrderManager::operator()(roq::Event<DownloadBegin> const& event) {
-
+    ready_ = false;
 }
 
 void OrderManager::operator()(roq::Event<DownloadEnd> const& event) {
     max_order_id  = std::max(max_order_id, event.value.max_order_id);
+    ready_ = true;
 }
 
 } // roq::mmaker

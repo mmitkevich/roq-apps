@@ -89,6 +89,8 @@ struct OrderManager final : IOrderManager {
         uint32_t    reject_version {0};
         roq::Error  reject_error {roq::Error::UNDEFINED};
         std::string reject_reason {};
+
+        roq::ExternalOrderId external_order_id;
     };
 
     struct LevelState {
@@ -96,6 +98,7 @@ struct OrderManager final : IOrderManager {
         double quantity = 0;
         double target_quantity = 0;
         double expected_quantity = 0;
+        double confirmed_quantity = 0;
     };
     using LevelsMap = absl::flat_hash_map<int64_t, LevelState>;
     using OrdersMap = absl::flat_hash_map<uint32_t, OrderState>;
@@ -144,7 +147,7 @@ struct OrderManager final : IOrderManager {
         void cancel_order(Self& self, OrderState& order);
         void process(Self& self);
     };
-
+    std::chrono::nanoseconds now() const { return now_; }
 private:
     uint32_t max_order_id = 0;
     std::array<char, 32> routing_id;
@@ -154,13 +157,19 @@ private:
     mmaker::Context& context;
     std::deque<TargetOrder> queue_;
     int source_id = 0;
+    std::chrono::nanoseconds now_{};
+    std::chrono::nanoseconds last_process_{};
+    bool ready_ = false;
 public:
-    OrderManager(mmaker::Context& context) : context(context) {}
+    OrderManager(mmaker::Context& context) 
+    : context(context)
+     {}
 
     std::pair<State&, bool> get_market_or_create(MarketIdent market);
-
+    std::pair<State&, bool> get_market_or_create(std::string_view symbol, std::string_view exchange);
     void set_dispatcher(client::Dispatcher& dispatcher);
     void dispatch(TargetQuotes const& target_quotes);
+    void operator()(roq::Event<Timer> const& event) override;
     void operator()(roq::Event<OrderUpdate> const& event);
     void operator()(roq::Event<OrderAck> const& event);
     void operator()(roq::Event<GatewayStatus> const& event);

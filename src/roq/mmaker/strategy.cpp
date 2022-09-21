@@ -20,7 +20,7 @@ Strategy::Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, umm
 
 
 void Strategy::operator()(const Event<Timer> &event) {
-  
+    order_manager_(event);
 }
 
 void Strategy::operator()(const Event<Connected> &event) {
@@ -132,19 +132,19 @@ void Strategy::dispatch(const umm::Event<umm::QuotesUpdate> &event) {
 }
 
 void Strategy::operator()(const Event<OrderAck> &event) {
-   if(!ready_)
-      return;
+//   if(!ready_)
+//      return;
     order_manager_(event);
 }
 
 void Strategy::operator()(const Event<OrderUpdate> &event) {
-   if(!ready_)
-      return;
+//   if(!ready_)
+//      return;
     order_manager_(event);
 }
 
 void Strategy::operator()(const Event<TradeUpdate> &event) {
-
+    order_manager_(event);
 }
 
 void Strategy::operator()(const Event<PositionUpdate> &event) {
