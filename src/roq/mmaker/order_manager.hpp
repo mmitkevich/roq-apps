@@ -42,9 +42,34 @@ struct TargetQuotes {
 };
 
 struct IOrderManager : client::Handler {
+    struct Handler;
     virtual ~IOrderManager() = default;
     virtual void set_dispatcher(client::Dispatcher& dispatcher) = 0;
     virtual void dispatch(TargetQuotes const &quotes) = 0;
+};
+
+
+struct OMSPositionUpdate {
+    Side side {Side::UNDEFINED};
+    double price {NAN};
+    double quantity {NAN};
+    double position {NAN};
+    std::string_view exchange;
+    std::string_view symbol;
+    std::string_view account;
+    MarketIdent market;
+};
+
+struct IOrderManager::Handler {
+    virtual ~Handler() = default;
+    virtual void operator()(const roq::Event<OMSPositionUpdate>& event) {}
+};
+
+enum PositionSource {
+    UNDEFINED,
+    ORDERS,
+    TRADES,
+    POSITION
 };
 
 struct OrderManager final : IOrderManager {
@@ -115,6 +140,7 @@ struct OrderManager final : IOrderManager {
         umm::MarketIdent market {};
         std::chrono::nanoseconds ban_until {};
         std::array<uint16_t,2> pending={0,0};
+        double position = 0;
       public:
         int64_t to_price_index(double price) { 
             assert(!std::isnan(tick_size));
@@ -147,9 +173,11 @@ struct OrderManager final : IOrderManager {
         void cancel_order(Self& self, OrderState& order);
         void process(Self& self);
     };
-    std::chrono::nanoseconds now() const { return now_; }
+public:
+    PositionSource position_source {PositionSource::ORDERS};
 private:
     uint32_t max_order_id = 0;
+    Handler* handler_ {nullptr};
     std::array<char, 32> routing_id;
     absl::flat_hash_map<uint32_t, umm::MarketIdent> market_by_order_;
     absl::flat_hash_map<MarketIdent, State> state_;
@@ -164,9 +192,10 @@ public:
     OrderManager(mmaker::Context& context) 
     : context(context)
      {}
-
+    std::chrono::nanoseconds now() const { return now_; }
     std::pair<State&, bool> get_market_or_create(MarketIdent market);
     std::pair<State&, bool> get_market_or_create(std::string_view symbol, std::string_view exchange);
+    void set_handler(Handler& handler);
     void set_dispatcher(client::Dispatcher& dispatcher);
     void dispatch(TargetQuotes const& target_quotes);
     void operator()(roq::Event<Timer> const& event) override;
@@ -179,6 +208,8 @@ public:
     void operator()(roq::Event<DownloadBegin> const& event);
     void operator()(roq::Event<DownloadEnd> const& event);
     void operator()(roq::Event<ReferenceData> const& event);
+
+    void operator()(roq::Event<OMSPositionUpdate> const& event);
 };
 
 

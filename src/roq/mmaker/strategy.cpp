@@ -1,4 +1,6 @@
 #include "./strategy.hpp"
+#include "umm/core/type.hpp"
+#include "umm/core/event.hpp"
 #include "roq/client.hpp"
 #include "roq/mmaker/order_manager.hpp"
 
@@ -147,7 +149,20 @@ void Strategy::operator()(const Event<TradeUpdate> &event) {
     order_manager_(event);
 }
 
-void Strategy::operator()(const Event<PositionUpdate> &event) {
+void Strategy::operator()(const Event<OMSPositionUpdate>& event) {
+    // cache position
+    auto& u = event.value;
+    auto market = u.market;
+    umm::PortfolioIdent folio {}; // FIXME
+    context.portfolios[folio][market] = u.position;
+    
+    // notify quoter
+    umm::Event<umm::PositionUpdate> position_event;
+    position_event->market = market;
+    quoter_.dispatch(position_event);
+}
+
+void Strategy::operator()(const Event<roq::PositionUpdate> &event) {
 
 }
 

@@ -30,7 +30,7 @@ enum class BestPriceSource {
 
 struct Context;
 
-struct Strategy : client::Handler, umm::IQuoter::Handler {
+struct Strategy : client::Handler, umm::IQuoter::Handler, mmaker::IOrderManager::Handler {
 
     Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, umm::IQuoter& quoter, mmaker::IOrderManager& order_manager);
 
@@ -53,6 +53,7 @@ struct Strategy : client::Handler, umm::IQuoter::Handler {
     void operator()(const Event<RateLimitTrigger> &) override;
     void operator()(metrics::Writer &) const override;
 
+    void operator()(const Event<OMSPositionUpdate>& event);
     /// IQuoter::Handler
     void dispatch(const umm::Event<umm::QuotesUpdate> &) override;
 private:

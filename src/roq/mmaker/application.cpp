@@ -20,8 +20,7 @@ Application::Application(int argc, char**argv)
 int Application::main(std::span<std::string_view> args) {
   auto config_file = Flags::config_file();
   log::info("config_file '{}'", config_file);
-  toml::table toml = toml::parse_file(config_file);
-  umm::TomlConfig config { toml };
+  umm::TomlConfig config { config_file };
   mmaker::Context context;
   config.get_market_ident = [&](std::string_view market) -> umm::MarketIdent { return context.get_market_ident(market); };
   config.get_portfolio_ident = [&](std::string_view folio) -> umm::PortfolioIdent { return context.get_portfolio_ident(folio); };

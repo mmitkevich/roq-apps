@@ -7,6 +7,8 @@
 #include <compare>
 #include <roq/request_status.hpp>
 #include <roq/time_in_force.hpp>
+#include <roq/trade.hpp>
+#include <roq/trade_update.hpp>
 #include "clock.hpp"
 
 namespace roq::mmaker {
@@ -132,6 +134,7 @@ void OrderManager::State::process(Self& self) {
             order.confirmed.status, order.confirmed.price, order.confirmed.quantity,
             order.external_order_id, symbol, exchange, self.context.prn(this->market));
     }
+
     log::info<1>("OMS order_state BUY count {} pending {}  SELL count {} pending {}", 
         bids.size(), pending[0],
         asks.size(), pending[1]);
@@ -190,10 +193,6 @@ void OrderManager::State::process(Self& self) {
             }
         }
     }
-   /* while(!queue_.empty()) {
-        create_order(queue_.front());
-        queue_.pop_front();
-    }*/
     
     for(auto side: std::array {Side::BUY, Side::SELL}) {
         auto& levels = get_levels(side);
@@ -353,11 +352,37 @@ void OrderManager::State::order_confirm(Self&self, OrderState& order, const Orde
     order.confirmed.price = u.price;
     order.confirmed.quantity = u.remaining_quantity;
     order.confirmed.version = u.max_accepted_version;
-    
+    order.traded_quantity = u.traded_quantity;
     order.pending.type = RequestType::UNDEFINED;
-
     order.expected = order.confirmed;
     assert(!std::isnan(order.expected.quantity));
+    if(self.position_source==PositionSource::ORDERS) {
+        this->position += u.last_traded_quantity;
+        UMM_DEBUG("position={} side={} price={} qty={} order_id={}.{} symbol={} exchange={} market {}", 
+        this->position , u.side, u.last_traded_price,  u.last_traded_quantity, u.order_id, u.max_accepted_version, u.symbol, u.exchange, self.context.prn(market));        
+    }
+    OMSPositionUpdate position_update {
+        .side = u.side,
+        .price = u.last_traded_price,
+        .quantity = u.last_traded_quantity,
+        .position = this->position,
+        .exchange = u.exchange,
+        .symbol = u.symbol,
+        .account = u.account,        
+        .market = this->market
+    };
+    roq::MessageInfo info {};
+    roq::Event event(info, position_update);
+    self(event);    
+}
+
+void OrderManager::operator()(roq::Event<mmaker::OMSPositionUpdate> const& event) {
+    if(this->handler_)
+        handler_->operator()(event);
+}
+
+void OrderManager::set_handler(Handler& handler) {
+    handler_ = &handler;
 }
 
 void OrderManager::State::order_complete(Self&self, OrderState& order, const OrderUpdate& u) {
