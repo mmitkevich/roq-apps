@@ -10,6 +10,15 @@
 using namespace std::chrono_literals;
 using namespace std::literals;
 
+namespace umm {
+inline LogLevel get_log_level_from_env() {
+    const char* v = getenv("ROQ_v");
+    if(v)
+        return  (umm::LogLevel)atoi(v);
+    return LogLevel::WARN;
+}
+}
+
 namespace roq {
 namespace mmaker {
 
@@ -22,6 +31,10 @@ int Application::main(std::span<std::string_view> args) {
   log::info("config_file '{}'", config_file);
   umm::TomlConfig config { config_file };
   mmaker::Context context;
+  
+  // FIXME: use ROQ_v
+  umm::set_log_level(umm::get_log_level_from_env());
+
   config.get_market_ident = [&](std::string_view market) -> umm::MarketIdent { return context.get_market_ident(market); };
   config.get_portfolio_ident = [&](std::string_view folio) -> umm::PortfolioIdent { return context.get_portfolio_ident(folio); };
 
