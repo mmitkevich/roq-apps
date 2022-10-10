@@ -10,6 +10,7 @@
 #include <roq/stream_status.hpp>
 #include <roq/string_types.hpp>
 #include <string>
+#include "umm/printable.hpp"
 #include "roq/mmaker/context.hpp"
 #include "markets.hpp"
 #include "clock.hpp"
@@ -31,7 +32,7 @@ struct TargetOrder {
     double price {NaN};
 };
 
-struct TargetQuotes {
+struct TargetQuotes : umm::BasicPrintable<TargetQuotes> {
     MarketIdent market {};
     std::string_view account {};
     std::string_view exchange {};
@@ -39,6 +40,19 @@ struct TargetQuotes {
     std::string_view portfolio {};
     std::span<const Quote> bids = {};
     std::span<const Quote> asks = {};
+
+    template<class Format, class Context>
+    constexpr decltype(auto) format(Format& fmt, const Context& context) const {
+        using namespace std::literals;
+        return fmt::format_to(
+        fmt.out(),
+        "market {} bid_price {} ask_price {} bid_volume {} ask_volume {}"sv,
+        umm::prn(market, context),
+        bids.size()>0 ? bids[0].price.value : NAN,
+        asks.size()>0 ? asks[0].price.value : NAN,
+        bids.size()>0 ? bids[0].volume.value : NAN,
+        asks.size()>0 ? asks[0].volume.value : NAN);
+    }
 };
 
 struct IOrderManager : client::Handler {
@@ -226,7 +240,7 @@ inline bool OrderManager::State::get_order(uint32_t order_id, Fn&& fn) {
 
 
 } // roq::mmaker
-
+/*
 template <>
 struct fmt::formatter<roq::mmaker::TargetQuotes> {
   template <typename Context>
@@ -245,4 +259,4 @@ struct fmt::formatter<roq::mmaker::TargetQuotes> {
         value.bids.size()>0 ? value.bids[0].volume.value : NAN,
         value.asks.size()>0 ? value.asks[0].volume.value : NAN);
   }
-};
+};*/

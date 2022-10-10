@@ -34,7 +34,7 @@ void OrderManager::dispatch(TargetQuotes const & target_quotes) {
     state.exchange = target_quotes.exchange;
     state.symbol = target_quotes.symbol;
 
-    log::info<1>("TargetQuotes {}", target_quotes);
+    log::info<1>("TargetQuotes {}", this->context.prn(target_quotes));
 
     for(auto& [price_index, quote]: state.bids) {
         quote.target_quantity = 0;
