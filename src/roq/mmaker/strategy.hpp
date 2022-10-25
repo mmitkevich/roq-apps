@@ -2,6 +2,10 @@
 
 #include "roq/client.hpp"
 
+#include "./basic_strategy.hpp"
+
+#include <absl/container/flat_hash_map.h>
+#include <roq/cache/gateway.hpp>
 #include <roq/client/config.hpp>
 #include <roq/client/dispatcher.hpp>
 
@@ -30,32 +34,39 @@ enum class BestPriceSource {
 
 struct Context;
 
-struct Strategy : client::Handler, umm::IQuoter::Handler, mmaker::IOrderManager::Handler {
+struct Strategy : BasicStrategy<Strategy>, umm::IQuoter::Handler, mmaker::IOrderManager::Handler {
+    using Base = BasicStrategy<Strategy>;
+    
+    using Base::dispatch, Base::self;
 
     Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, umm::IQuoter& quoter, mmaker::IOrderManager& order_manager);
+    virtual ~Strategy();
 
     /// client::Handler
-    void operator()(const Event<Timer> &) override;
-    void operator()(const Event<Connected> &) override;
-    void operator()(const Event<Disconnected> &) override;
-    void operator()(const Event<DownloadBegin> &) override;
-    void operator()(const Event<DownloadEnd> &) override;
-    void operator()(const Event<GatewayStatus> &) override;
     void operator()(const Event<ReferenceData> &) override;
-    void operator()(const Event<MarketStatus> &) override;
-    void operator()(const Event<TopOfBook> &) override;
     void operator()(const Event<MarketByPriceUpdate> &) override;
-    void operator()(const Event<OrderAck> &) override;
-    void operator()(const Event<OrderUpdate> &) override;
-    void operator()(const Event<TradeUpdate> &) override;
-    void operator()(const Event<PositionUpdate> &) override;
-    void operator()(const Event<FundsUpdate> &) override;
-    void operator()(const Event<RateLimitTrigger> &) override;
-    void operator()(metrics::Writer &) const override;
 
     void operator()(const Event<OMSPositionUpdate>& event);
+
+    MarketIdent get_market_ident(std::string_view symbol, std::string_view exchange) const {
+        return context.get_market_ident(symbol, exchange);
+    }
+
+    template<class T>
+    auto prn(const T& val) const {
+        return context.prn(val);
+    }
+
+    template<class T>
+    void dispatch(const roq::Event<T> &event) {
+        Base::dispatch(event);
+        order_manager_(event);
+    }
+
     /// IQuoter::Handler
     void dispatch(const umm::Event<umm::QuotesUpdate> &) override;
+
+
 private:
     umm::Event<umm::DepthUpdate> get_depth_event(umm::MarketIdent market, const roq::Event<roq::MarketByPriceUpdate>& event);
 private:
@@ -68,8 +79,7 @@ private:
     std::vector<umm::DepthLevel> depth_ask_update_storage_;
     BestPriceSource best_price_source {BestPriceSource::MARKET_BY_PRICE};
     client::Dispatcher& dispatcher_;
-    cache::Manager cache_;
-    bool ready_ = false;
+    //bool ready_ = false;
 };
 
 

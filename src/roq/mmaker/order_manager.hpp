@@ -2,11 +2,13 @@
 #include <absl/container/flat_hash_map.h>
 #include <roq/client.hpp>
 #include <roq/client/dispatcher.hpp>
+#include <roq/client/handler.hpp>
 #include <roq/create_order.hpp>
 #include <roq/download_end.hpp>
 #include <roq/error.hpp>
 #include <roq/execution_instruction.hpp>
 #include <roq/gateway_status.hpp>
+#include <roq/rate_limit_trigger.hpp>
 #include <roq/stream_status.hpp>
 #include <roq/string_types.hpp>
 #include <string>
@@ -17,7 +19,7 @@
 
 #include "umm/core/type.hpp"
 #include "umm/core/type/quote.hpp"
-
+#include "roq/mmaker/basic_handler.hpp"
 
 namespace roq::mmaker 
 {
@@ -86,8 +88,12 @@ enum PositionSource {
     POSITION
 };
 
-struct OrderManager final : IOrderManager {
+struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
+{
     using Self = OrderManager;
+    using Base = BasicHandler<OrderManager, IOrderManager>;
+
+    using Base::dispatch;
     
     struct OrderVersion  {
         RequestType type {RequestType::UNDEFINED};   // CREATE, MODIFY, CANCEL
@@ -215,14 +221,14 @@ public:
     void operator()(roq::Event<Timer> const& event) override;
     void operator()(roq::Event<OrderUpdate> const& event);
     void operator()(roq::Event<OrderAck> const& event);
-    void operator()(roq::Event<GatewayStatus> const& event);
-    void operator()(roq::Event<Disconnected> const& event);
-    void operator()(roq::Event<Connected> const& event);
-    void operator()(roq::Event<StreamStatus> const& event);
+//    void operator()(roq::Event<GatewayStatus> const& event);
+//    void operator()(roq::Event<Disconnected> const& event);
+//    void operator()(roq::Event<Connected> const& event);
+//    void operator()(roq::Event<StreamStatus> const& event);
     void operator()(roq::Event<DownloadBegin> const& event);
     void operator()(roq::Event<DownloadEnd> const& event);
     void operator()(roq::Event<ReferenceData> const& event);
-
+    void operator()(roq::Event<RateLimitTrigger> const& event);
     void operator()(roq::Event<OMSPositionUpdate> const& event);
 };
 

@@ -12,7 +12,6 @@ Strategy::Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, umm
 : dispatcher_(dispatcher)
 , context( context )
 , quoter_(quoter)
-, cache_(client::MarketByPriceFactory::create)
 , order_manager_(order_manager)
 {
     order_manager.set_dispatcher(dispatcher);
@@ -20,31 +19,7 @@ Strategy::Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, umm
     quoter_.set_handler(h);
 }
 
-
-void Strategy::operator()(const Event<Timer> &event) {
-    order_manager_(event);
-}
-
-void Strategy::operator()(const Event<Connected> &event) {
-  
-}
-
-void Strategy::operator()(const Event<Disconnected> &event) {
-  
-}
-
-void Strategy::operator()(const Event<DownloadBegin> &event) {
-    ready_ = false;  
-}
-
-void Strategy::operator()(const Event<DownloadEnd> &event) {
-    order_manager_(event);
-    ready_ = true;
-}
-
-void Strategy::operator()(const Event<GatewayStatus> &event) {
-    order_manager_(event);
-}
+Strategy::~Strategy() {}
 
 void Strategy::operator()(const Event<ReferenceData> &event) {
     auto [market_data, is_new] = cache_.get_market_or_create(event.value.exchange, event.value.symbol);
@@ -53,15 +28,7 @@ void Strategy::operator()(const Event<ReferenceData> &event) {
     auto& reference_data = market_data.reference_data;
     context.tick_rules.min_trade_vol[market] =  reference_data.min_trade_vol;
     context.tick_rules.tick_size[market] =  reference_data.tick_size;
-    order_manager_(event);
-}
-
-void Strategy::operator()(const Event<MarketStatus> &event) {
-  
-}
-
-void  Strategy::operator()(const Event<TopOfBook> &) {
-
+    Base::operator()(event);
 }
 
 umm::Event<umm::DepthUpdate> Strategy::get_depth_event(umm::MarketIdent market, const Event<MarketByPriceUpdate>& event) {
@@ -103,15 +70,16 @@ void Strategy::operator()(const Event<MarketByPriceUpdate> &event) {
           best_price.ask_volume = asks[0].quantity;
         }
     }
-    if(!ready_)
-      return;
-    umm::Event<umm::DepthUpdate> depth_event = get_depth_event(market, event);
-    //FIXME store to the cache: this->depth[market].
-    quoter_.dispatch(depth_event);
+    if(is_ready(market)) {
+      umm::Event<umm::DepthUpdate> depth_event = get_depth_event(market, event);
+      //FIXME store to the cache: this->depth[market].
+      quoter_.dispatch(depth_event);
 
-    umm::Event<umm::QuotesUpdate> quotes_event;
-    quotes_event->market = market;
-    quoter_.dispatch(quotes_event);
+      umm::Event<umm::QuotesUpdate> quotes_event;
+      quotes_event->market = market;
+      quoter_.dispatch(quotes_event);
+    }
+    Base::operator()(event);    
 }
 
 void Strategy::dispatch(const umm::Event<umm::QuotesUpdate> &event) {
@@ -133,22 +101,6 @@ void Strategy::dispatch(const umm::Event<umm::QuotesUpdate> &event) {
     });
 }
 
-void Strategy::operator()(const Event<OrderAck> &event) {
-//   if(!ready_)
-//      return;
-    order_manager_(event);
-}
-
-void Strategy::operator()(const Event<OrderUpdate> &event) {
-//   if(!ready_)
-//      return;
-    order_manager_(event);
-}
-
-void Strategy::operator()(const Event<TradeUpdate> &event) {
-    order_manager_(event);
-}
-
 void Strategy::operator()(const Event<OMSPositionUpdate>& event) {
     // cache position
     auto& u = event.value;
@@ -160,21 +112,6 @@ void Strategy::operator()(const Event<OMSPositionUpdate>& event) {
     umm::Event<umm::PositionUpdate> position_event;
     position_event->market = market;
     quoter_.dispatch(position_event);
-}
-
-void Strategy::operator()(const Event<roq::PositionUpdate> &event) {
-
-}
-
-void Strategy::operator()(const Event<FundsUpdate> &event) {
-}
-
-void Strategy::operator()(const Event<RateLimitTrigger> &event) {
-
-}
-
-void Strategy::operator()(metrics::Writer &) const {
-
 }
 
 } // mmaker

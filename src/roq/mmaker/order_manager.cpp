@@ -1,7 +1,8 @@
-#include "./order_manager.hpp"
 #include "umm/prologue.hpp"
 #include "umm/core/type.hpp"
+#include "./order_manager.hpp"
 #include <chrono>
+#include <roq/buffer_capacity.hpp>
 #include <roq/order_update.hpp>
 #include "roq/utils/compare.hpp"
 #include <compare>
@@ -94,7 +95,7 @@ bool OrderManager::State::can_modify(Self&self, OrderState& order, const TargetO
     return true;
 }
 
-void OrderManager::State::process(Self& self) {
+void OrderManager::State::process(OrderManager& self) {
     auto now = self.now();
     log::info<1>("OMS process now {} symbol {} exchange {} ban {} ready {}", now, symbol, exchange, ban_until.count() ? (ban_until-now).count()/1E9:NaN, self.ready_);
     if(!self.ready_)
@@ -167,7 +168,7 @@ void OrderManager::State::process(Self& self) {
                 }
             }
             if(can_cancel(self, order)) {
-                cancel_order(self, order);
+                this->cancel_order(self, order);
                 goto orders_continue;
             }
             // can't do anything with this order (yet)
@@ -217,6 +218,7 @@ void OrderManager::State::process(Self& self) {
 
 OrderManager::OrderState& OrderManager::State::create_order(Self& self, const TargetOrder& target) {
     assert(market == target.market);
+    assert(self.ready_);
     auto order_id = ++self.max_order_id;
     assert(orders.find(order_id)==std::end(orders));
     auto& order = orders[order_id] = OrderState {
@@ -267,6 +269,7 @@ OrderManager::OrderState& OrderManager::State::create_order(Self& self, const Ta
 }
 
 void OrderManager::State::modify_order(Self& self, OrderState& order, const TargetOrder & target) {
+    assert(self.ready_);
     ++order.pending.version;
     order.pending.price = target.price;
     order.pending.quantity = target.quantity;
@@ -276,6 +279,7 @@ void OrderManager::State::modify_order(Self& self, OrderState& order, const Targ
 }
 
 void OrderManager::State::cancel_order(Self& self, OrderState& order) {
+    assert(self.ready_);
     assert(orders.find(order.order_id)!=std::end(orders));
     ++order.pending.version;
     order.pending.type = RequestType::CANCEL_ORDER;
@@ -524,6 +528,11 @@ std::pair<OrderManager::State&, bool> OrderManager::get_market_or_create(std::st
     if(is_new) {
         state.symbol = symbol;
         state.exchange = exchange;
+        context.get_account(exchange, [&state=state](auto& account) {
+            state.account = account;
+        });
+        log::info<2>("market_create symbol {} exchange {} account {} market {}", 
+            state.symbol, state.exchange, state.account, context.prn(market));
     }
     return {state, is_new};
 }
@@ -535,6 +544,7 @@ std::pair<OrderManager::State&, bool> OrderManager::get_market_or_create(MarketI
     } else {
         auto& state = state_[market];
         state.market = market;
+        log::info<2>("market_create market {}", context.prn(market));
         return {state, true};
     }
 }
@@ -607,28 +617,34 @@ void OrderManager::operator()(roq::Event<OrderAck> const& event) {
     }
 }
 
-void OrderManager::operator()(roq::Event<GatewayStatus> const& event) {
-
-}
-
-void OrderManager::operator()(roq::Event<Disconnected> const& event) {
-
-}
-
-void OrderManager::operator()(roq::Event<Connected> const& event) {
-
-}
-
-void OrderManager::operator()(roq::Event<StreamStatus> const& event) {
-}
-
 void OrderManager::operator()(roq::Event<DownloadBegin> const& event) {
+    log::info<2>("DownloadBegin ready {}->false, {}", ready_, event);
     ready_ = false;
 }
 
 void OrderManager::operator()(roq::Event<DownloadEnd> const& event) {
+    log::info<2>("DownloadEnd ready {}->true, {}", ready_, event);
+    
     max_order_id  = std::max(max_order_id, event.value.max_order_id);
     ready_ = true;
+}
+
+void OrderManager::operator()(roq::Event<RateLimitTrigger> const& event) {
+    auto& u = event.value;
+    log::info<1>("RateLimitTrigger {}", u);
+    switch(u.buffer_capacity) {
+       case roq::BufferCapacity::HIGH_WATER_MARK: {
+       } break;
+       case roq::BufferCapacity::FULL: {
+           for(auto &[market, state] : state_ ) {
+               if(event.message_info.source_name == state.exchange) {
+                auto ban_until = state.ban_until = u.ban_expires;
+                log::info<1>("RateLimitTrigger ban_until {} ({}s) exchange {}", 
+                    state.ban_until, ban_until.count() ? (ban_until-this->now()).count()/1E9:NaN, state.exchange);
+               }
+            }
+       } break;
+   }
 }
 
 } // roq::mmaker
