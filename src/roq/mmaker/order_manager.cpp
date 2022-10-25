@@ -319,7 +319,7 @@ void OrderManager::State::order_create_reject(Self&self, OrderState& order, cons
 
     order.expected = order.confirmed;
 
-    this->ban_until = self.now() + std::chrono::seconds(2);
+    this->ban_until = std::max(this->ban_until, self.now() + std::chrono::seconds(2));
     erase_order(self, order.order_id);
 }
 
@@ -588,6 +588,7 @@ void OrderManager::operator()(roq::Event<OrderAck> const& event) {
     if(state.symbol.empty()) {
         state.symbol = u.symbol;
         state.exchange = u.exchange;
+// FIXME:        state.source = event.message_info.source;
     }
     if(!state.get_order(u.order_id, [&](auto& order) {
         assert(order.order_id == u.order_id);

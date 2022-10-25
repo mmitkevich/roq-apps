@@ -2,6 +2,7 @@
 
 #include "./basic_handler.hpp"
 #include "./markets.hpp"
+#include "umm/core/type.hpp"
 #include "umm/printable.hpp"
 //#include "absl/container/flat_hash_map.h"
 #include <roq/cache/gateway.hpp>
@@ -21,10 +22,6 @@ struct BasicStrategy : BasicHandler<Self, Handler> {
 
     using Base = BasicHandler<Self, Handler>;
     using Base::dispatch, Base::operator();
-
-    struct State  {
-        roq::Mas
-    };
 
     BasicStrategy()
     : cache_(client::MarketByPriceFactory::create)
@@ -67,65 +64,52 @@ struct BasicStrategy : BasicHandler<Self, Handler> {
         Base::operator()(event);
     }
 
+    /// NOTE: market is associated with source by receiveing ReferenceData here!
     void operator()(const Event<ReferenceData> &event) {
         auto market = self()->get_market_ident(event.value.symbol, event.value.exchange);
-        auto& state = markets_[market];
-        state(event);
-        log::info<2>("ReferenceData exchange {} symbol {} market {}", event.value.exchange, event.value.symbol, self()->prn(market));
-        Base::operator()(event);
-    }
-    
-    void operator()(const Event<MarketByPriceUpdate> &event) {
-        auto market = self()->get_market_ident(event.value.symbol, event.value.exchange);
-        auto& state = markets_[market];
-        state(event);
-        log::info<2>("MarketByPriceUpdate exchange {} symbol {} market {}", event.value.exchange, event.value.symbol, self()->prn(market));
+        const auto& source = source_by_market_[market] = event.message_info.source;
+        log::info<2>("ReferenceData exchange {} symbol {} market {} source {}", event.value.exchange, event.value.symbol, self()->prn(market), source);
         Base::operator()(event);
     }
 
     template<class T>
     bool dispatch_to_gateway(const Event<T>& event) {
-        auto gateway_iter = gateways_.find(event.message_info.source);
-        if(gateway_iter==std::end(gateways_)) {
+        auto gateway_iter = gateway_by_source_.find(event.message_info.source);
+        if(gateway_iter==std::end(gateway_by_source_)) {
             log::info<2>("new_gateway {}", event.message_info.source);
         }
-        auto& gateway = gateways_[event.message_info.source];
+        auto& gateway = gateway_by_source_[event.message_info.source];
         return gateway(event);
     }
 
     bool is_ready(MarketIdent market) const {
         bool ready = true;
-        auto market_iter = markets_.find(market);
-        if(market_iter == std::end(markets_)) {
+        auto source_iter = source_by_market_.find(market);
+        if(source_iter==std::end(source_by_market_)) {
             ready = false;
-        } else {
-            auto& market_state = market_iter->second;
-            if(!market_state.ready(expected)) {
-                ready = false;
-                log::info<2>("is_ready {} market {} snapshots {} expected {}", ready, self()->prn(market), market_state.snapshots_received, expected);
-            } else {
-                auto gateway_iter = gateways_.find(market_state.source);
-                if(gateway_iter == std::end(gateways_)) {
-                    ready = false;
-                    log::info<2>("is_ready {} market {} source {} not found", ready, self()->prn(market), market_state.source);
-                } else {
-                    auto& gateway = gateway_iter->second;
-                    if(!gateway.ready(expected)) {
-                        ready = false;
-                        log::info<2>("is_ready {} market {} source {} expected {}", ready, self()->prn(market), market_state.source, expected);
-                    } else {
-                        ready = true;
-                    }
-                }
-            }
+            log::info<2>("is_ready {} market {} source not found", ready, self()->prn(market));
+            return ready;
+        }
+        auto source = source_iter->second;
+        auto gateway_iter = gateway_by_source_.find(source);
+        if(gateway_iter == std::end(gateway_by_source_)) {
+            ready = false;
+            log::info<2>("is_ready {} market {} source {} gateway not found", ready, self()->prn(market), source);
+            return ready;
+        }
+        auto& gateway = gateway_iter->second;
+        if(!gateway.ready(expected)) {
+            ready = false;
+            log::info<2>("is_ready {} market {} source {} expected {}", ready, self()->prn(market), source, expected);
+            return ready;
         }
         return ready;
     }
 
 protected:
-    Mask<SupportType> expected {SupportType::REFERENCE_DATA, SupportType::MARKET_BY_PRICE};
-    absl::flat_hash_map<MarketIdent, State> markets_;
-    absl::flat_hash_map<uint32_t, cache::Gateway> gateways_;
+    roq::Mask<SupportType> expected {SupportType::REFERENCE_DATA, SupportType::MARKET_BY_PRICE};
+    absl::flat_hash_map<umm::MarketIdent, uint32_t> source_by_market_;
+    absl::flat_hash_map<uint32_t, cache::Gateway> gateway_by_source_;
     cache::Manager cache_;
 };
 
