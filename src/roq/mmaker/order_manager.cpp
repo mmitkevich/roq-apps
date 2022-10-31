@@ -640,8 +640,8 @@ void OrderManager::operator()(roq::Event<RateLimitTrigger> const& event) {
            for(auto &[market, state] : state_ ) {
                if(event.message_info.source_name == state.exchange) {
                 auto ban_until = state.ban_until = u.ban_expires;
-                log::info<1>("RateLimitTrigger ban_until {} ({}s) exchange {}", 
-                    state.ban_until, ban_until.count() ? (ban_until-this->now()).count()/1E9:NaN, state.exchange);
+                log::info<1>("RateLimitTrigger ban_until {} ({}s) exchange {} market {}", 
+                    state.ban_until, ban_until.count() ? (ban_until-this->now()).count()/1E9:NaN, state.exchange, context.prn(market));
                }
             }
        } break;
