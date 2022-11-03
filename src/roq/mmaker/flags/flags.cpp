@@ -13,9 +13,9 @@ ABSL_FLAG(  //
 
 ABSL_FLAG(  //
     std::string,
-    model,
+    strategy,
     "",
-    "model");
+    "strategy");
 
 /*ABSL_FLAG(  //
     std::string,
@@ -37,8 +37,8 @@ std::string_view Flags::config_file() {
   return result;
 }
 
-std::string_view Flags::model() {
-  static const std::string result = absl::GetFlag(FLAGS_model);
+std::string_view Flags::strategy() {
+  static const std::string result = absl::GetFlag(FLAGS_strategy);
   return result;
 }
 

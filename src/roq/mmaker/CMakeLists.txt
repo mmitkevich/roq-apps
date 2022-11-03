@@ -6,6 +6,7 @@ add_executable(
   "context.cpp"
   "strategy.cpp"
   "order_manager.cpp"
+  "publisher.cpp"
   "flags/flags.cpp"
 )
 

@@ -10,6 +10,7 @@
 #include <roq/client/dispatcher.hpp>
 
 #include "roq/mmaker/order_manager.hpp"
+#include "roq/mmaker/publisher.hpp"
 #include "umm/core/context.hpp"
 #include "umm/core/type.hpp"
 #include "umm/core/type/depth_level.hpp"
@@ -24,22 +25,17 @@
 namespace roq {
 namespace mmaker {
 
-
-enum class BestPriceSource {
-    UNDEFINED,
-    TOP_OF_BOOK,
-    MARKET_BY_PRICE,
-    VWAP
-};
-
 struct Context;
+
 
 struct Strategy : BasicStrategy<Strategy>, umm::IQuoter::Handler, mmaker::IOrderManager::Handler {
     using Base = BasicStrategy<Strategy>;
     
     using Base::dispatch, Base::self;
 
-    Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, umm::IQuoter& quoter, mmaker::IOrderManager& order_manager);
+    Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, 
+        std::unique_ptr<umm::IQuoter> quoter, std::unique_ptr<mmaker::IOrderManager> order_manager={}, std::unique_ptr<mmaker::Publisher> publisher={});
+
     virtual ~Strategy();
 
     /// client::Handler
@@ -60,7 +56,7 @@ struct Strategy : BasicStrategy<Strategy>, umm::IQuoter::Handler, mmaker::IOrder
     template<class T>
     void dispatch(const roq::Event<T> &event) {
         Base::dispatch(event);
-        order_manager_(event);
+        order_manager_->operator()(event);
     }
 
     /// IQuoter::Handler
@@ -70,15 +66,16 @@ struct Strategy : BasicStrategy<Strategy>, umm::IQuoter::Handler, mmaker::IOrder
 private:
     umm::Event<umm::DepthUpdate> get_depth_event(umm::MarketIdent market, const roq::Event<roq::MarketByPriceUpdate>& event);
 private:
+    client::Dispatcher& dispatcher_;
     mmaker::Context& context;
-    mmaker::IOrderManager& order_manager_;
-    umm::IQuoter& quoter_;    
+    std::unique_ptr<mmaker::IOrderManager> order_manager_;
+    std::unique_ptr<umm::IQuoter> quoter_;    
+    std::unique_ptr<mmaker::Publisher> publisher_{};    
     std::vector<roq::MBPUpdate> bids_storage_;
     std::vector<roq::MBPUpdate> asks_storage_;
     std::vector<umm::DepthLevel> depth_bid_update_storage_;
     std::vector<umm::DepthLevel> depth_ask_update_storage_;
     BestPriceSource best_price_source {BestPriceSource::MARKET_BY_PRICE};
-    client::Dispatcher& dispatcher_;
     //bool ready_ = false;
 };
 

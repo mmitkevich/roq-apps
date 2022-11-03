@@ -13,7 +13,6 @@
 namespace roq {
 namespace mmaker {
 
-
 struct Context : umm::Context, client::Config {
     using Base = umm::Context;
 
@@ -49,7 +48,9 @@ struct Context : umm::Context, client::Config {
 
     template<class Fn>
     bool get_market(MarketIdent market, Fn&& fn) const {
-        return markets_.get_market(market, std::forward<Fn>(fn));
+        return markets_.get_market(market, [&](const auto &data) {
+            fn(data);
+        });
     }
 
     /// client::Config

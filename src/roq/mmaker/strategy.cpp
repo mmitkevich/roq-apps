@@ -1,4 +1,5 @@
 #include "./strategy.hpp"
+#include "roq/mmaker/publisher.hpp"
 #include "umm/core/type.hpp"
 #include "umm/core/event.hpp"
 #include "roq/client.hpp"
@@ -8,15 +9,21 @@ namespace roq {
 namespace mmaker {
 using namespace umm::literals;
 
-Strategy::Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, umm::IQuoter& quoter, mmaker::IOrderManager& order_manager)
+Strategy::Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, 
+  std::unique_ptr<umm::IQuoter> quoter, std::unique_ptr<mmaker::IOrderManager> order_manager, std::unique_ptr<mmaker::Publisher> publisher)
 : dispatcher_(dispatcher)
 , context( context )
-, quoter_(quoter)
-, order_manager_(order_manager)
+, quoter_(std::move(quoter))
+, order_manager_(std::move(order_manager))
+, publisher_(std::move(publisher))
 {
-    order_manager.set_dispatcher(dispatcher);
+    if(order_manager_)
+      order_manager_->set_dispatcher(dispatcher_);
+    if(publisher_)
+      publisher_->set_dispatcher(dispatcher_);
+    assert(quoter_);
     umm::IQuoter::Handler& h = *this;
-    quoter_.set_handler(h);
+    quoter_->set_handler(h);
 }
 
 Strategy::~Strategy() {}
@@ -73,30 +80,35 @@ void Strategy::operator()(const Event<MarketByPriceUpdate> &event) {
     if(is_ready(market)) {
       umm::Event<umm::DepthUpdate> depth_event = get_depth_event(market, event);
       //FIXME store to the cache: this->depth[market].
-      quoter_.dispatch(depth_event);
+      quoter_->dispatch(depth_event);
 
       umm::Event<umm::QuotesUpdate> quotes_event;
       quotes_event->market = market;
-      quoter_.dispatch(quotes_event);
+      quoter_->dispatch(quotes_event);
+      
+      // publish to udp
+      if(publisher_)
+          publisher_->dispatch(quotes_event);
     }
     Base::operator()(event);    
 }
 
 void Strategy::dispatch(const umm::Event<umm::QuotesUpdate> &event) {
     umm::MarketIdent market = event->market;
-    context.get_market(market, [&](Markets::Item const& item) {
-      context.get_account(item.exchange, [&](std::string_view account) {
-        umm::QuotesView quotes = quoter_.get_quotes(market);
+    context.get_market(market, [&](const auto& data) {
+      context.get_account(data.exchange, [&](std::string_view account) {
+        umm::QuotesView quotes = quoter_->get_quotes(market);
         TargetQuotes target_quotes {
           .market = market,
           .account = account,
-          .exchange = item.exchange,
-          .symbol = item.symbol,
+          .exchange = data.exchange,
+          .symbol = data.symbol,
           .portfolio = "FIXME",       
           .bids = quotes.bids,
           .asks = quotes.asks,
         };
-        order_manager_.dispatch(target_quotes);
+        if(order_manager_)
+          order_manager_->dispatch(target_quotes);
       });
     });
 }
@@ -111,7 +123,7 @@ void Strategy::operator()(const Event<OMSPositionUpdate>& event) {
     // notify quoter
     umm::Event<umm::PositionUpdate> position_event;
     position_event->market = market;
-    quoter_.dispatch(position_event);
+    quoter_->dispatch(position_event);
 }
 
 } // mmaker

@@ -7,11 +7,11 @@ namespace mmaker {
 inline void Context::dispatch(roq::client::Config::Handler &handler) const {
     using namespace std::literals;
     //log::info<1>("Config::dispatch"sv);
-    markets_.get_markets([&](const auto& item) {
-        log::info<1>("symbol={}, exchange={}, market {}"sv, item.symbol, item.exchange, this->markets(item.market));
+    markets_.get_markets([&](const auto& data) {
+        log::info<1>("symbol={}, exchange={}, market {}"sv, data.symbol, data.exchange, this->markets(data.market));
         handler(client::Symbol {
-            .regex = item.symbol,
-            .exchange = item.exchange
+            .regex = data.symbol,
+            .exchange = data.exchange
         });
     });
 

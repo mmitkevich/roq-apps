@@ -1,4 +1,5 @@
 #pragma once
+#include "roq/mmaker/best_price_source.hpp"
 #include "string_view"
 #include "umm/core/type.hpp"
 #include "absl/container/flat_hash_map.h"
@@ -11,27 +12,47 @@ namespace mmaker {
 
 using MarketIdent = umm::MarketIdent;
 
+struct MarketInfo {
+    umm::MarketIdent market;
+    std::string_view symbol;
+    std::string_view exchange;
+};
+
 struct Markets {
-    struct ExchangeSymbol {
+    struct Data {
         roq::Exchange exchange;        
         roq::Symbol symbol;
+        mmaker::BestPriceSource pub_price_source;
+
+        MarketInfo to_market_info(umm::MarketIdent market) const {
+            return MarketInfo {
+                .market = market,
+                .symbol = symbol,
+                .exchange = exchange
+            };
+        }
     };
-    struct Item {
-        std::string_view symbol;
-        std::string_view exchange;
-        MarketIdent market;
-    };
+
     template<class Fn>
     void get_markets(Fn&& fn) const {
         for(auto& [exchange, symbol_to_market] : symbol_to_market_) {
             for(auto& [symbol, market] : symbol_to_market) {
-                fn(Item{.symbol=symbol, .exchange=exchange, .market=market});
+                fn(MarketInfo {
+                    .market = market, 
+                    .symbol = std::string_view{symbol},
+                    .exchange =  std::string_view{exchange}
+                });
             }
         }
     }
-    void emplace(const Item& item) {
-        auto& sym = market_to_symbol_[item.market] = ExchangeSymbol{.exchange=item.exchange, .symbol=item.symbol};
-        symbol_to_market_[sym.exchange][sym.symbol] = item.market;
+    
+    Data& emplace(MarketIdent market, std::string_view symbol, std::string_view exchange) {
+        auto& data = market_data_[market] = Data { 
+            .exchange = exchange, 
+            .symbol = symbol
+        };
+        symbol_to_market_[data.exchange][data.symbol] = market;
+        return data;
     }
     
     template<class Context, class Config>
@@ -43,10 +64,11 @@ struct Markets {
             auto market_str = config.get_string(market_node, "market");
             umm::MarketIdent market = context.get_market_ident(market_str);
             log::info<1>("symbol {}, exchange {}, market {} {}", symbol, exchange, market.value, context.prn(market));
-            emplace({.symbol=symbol, .exchange=exchange, .market=market});
+            Data& data = emplace(market, symbol, exchange);
+            data.pub_price_source = config.get_value_or(market_node, "pub_price_source", mmaker::BestPriceSource::UNDEFINED);
         });    
     }
-
+    
     void clear() { symbol_to_market_.clear(); }
 
     umm::MarketIdent get_market_ident(std::string_view symbol, std::string_view exchange) const {
@@ -61,18 +83,20 @@ struct Markets {
         }
         return iter_2->second;
     }
+
     template<class Fn>
     bool get_market(umm::MarketIdent market, Fn&& fn) const {
-        auto iter = market_to_symbol_.find(market);
-        if(iter != std::end(market_to_symbol_)) {
-            fn(Item{.symbol = iter->second.symbol, .exchange = iter->second.exchange, .market=market, });
+        auto iter = market_data_.find(market);
+        if(iter != std::end(market_data_)) {
+            const auto& data = iter->second;
+            fn(data);
             return true;
         }
         return false;
     }
 private:
     absl::flat_hash_map<roq::Exchange, absl::flat_hash_map<roq::Symbol, umm::MarketIdent> > symbol_to_market_;
-    absl::node_hash_map<umm::MarketIdent, ExchangeSymbol> market_to_symbol_;
+    absl::node_hash_map<umm::MarketIdent, Data> market_data_;
 };
 
 } // namespace mmaker

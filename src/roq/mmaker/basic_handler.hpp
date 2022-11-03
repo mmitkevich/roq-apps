@@ -63,7 +63,7 @@ public:
   virtual void operator()(Event<client::CustomMessage> const & event) { self()->dispatch(event); }
 
   // parameters
-  virtual void operator()(Event<ParameterUpdate> const & event) { self()->dispatch(event); }
+  virtual void operator()(Event<ParametersUpdate> const & event) { self()->dispatch(event); }
 
   // metrics
   virtual void operator()(metrics::Writer & event) const { }
