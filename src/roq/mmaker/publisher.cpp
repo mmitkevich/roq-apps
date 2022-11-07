@@ -1,5 +1,6 @@
 #include "publisher.hpp"
 #include "umm/core/type/best_price.hpp"
+#include "flags/flags.hpp"
 
 namespace roq {
 namespace mmaker {
@@ -7,7 +8,11 @@ namespace mmaker {
 Publisher::Publisher( mmaker::Context& context)
 : context(context) { }
 
+
 void Publisher::dispatch(const umm::Event<umm::QuotesUpdate> & event) {
+    if(Flags::publisher_id()==0) {
+        return;
+    }
     context.get_market(event->market, [&](const auto& market) {
         if(market.pub_price_source == BestPriceSource::TOP_OF_BOOK) {
             umm::BestPrice& best_price = context.best_price[event->market];
@@ -16,8 +21,12 @@ void Publisher::dispatch(const umm::Event<umm::QuotesUpdate> & event) {
     });
 }
 
-void Publisher::publish(const MarketInfo& data, const umm::BestPrice& best_price) {
-    log::info<2>("publish {} {}", context.prn(data.market), context.prn(best_price));
+bool Publisher::publish(const MarketInfo& data, const umm::BestPrice& best_price) {
+    if(Flags::publisher_id()==0) {
+        return false;
+    }
+    auto source_id = Flags::publisher_id()-1;
+    log::info<2>("publish {} {} to gateway {} ", context.prn(data.market), context.prn(best_price), source_id);
     using namespace std::literals;
     items_.resize(4);
     std::size_t i = 0;
@@ -47,6 +56,7 @@ void Publisher::publish(const MarketInfo& data, const umm::BestPrice& best_price
         .update_type = UpdateType::INCREMENTAL,
 //        .update_type = UpdateType::SNAPSHOT,
     }, source_id);
+    return true;
 }
 
 } // namespace mmaker

@@ -2,9 +2,11 @@
 
 #include "flags.hpp"
 #include <absl/flags/flag.h>
+#include <cstdint>
 #include <string_view>
 #include <string>
 #include <roq/logging.hpp>
+
 ABSL_FLAG(  //
     std::string,
     config_file,
@@ -23,6 +25,13 @@ ABSL_FLAG(  //
     "",
     "log path");*/
 
+ABSL_FLAG(
+    int,
+    publisher_id,
+    0,
+    "publisher_id"
+);
+
 namespace roq {
 namespace mmaker {
 
@@ -39,6 +48,11 @@ std::string_view Flags::config_file() {
 
 std::string_view Flags::strategy() {
   static const std::string result = absl::GetFlag(FLAGS_strategy);
+  return result;
+}
+
+int Flags::publisher_id() {
+  static const int result = absl::GetFlag(FLAGS_publisher_id);
   return result;
 }
 

@@ -15,16 +15,15 @@ struct Publisher {
     Publisher(mmaker::Context& context);
 
     void set_dispatcher(client::Dispatcher& dispatcher) { dispatcher_ = &dispatcher; }
-
+  
     void dispatch(const umm::Event<umm::QuotesUpdate> & event);
 
-    void publish(const MarketInfo& market, const umm::BestPrice& best_price);
+    bool publish(const MarketInfo& market, const umm::BestPrice& best_price);
 
 
     roq::client::Dispatcher* dispatcher_ {};
     mmaker::Context& context;
     std::vector<roq::Measurement> items_;
-    uint8_t source_id = 0;
 };
 
 } // namespace mmaker
