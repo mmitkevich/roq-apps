@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(roq-rencap-mmaker)
+project(roq-mmaker)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -61,3 +61,10 @@ include_directories("${CMAKE_SOURCE_DIR}/src")
 # sub-projects
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/mmaker")
+
+install(
+  TARGETS roq-mmaker-app
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
