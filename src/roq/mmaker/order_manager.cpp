@@ -97,8 +97,8 @@ bool OrderManager::State::can_modify(Self&self, OrderState& order, const TargetO
 
 void OrderManager::State::process(OrderManager& self) {
     auto now = self.now();
-    log::info<1>("OMS process now {} symbol {} exchange {} ban {} ready {}", now, symbol, exchange, ban_until.count() ? (ban_until-now).count()/1E9:NaN, self.ready_);
-    if(!self.ready_)
+    log::info<1>("OMS process now {} symbol {} exchange {} ban {} ready {}", now, symbol, exchange, ban_until.count() ? (ban_until-now).count()/1E9:NaN, self.is_ready(gateway_id));
+    if(!self.is_ready(gateway_id))
         return;
     if(now < ban_until) {
         return;
@@ -218,7 +218,7 @@ void OrderManager::State::process(OrderManager& self) {
 
 OrderManager::OrderState& OrderManager::State::create_order(Self& self, const TargetOrder& target) {
     assert(market == target.market);
-    assert(self.ready_);
+    assert(self.is_ready(gateway_id));
     auto order_id = ++self.max_order_id;
     assert(orders.find(order_id)==std::end(orders));
     auto& order = orders[order_id] = OrderState {
@@ -269,7 +269,7 @@ OrderManager::OrderState& OrderManager::State::create_order(Self& self, const Ta
 }
 
 void OrderManager::State::modify_order(Self& self, OrderState& order, const TargetOrder & target) {
-    assert(self.ready_);
+    assert(self.is_ready(gateway_id));
     ++order.pending.version;
     order.pending.price = target.price;
     order.pending.quantity = target.quantity;
@@ -279,7 +279,7 @@ void OrderManager::State::modify_order(Self& self, OrderState& order, const Targ
 }
 
 void OrderManager::State::cancel_order(Self& self, OrderState& order) {
-    assert(self.ready_);
+    assert(self.is_ready(gateway_id));
     assert(orders.find(order.order_id)!=std::end(orders));
     ++order.pending.version;
     order.pending.type = RequestType::CANCEL_ORDER;
@@ -464,6 +464,7 @@ void OrderManager::operator()(roq::Event<OrderUpdate> const& event) {
         });
         log::info<1>("OMS new_state symbol {} exchange {} account {} market {}", state.symbol, state.exchange, state.account, context.prn(market));
     }
+    state.gateway_id = event.message_info.source;
     auto [order,is_new_order] =  state.get_order_or_create(u.order_id);
     assert(order.order_id == u.order_id);
 
@@ -590,6 +591,7 @@ void OrderManager::operator()(roq::Event<OrderAck> const& event) {
         state.exchange = u.exchange;
 // FIXME:        state.source = event.message_info.source;
     }
+    state.gateway_id = event.message_info.source;
     if(!state.get_order(u.order_id, [&](auto& order) {
         assert(order.order_id == u.order_id);
         log::info<1>("OMS order_ack {} order_id={}.{} side={}, status={} external_id={}, symbol={} exchange={} market={}, error={}, text={}", 
@@ -619,15 +621,16 @@ void OrderManager::operator()(roq::Event<OrderAck> const& event) {
 }
 
 void OrderManager::operator()(roq::Event<DownloadBegin> const& event) {
-    log::info<2>("DownloadBegin ready {}->false, {}", ready_, event);
-    ready_ = false;
+    log::info<2>("DownloadBegin {}", event);
+    ready_by_gateway_[event.message_info.source] = false;
 }
 
 void OrderManager::operator()(roq::Event<DownloadEnd> const& event) {
-    log::info<2>("DownloadEnd ready {}->true, {}", ready_, event);
+    log::info<2>("DownloadEnd {}", event);
     
     max_order_id  = std::max(max_order_id, event.value.max_order_id);
-    ready_ = true;
+
+    ready_by_gateway_[event.message_info.source] = true;
 }
 
 void OrderManager::operator()(roq::Event<RateLimitTrigger> const& event) {

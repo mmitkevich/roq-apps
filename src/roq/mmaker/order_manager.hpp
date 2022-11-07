@@ -153,6 +153,7 @@ struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
         LevelsMap bids;
         LevelsMap asks;
         roq::Exchange exchange;
+        uint8_t gateway_id = (uint8_t)-1;
         roq::Symbol symbol;
         roq::Account account;
         double tick_size = NAN;
@@ -207,12 +208,19 @@ private:
     int source_id = 0;
     std::chrono::nanoseconds now_{};
     std::chrono::nanoseconds last_process_{};
-    bool ready_ = false;
+    absl::flat_hash_map<uint8_t, bool> ready_by_gateway_;
 public:
     OrderManager(mmaker::Context& context) 
     : context(context)
      {}
     std::chrono::nanoseconds now() const { return now_; }
+    bool is_ready(uint8_t gateway_id) const {
+        auto iter = ready_by_gateway_.find(gateway_id);
+        if(iter==std::end(ready_by_gateway_)) {
+            return false;
+        }
+        return iter->second;
+    }
     std::pair<State&, bool> get_market_or_create(MarketIdent market);
     std::pair<State&, bool> get_market_or_create(std::string_view symbol, std::string_view exchange);
     void set_handler(Handler& handler);
