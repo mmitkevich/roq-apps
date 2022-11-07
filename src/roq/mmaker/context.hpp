@@ -19,7 +19,7 @@ struct Context : umm::Context, client::Config {
     Context() = default;
     
     template<class Config>
-    void configure(umm::IQuoter& quoter, const Config& config);
+    void configure(const Config& config);
 
     using umm::Context::get_market_ident;
 
@@ -61,7 +61,7 @@ private:
 };
 
 template<class ConfigT>
-void Context::configure(umm::IQuoter& quoter, const ConfigT& config) {
+void Context::configure(const ConfigT& config) {
     markets_.configure(*this, config);
     
     portfolios.clear();
@@ -71,8 +71,8 @@ void Context::configure(umm::IQuoter& quoter, const ConfigT& config) {
             auto market = this->get_market_ident(market_str);
             UMM_INFO("market {} position {}", this->markets(market), position);
             portfolios[folio][market] = position;
-            umm::Event<umm::PositionUpdate> event;
-            quoter.dispatch(event);
+//            umm::Event<umm::PositionUpdate> event;
+//            quoter.dispatch(event);
         });
     });
 

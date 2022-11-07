@@ -18,12 +18,25 @@ struct MarketInfo {
     std::string_view exchange;
 };
 
+struct SymbolExchange {
+    roq::Exchange exchange;        
+    roq::Symbol symbol;
+
+    template <typename H>
+    friend H AbslHashValue(H h, const SymbolExchange& self) {
+        return H::combine(std::move(h), self.exchange, self.symbol);
+    }
+    bool operator==(const SymbolExchange& that) const {
+        return exchange==that.exchange && symbol==that.symbol;
+    }
+};
+
 struct Markets {
     struct Data {
         roq::Exchange exchange;        
         roq::Symbol symbol;
         mmaker::BestPriceSource pub_price_source;
-
+        umm::Volume lot_size = 1;
         MarketInfo to_market_info(umm::MarketIdent market) const {
             return MarketInfo {
                 .market = market,
@@ -66,6 +79,7 @@ struct Markets {
             log::info<1>("symbol {}, exchange {}, market {} {}", symbol, exchange, market.value, context.prn(market));
             Data& data = emplace(market, symbol, exchange);
             data.pub_price_source = config.get_value_or(market_node, "pub_price_source", mmaker::BestPriceSource::UNDEFINED);
+            data.lot_size = config.get_value_or(market_node, "lot_size", umm::Volume{1.0});
         });    
     }
     

@@ -1,4 +1,5 @@
 #include "context.hpp"
+#include <roq/client/config.hpp>
 namespace roq { 
 namespace mmaker {
 
@@ -14,7 +15,9 @@ inline void Context::dispatch(roq::client::Config::Handler &handler) const {
             .exchange = data.exchange
         });
     });
-
+    handler(client::Settings {
+        .order_cancel_policy = OrderCancelPolicy::BY_ACCOUNT
+    });
     for(auto& [exchange, account]: accounts_) {
         log::info<1>("account {} exchange {}"sv, account, exchange);
         handler(client::Account {

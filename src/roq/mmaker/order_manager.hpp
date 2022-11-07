@@ -20,6 +20,7 @@
 #include "umm/core/type.hpp"
 #include "umm/core/type/quote.hpp"
 #include "roq/mmaker/basic_handler.hpp"
+#include "roq/mmaker/position_source.hpp"
 
 namespace roq::mmaker 
 {
@@ -61,6 +62,7 @@ struct IOrderManager : client::Handler {
     struct Handler;
     virtual ~IOrderManager() = default;
     virtual void set_dispatcher(client::Dispatcher& dispatcher) = 0;
+    virtual void set_handler(Handler& handler) = 0;
     virtual void dispatch(TargetQuotes const &quotes) = 0;
 };
 
@@ -73,19 +75,13 @@ struct OMSPositionUpdate {
     std::string_view exchange;
     std::string_view symbol;
     std::string_view account;
+    umm::PortfolioIdent portfolio;
     MarketIdent market;
 };
 
 struct IOrderManager::Handler {
     virtual ~Handler() = default;
     virtual void operator()(const roq::Event<OMSPositionUpdate>& event) {}
-};
-
-enum PositionSource {
-    UNDEFINED,
-    ORDERS,
-    TRADES,
-    POSITION
 };
 
 struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
@@ -161,12 +157,17 @@ struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
         umm::MarketIdent market {};
         std::chrono::nanoseconds ban_until {};
         std::array<uint16_t,2> pending={0,0};
-        double position = 0;
+        double position_by_orders = 0;
+        double position_by_account = NAN;
+        std::chrono::nanoseconds last_position_modify_time;
       public:
+        bool reconcile_positions(Self& self);
+
         int64_t to_price_index(double price) { 
             assert(!std::isnan(tick_size));
             return std::roundl(price/tick_size);
         }
+        bool set_position(Self&self, double new_position, PositionSource source);
         std::pair<LevelState&, bool> get_level_or_create(Side side, double price);        
         LevelsMap& get_levels(Side side);
         // order&, is_new
@@ -184,6 +185,9 @@ struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
         void order_complete(Self& self, OrderState& order, const OrderUpdate& u);
         void order_canceled(Self& self, OrderState& order, const OrderUpdate& u);
 
+        template<class T>
+        void order_fills(Self& self, const T& u, double fill_size);
+
         bool is_throttled(Self& self, RequestType req);
         bool can_create(Self& self, const TargetOrder & target_order);
         bool can_cancel(Self& self, OrderState& order);
@@ -196,7 +200,10 @@ struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
     };
 public:
     PositionSource position_source {PositionSource::ORDERS};
+    PositionSnapshot position_snapshot {PositionSnapshot::PORTFOLIO};
+    umm::PortfolioIdent portfolio;
 private:
+    std::chrono::nanoseconds reject_timeout_ = std::chrono::seconds {2};
     uint32_t max_order_id = 0;
     Handler* handler_ {nullptr};
     std::array<char, 32> routing_id;
@@ -209,6 +216,7 @@ private:
     std::chrono::nanoseconds now_{};
     std::chrono::nanoseconds last_process_{};
     absl::flat_hash_map<uint8_t, bool> ready_by_gateway_;
+    absl::flat_hash_map<Account, absl::flat_hash_map<SymbolExchange, double>> position_by_account_;
 public:
     OrderManager(mmaker::Context& context) 
     : context(context)
@@ -221,23 +229,34 @@ public:
         }
         return iter->second;
     }
+    
+    template<class Config, class Node>
+    void configure(const Config& config, Node node);
+
+    double get_position(std::string_view account, std::string_view symbol, std::string_view exchange);
+
     std::pair<State&, bool> get_market_or_create(MarketIdent market);
     std::pair<State&, bool> get_market_or_create(std::string_view symbol, std::string_view exchange);
+    template<class T>
+    std::pair<State&, bool> get_market_or_create(const roq::Event<T>& event);
     void set_handler(Handler& handler);
     void set_dispatcher(client::Dispatcher& dispatcher);
     void dispatch(TargetQuotes const& target_quotes);
-    void operator()(roq::Event<Timer> const& event) override;
+    void operator()(roq::Event<Timer> const& event);
     void operator()(roq::Event<OrderUpdate> const& event);
     void operator()(roq::Event<OrderAck> const& event);
 //    void operator()(roq::Event<GatewayStatus> const& event);
 //    void operator()(roq::Event<Disconnected> const& event);
 //    void operator()(roq::Event<Connected> const& event);
 //    void operator()(roq::Event<StreamStatus> const& event);
+    void operator()(Event<PositionUpdate> const & event);
+    void operator()(Event<FundsUpdate> const & event);
     void operator()(roq::Event<DownloadBegin> const& event);
     void operator()(roq::Event<DownloadEnd> const& event);
     void operator()(roq::Event<ReferenceData> const& event);
     void operator()(roq::Event<RateLimitTrigger> const& event);
     void operator()(roq::Event<OMSPositionUpdate> const& event);
+
 };
 
 
@@ -251,6 +270,21 @@ inline bool OrderManager::State::get_order(uint32_t order_id, Fn&& fn) {
     return false;
 }
 
+template<class Config, class Node>
+void OrderManager::configure(const Config& config, Node node) {
+    this->position_snapshot = config.get_value_or(node, "position_snapshot", PositionSnapshot::PORTFOLIO);
+    this->position_source = config.get_value_or(node, "position_source", PositionSource::ORDERS);
+    this->portfolio = config.get_value_or(node, "portfolio", umm::PortfolioIdent{});
+    this->reject_timeout_ = std::chrono::nanoseconds { uint64_t(config.get_value_or(node, "reject_timeout_ms", umm::Double(1000.0))*1E6) };
+}
+
+
+template<class T>
+std::pair<OrderManager::State&, bool> OrderManager::get_market_or_create(const Event<T>& event) {
+    auto [state, is_new] = get_market_or_create(event.value.symbol, event.value.exchange);
+    state.gateway_id = event.message_info.source;
+    return {state, is_new};
+}
 
 
 } // roq::mmaker

@@ -66,9 +66,11 @@ int Application::main(std::span<std::string_view> args) {
       config(*quoter);
       
       /// pass positions to the quoter
-      context.configure( *quoter, config );
+      context.configure( config );
 
       std::unique_ptr<mmaker::OrderManager> order_manager = std::make_unique<mmaker::OrderManager>(context);
+      order_manager->configure(config, strategy_node);
+      
       std::unique_ptr<mmaker::Publisher> publisher = std::make_unique<mmaker::Publisher>(context);
 
       client::Trader(context, args).template dispatch<Strategy>(context, std::move(quoter), std::move(order_manager), std::move(publisher));

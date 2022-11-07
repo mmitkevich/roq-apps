@@ -17,13 +17,16 @@ Strategy::Strategy(client::Dispatcher& dispatcher, mmaker::Context& context,
 , order_manager_(std::move(order_manager))
 , publisher_(std::move(publisher))
 {
-    if(order_manager_)
+    if(order_manager_) {
       order_manager_->set_dispatcher(dispatcher_);
-    if(publisher_)
+      order_manager_->set_handler(*this);
+    }
+    if(publisher_) {
       publisher_->set_dispatcher(dispatcher_);
-    assert(quoter_);
-    umm::IQuoter::Handler& h = *this;
-    quoter_->set_handler(h);
+    }
+    if(quoter_) {
+      quoter_->set_handler(*this);
+    }    
 }
 
 Strategy::~Strategy() {}
@@ -116,13 +119,13 @@ void Strategy::dispatch(const umm::Event<umm::QuotesUpdate> &event) {
 void Strategy::operator()(const Event<OMSPositionUpdate>& event) {
     // cache position
     auto& u = event.value;
-    auto market = u.market;
-    umm::PortfolioIdent folio {}; // FIXME
-    context.portfolios[folio][market] = u.position;
+    log::info<2>("Strategy::OMSPositionUpdate position {} portfolio {} market {}", 
+      u.position, context.prn(u.portfolio), context.prn(u.market));
+    context.portfolios[u.portfolio][u.market] = u.position;
     
     // notify quoter
     umm::Event<umm::PositionUpdate> position_event;
-    position_event->market = market;
+    position_event->market = u.market;
     quoter_->dispatch(position_event);
 }
 
