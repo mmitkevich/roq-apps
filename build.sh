@@ -26,7 +26,7 @@ CC=${CC:-$(which gcc)}
 
 rm -rf build/$build
 echo "running cmake... CXX=$CXX"
-cmake -H. -Bbuild/$build -DCMAKE_INSTALL_PREFIX=~/roq-conda
+cmake -H. -Bbuild/$build -DCMAKE_INSTALL_PREFIX=~/roq-conda\
 	-DCMAKE_CXX_COMPILER=$CXX -DCMAKE_C_COMPILER=$CC -DCMAKE_BUILD_TYPE=$build\
 	-DCMAKE_EXPORT_COMPILE_COMMANDS=YES\
 	-DCMAKE_CXX_FLAGS_DEBUG="-O0 -g"\
