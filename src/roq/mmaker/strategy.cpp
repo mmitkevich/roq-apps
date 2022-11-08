@@ -82,10 +82,12 @@ void Strategy::operator()(const Event<MarketByPriceUpdate> &event) {
     }
     if(is_ready(market)) {
       umm::Event<umm::DepthUpdate> depth_event = get_depth_event(market, event);
+      depth_event.header.receive_time_utc = event.message_info.receive_time_utc;
       //FIXME store to the cache: this->depth[market].
       quoter_->dispatch(depth_event);
 
       umm::Event<umm::QuotesUpdate> quotes_event;
+      quotes_event.header.receive_time_utc = event.message_info.receive_time_utc;
       quotes_event->market = market;
       quoter_->dispatch(quotes_event);
       
@@ -125,6 +127,7 @@ void Strategy::operator()(const Event<OMSPositionUpdate>& event) {
     
     // notify quoter
     umm::Event<umm::PositionUpdate> position_event;
+    position_event.header.receive_time_utc = event.message_info.receive_time_utc;
     position_event->market = u.market;
     quoter_->dispatch(position_event);
 }

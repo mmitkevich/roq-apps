@@ -368,6 +368,8 @@ void OrderManager::State::order_confirm(Self&self, OrderState& order, const Orde
 }
 
 bool OrderManager::State::reconcile_positions(Self& self) {
+    if(!self.is_ready(this->gateway_id))
+        return false;
     if(self.now()-last_position_modify_time > std::chrono::seconds{3}) {
         auto delta =  position_by_account - position_by_orders;    // stable
         if( !std::isnan(delta) && utils::compare(delta, 0.)!=std::strong_ordering::equal) {
