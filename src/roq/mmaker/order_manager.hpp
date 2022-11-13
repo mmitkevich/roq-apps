@@ -158,7 +158,7 @@ struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
         std::chrono::nanoseconds ban_until {};
         std::array<uint16_t,2> pending={0,0};
         double position_by_orders = 0;
-        double position_by_account = NAN;
+        double position_by_account = 0;
         std::chrono::nanoseconds last_position_modify_time;
       public:
         bool reconcile_positions(Self& self);
@@ -167,7 +167,7 @@ struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
             assert(!std::isnan(tick_size));
             return std::roundl(price/tick_size);
         }
-        bool set_position(Self&self, double new_position, PositionSource source);
+        void notify_position_update(Self&self);
         std::pair<LevelState&, bool> get_level_or_create(Side side, double price);        
         LevelsMap& get_levels(Side side);
         // order&, is_new
@@ -216,7 +216,7 @@ private:
     std::chrono::nanoseconds now_{};
     std::chrono::nanoseconds last_process_{};
     absl::flat_hash_map<uint8_t, bool> ready_by_gateway_;
-    absl::flat_hash_map<Account, absl::flat_hash_map<SymbolExchange, double>> position_by_account_;
+    //absl::flat_hash_map<Account, absl::flat_hash_map<SymbolExchange, double>> position_by_account_;
 public:
     OrderManager(mmaker::Context& context) 
     : context(context)
@@ -233,10 +233,10 @@ public:
     template<class Config, class Node>
     void configure(const Config& config, Node node);
 
-    double get_position(std::string_view account, std::string_view symbol, std::string_view exchange);
+//    double get_position(std::string_view account, std::string_view symbol, std::string_view exchange);
 
-    std::pair<State&, bool> get_market_or_create(MarketIdent market);
-    std::pair<State&, bool> get_market_or_create(std::string_view symbol, std::string_view exchange);
+    std::pair<State&, bool> get_market_or_create_internal(MarketIdent market);
+    std::pair<State&, bool> get_market_or_create_internal(std::string_view symbol, std::string_view exchange);
     template<class T>
     std::pair<State&, bool> get_market_or_create(const roq::Event<T>& event);
     void set_handler(Handler& handler);
@@ -275,13 +275,14 @@ void OrderManager::configure(const Config& config, Node node) {
     this->position_snapshot = config.get_value_or(node, "position_snapshot", PositionSnapshot::PORTFOLIO);
     this->position_source = config.get_value_or(node, "position_source", PositionSource::ORDERS);
     this->portfolio = config.get_value_or(node, "portfolio", umm::PortfolioIdent{});
-    this->reject_timeout_ = std::chrono::nanoseconds { uint64_t(config.get_value_or(node, "reject_timeout_ms", umm::Double(1000.0))*1E6) };
+    this->reject_timeout_ = std::chrono::nanoseconds { uint64_t(
+        std::max(umm::Double(100.0), config.get_value_or(node, "reject_timeout_ms", umm::Double(1000.0))*1E6)) };
 }
 
 
 template<class T>
 std::pair<OrderManager::State&, bool> OrderManager::get_market_or_create(const Event<T>& event) {
-    auto [state, is_new] = get_market_or_create(event.value.symbol, event.value.exchange);
+    auto [state, is_new] = get_market_or_create_internal(event.value.symbol, event.value.exchange);
     state.gateway_id = event.message_info.source;
     return {state, is_new};
 }

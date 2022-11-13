@@ -33,7 +33,9 @@ inline bool is_empty_quote(const Quote& quote) {
 
 void OrderManager::dispatch(TargetQuotes const & target_quotes) {
     auto market = target_quotes.market;
-    auto [state,is_new_state] = get_market_or_create(market);
+    auto [state,is_new_state] = get_market_or_create_internal(market);
+    assert(!is_new_state);
+
     state.account = target_quotes.account;
     state.exchange = target_quotes.exchange;
     state.symbol = target_quotes.symbol;
@@ -100,9 +102,13 @@ bool OrderManager::State::can_modify(Self&self, OrderState& order, const TargetO
 
 void OrderManager::State::process(OrderManager& self) {
     auto now = self.now();
-    log::info<1>("OMS process now {} symbol {} exchange {} ban {} ready {}", now, symbol, exchange, ban_until.count() ? (ban_until-now).count()/1E9:NaN, self.is_ready(gateway_id));
+    log::info<1>("OMS process now {} symbol {} exchange {} ban {} ready {} tick_size {}",
+         now, symbol, exchange, ban_until.count() ? (ban_until-now).count()/1E9:NaN, self.is_ready(gateway_id), tick_size);
     if(!self.is_ready(gateway_id))
         return;
+    if(std::isnan(this->tick_size)) {
+        return;
+    }
     if(now < ban_until) {
         return;
     } else {
@@ -397,19 +403,27 @@ bool OrderManager::State::reconcile_positions(Self& self) {
     return false;
 }
 
-bool OrderManager::State::set_position(Self& self, double new_position, PositionSource source) {
-//    bool position_was_equal = utils::compare(this->position_by_orders, this->position_by_account) == std::strong_ordering::equal;
-    switch(source) {
-        case PositionSource::ORDERS: this->position_by_orders = new_position; break;
-        case PositionSource::POSITION: this->position_by_account = new_position; break;
-        default: assert(false);
-    }
-    bool position_is_equal = utils::compare(this->position_by_orders, this->position_by_account) == std::strong_ordering::equal;
-    //if(!position_was_equal && position_is_equal) {
-    //    this->last_time_position_in_sync = self.now();
-    //}
+void OrderManager::State::notify_position_update(Self& self) {
+    UMM_DEBUG("OMS position_notify position_by_orders {} position_by_account {} market {}", 
+        position_by_orders, position_by_account, self.context.prn(market));        
+
+    OMSPositionUpdate position_update {
+//        .side = u.side,
+//        .price = u.last_traded_price,
+//        .quantity = fill_size,
+        .position = this->position_by_orders,
+        .exchange = exchange,
+        .symbol = symbol,
+        .account = account,   
+        .portfolio = self.portfolio,     
+        .market = market
+    };
+
     last_position_modify_time = self.now();
-    return position_is_equal;
+
+    roq::MessageInfo info {};
+    roq::Event oms_event(info, position_update);
+    self(oms_event);    
 }
 
 template<class T>
@@ -418,24 +432,8 @@ void OrderManager::State::order_fills(Self& self, const T& u, double fill_size) 
     if(utils::compare(fill_size, 0.)==std::strong_ordering::greater) {
         if(u.side==Side::SELL)
             fill_size = -fill_size;
-        auto prev_position = this->position_by_orders;
-        set_position(self, position_by_orders+fill_size, PositionSource::ORDERS);
-        UMM_DEBUG("position={}->{} position_by_account={} side={} price={} fill_size={} order_id={}.{} symbol={} exchange={} market {}, last_time_position_in_sync {}", 
-            prev_position, this->position_by_orders, this->position_by_account, u.side, fill_size,  u.last_traded_quantity, u.order_id, u.max_accepted_version, u.symbol, u.exchange, self.context.prn(market), last_position_modify_time);        
-        OMSPositionUpdate position_update {
-            .side = u.side,
-            .price = u.last_traded_price,
-            .quantity = fill_size,
-            .position = this->position_by_orders,
-            .exchange = u.exchange,
-            .symbol = u.symbol,
-            .account = u.account,   
-            .portfolio = self.portfolio,     
-            .market = this->market
-        };
-        roq::MessageInfo info {};
-        roq::Event oms_event(info, position_update);
-        self(oms_event);    
+        position_by_orders += fill_size;
+        notify_position_update(self);
     }
 }
 
@@ -486,18 +484,20 @@ void OrderManager::operator()(roq::Event<Timer> const& event) {
     now_ = event.value.now;
     if(now_ - last_process_ >= std::chrono::seconds(1)) {
         for(auto& [market, state] : state_) {
-            state.process(*this);
+            if(is_ready(state.gateway_id))
+                state.process(*this);
         }
         last_process_ = now_;        
     }
     for(auto& [market, state] : state_) {
-        state.reconcile_positions(*this);
+        if(is_ready(state.gateway_id))
+            state.reconcile_positions(*this);
     }
 }
 
 void OrderManager::operator()(roq::Event<ReferenceData> const& event) {
     auto& u = event.value;
-    auto [state,is_new_state] = get_market_or_create(u.symbol, u.exchange);
+    auto [state,is_new_state] = get_market_or_create(event);
     state.tick_size = u.tick_size;
     state.min_trade_vol = u.min_trade_vol;
 }
@@ -580,9 +580,9 @@ std::pair<OrderManager::OrderState&,bool> OrderManager::State::get_order_or_crea
     }
 }
 
-std::pair<OrderManager::State&, bool> OrderManager::get_market_or_create(std::string_view symbol, std::string_view exchange) {
+std::pair<OrderManager::State&, bool> OrderManager::get_market_or_create_internal(std::string_view symbol, std::string_view exchange) {
     auto market = context.get_market_ident(symbol, exchange);
-    auto [state, is_new] = get_market_or_create(market);
+    auto [state, is_new] = get_market_or_create_internal(market);
     if(is_new) {
         state.symbol = symbol;
         state.exchange = exchange;
@@ -596,7 +596,7 @@ std::pair<OrderManager::State&, bool> OrderManager::get_market_or_create(std::st
 }
 
 
-std::pair<OrderManager::State&, bool> OrderManager::get_market_or_create(MarketIdent market) {
+std::pair<OrderManager::State&, bool> OrderManager::get_market_or_create_internal(MarketIdent market) {
     auto iter = state_.find(market);
     if(iter!=std::end(state_)) {
         return {iter->second, false};
@@ -644,13 +644,13 @@ void OrderManager::operator()(roq::Event<OrderAck> const& event) {
             u.type, u.order_id, u.version, u.side, u.status, u.symbol, u.exchange, context.prn(market));                    
         return;
     }
-    auto [state,is_new_state] = get_market_or_create(market);
-    if(state.symbol.empty()) {
-        state.symbol = u.symbol;
-        state.exchange = u.exchange;
+    auto [state,is_new_state] = get_market_or_create(event);
+//    if(state.symbol.empty()) {
+//        state.symbol = u.symbol;
+//        state.exchange = u.exchange;
 // FIXME:        state.source = event.message_info.source;
-    }
-    state.gateway_id = event.message_info.source;
+//    }
+    //state.gateway_id = event.message_info.source;
     if(!state.get_order(u.order_id, [&](auto& order) {
         assert(order.order_id == u.order_id);
         log::info<1>("OMS order_ack {} order_id={}.{} side={}, status={} external_id={}, symbol={} exchange={} market={}, error={}, text={}", 
@@ -664,10 +664,11 @@ void OrderManager::operator()(roq::Event<OrderAck> const& event) {
             } else if(u.type==RequestType::MODIFY_ORDER) {
                 state.order_modify_reject(*this, order, u);
             }
-            if(u.error==Error::REQUEST_RATE_LIMIT_REACHED) {
+            if(u.error==Error::REQUEST_RATE_LIMIT_REACHED || u.error==Error::GATEWAY_NOT_READY) {
                 state.ban_until = now_ + reject_timeout_;
+            } else {
+                state.process(*this);
             }
-            state.process(*this);
         } else if(u.status == RequestStatus::ACCEPTED) {
             state.order_accept(*this, order, u);
         } else if(u.status == RequestStatus::FORWARDED) {
@@ -682,14 +683,21 @@ void OrderManager::operator()(roq::Event<OrderAck> const& event) {
 
 void OrderManager::operator()(Event<PositionUpdate> const & event) {
     Base::operator()(event);
-    log::info<2>("OMS position_update {}", event);
+    bool is_downloading = !this->is_ready(event.message_info.source);    
+    auto [state,is_new_state] = get_market_or_create(event);
     auto& u = event.value;
     auto new_position = u.long_quantity - u.short_quantity;
-    position_by_account_[u.account][SymbolExchange { .exchange=u.exchange, .symbol=u.symbol }] = new_position;
-    auto [state,is_new_state] = get_market_or_create(event);
-    state.set_position(*this, new_position, PositionSource::POSITION);
+    state.position_by_account = new_position;    
+    log::info<2>("PositionUpdate {}", event);
+    if(!is_downloading && position_source==PositionSource::ACCOUNT) {
+    log::info<1>("OMS position_update downloading {} account {} position_by_orders {} position_by_account {} symbol {} exchange {} market {} portfolio {}",
+        is_downloading, state.account, state.position_by_orders, state.position_by_account,
+        state.symbol, state.exchange, context.prn(state.market), context.prn(portfolio));
+        state.notify_position_update(*this);
+    }
 }
 
+/*
 double OrderManager::get_position(std::string_view account, std::string_view symbol, std::string_view exchange) {
     auto iter = position_by_account_.find(account);
     if(iter==std::end(position_by_account_))
@@ -699,16 +707,27 @@ double OrderManager::get_position(std::string_view account, std::string_view sym
         return NAN;
     return iter_2->second;
 }
-
+*/
 void OrderManager::operator()(Event<FundsUpdate> const & event) {
     Base::operator()(event);
-    log::info<2>("OMS funds_update {}", event);
+    log::info<2>("FundsUpdate {}", event);
 }
 
 void OrderManager::operator()(roq::Event<DownloadBegin> const& event) {
     log::info<2>("DownloadBegin {}", event);
-    position_by_account_.erase(event.value.account);
+//    position_by_account_.erase(event.value.account);
     ready_by_gateway_[event.message_info.source] = false;
+    auto& u = event.value;
+    if(!u.account.empty() && position_snapshot==PositionSnapshot::ACCOUNT) {
+        for(auto & [market, state] : state_) {
+            if(state.account == u.account) {
+                state.position_by_orders = 0;
+                state.position_by_account = 0;
+                log::info<1>("OMS position_download_begin account {} symbol {} exchange {} market {} portfolio {}",
+                    state.account, state.symbol, state.exchange, context.prn(state.market), context.prn(portfolio));                
+            }
+        }
+    }
 }
 
 void OrderManager::operator()(roq::Event<DownloadEnd> const& event) {
@@ -716,7 +735,18 @@ void OrderManager::operator()(roq::Event<DownloadEnd> const& event) {
     
     max_order_id  = std::max(max_order_id, event.value.max_order_id);
     auto& u = event.value;
-    auto iter = position_by_account_.find(u.account);
+    
+    if(!u.account.empty() && position_snapshot==PositionSnapshot::ACCOUNT) {
+        for(auto & [market, state] : state_) {
+            if(state.account==u.account) {
+                state.position_by_orders = state.position_by_account;
+                log::info<1>("OMS position_snapshot account {} portfolio {} position_by_orders = position_by_account = {}  market {}",  
+                        u.account, context.prn(portfolio), state.position_by_orders, context.prn(state.market));
+                state.notify_position_update(*this);
+            }
+        }
+    }
+/*    auto iter = position_by_account_.find(u.account);
     if(iter!=std::end(position_by_account_) && position_snapshot==PositionSnapshot::ACCOUNT) {
         for(auto& [sym, new_position] : iter->second) {
             auto [state, is_new_state] = get_market_or_create(sym.symbol, sym.exchange);
@@ -739,7 +769,7 @@ void OrderManager::operator()(roq::Event<DownloadEnd> const& event) {
             this->operator()(oms_event);    
         }
     }
-    
+*/  
     ready_by_gateway_[event.message_info.source] = true;
 }
 

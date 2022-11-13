@@ -6,7 +6,7 @@ enum class PositionSource {
     UNDEFINED,
     ORDERS,
     TRADES,
-    POSITION
+    ACCOUNT
 };
 
 enum class PositionSnapshot {
