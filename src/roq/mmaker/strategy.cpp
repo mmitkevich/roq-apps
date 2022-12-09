@@ -54,6 +54,7 @@ bool Strategy::is_ready(umm::MarketIdent market) const {
 }
 
 void Strategy::operator()(const Event<MarketByPriceUpdate> &event) {
+    context.set_now(event.message_info.receive_time_utc);
     auto [market_cache, is_new] = cache_.get_market_or_create(event.value.exchange, event.value.symbol);
     auto market = context.get_market_ident(market_cache);
     auto& mbp = *market_cache.market_by_price;
@@ -113,8 +114,11 @@ void Strategy::operator()(const Event<MarketByPriceUpdate> &event) {
 
 void Strategy::operator()(const Event<Timer>  & event) {
     umm::Event<umm::TimeUpdate> timer_event;
-    auto now = timer_event.header.receive_time_utc = event.message_info.receive_time_utc;
-    context.set_now(now);
+    auto recv_time_utc = event.message_info.receive_time_utc;
+    timer_event.header.receive_time_utc = recv_time_utc;
+    auto now = event.value.now;
+    UMM_TRACE("Timer recv_time_utc {} now {}", recv_time_utc, now);
+    context.set_now(recv_time_utc);
     quoter_->dispatch(timer_event);
     Base::operator()(event);
 }
