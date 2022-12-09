@@ -100,7 +100,7 @@ struct BasicStrategy : BasicHandler<Self, Handler> {
         auto& gateway = gateway_iter->second;
         if(!gateway.ready(expected)) {
             ready = false;
-            log::info<2>("is_ready {} market {} source {} expected {}", ready, self()->prn(market), source, expected);
+            log::info<2>("is_ready {} market {} source {} expected {} available {} unavailable {}", ready, self()->prn(market), source, expected, gateway.state.status.available, gateway.state.status.unavailable);
             return ready;
         }
         return ready;

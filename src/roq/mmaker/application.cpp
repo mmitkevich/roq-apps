@@ -55,7 +55,7 @@ int Application::main(std::span<std::string_view> args) {
     if(!strategy_found &&  strategy_str == strategy) {
       strategy_found = true;
       auto model_str = config.get_string(strategy_node, "model");
-      auto quoter_factory = umm::Provider::create(context, config, model_str);
+      auto quoter_factory = umm::Provider::create(static_cast<umm::Context&>(context), config, model_str);
       if(!quoter_factory) {
         log::warn<0>("error: strategy {} not supported", strategy);
         return;

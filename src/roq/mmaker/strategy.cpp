@@ -4,6 +4,7 @@
 #include "umm/core/event.hpp"
 #include "roq/client.hpp"
 #include "roq/mmaker/order_manager.hpp"
+#include "umm/core/type/depth_array.ipp"
 
 namespace roq {
 namespace mmaker {
@@ -36,53 +37,65 @@ void Strategy::operator()(const Event<ReferenceData> &event) {
     bool done = market_data(event);
     auto market = context.get_market_ident(market_data);
     auto& reference_data = market_data.reference_data;
+    assert(!std::isnan(reference_data.tick_size));
     context.tick_rules.min_trade_vol[market] =  reference_data.min_trade_vol;
     context.tick_rules.tick_size[market] =  reference_data.tick_size;
     Base::operator()(event);
 }
 
-umm::Event<umm::DepthUpdate> Strategy::get_depth_event(umm::MarketIdent market, const Event<MarketByPriceUpdate>& event) {
-    depth_bid_update_storage_.resize(event.value.bids.size());
-    for(std::size_t i=0;i<event.value.bids.size();i++) {
-      depth_bid_update_storage_[i].price = event.value.bids[i].price;
-      depth_bid_update_storage_[i].volume = event.value.bids[i].quantity;
-    }
-    depth_ask_update_storage_.resize(event.value.asks.size());
-    for(std::size_t i=0;i<event.value.asks.size();i++) {
-      depth_ask_update_storage_[i].price = event.value.asks[i].price;
-      depth_ask_update_storage_[i].volume = event.value.asks[i].quantity;
-    }        
-    umm::Event<umm::DepthUpdate> umm_event;
-    umm_event->market = market;
-    umm_event->bids = depth_bid_update_storage_;
-    umm_event->asks = depth_ask_update_storage_;
-    return umm_event;
+
+
+bool Strategy::is_ready(umm::MarketIdent market) const {
+  if(!Base::is_ready(market))
+    return false;
+  if(!context.tick_rules.tick_size.contains(market) || std::isnan(context.tick_rules.tick_size[market]))
+    return false;
+  return true;
 }
 
 void Strategy::operator()(const Event<MarketByPriceUpdate> &event) {
-    auto [market_data, is_new] = cache_.get_market_or_create(event.value.exchange, event.value.symbol);
-    bool done = market_data(event);
-    auto market = context.get_market_ident(market_data);
-    auto& mbp = *market_data.market_by_price;
-    const auto [bids_size, asks_size] = mbp.size();
-    bids_storage_.resize(bids_size);
-    asks_storage_.resize(asks_size);
-    auto [bids, asks] = mbp.extract(bids_storage_, asks_storage_);
-    
+    auto [market_cache, is_new] = cache_.get_market_or_create(event.value.exchange, event.value.symbol);
+    auto market = context.get_market_ident(market_cache);
+    auto& mbp = *market_cache.market_by_price;
+
+    bool done = market_cache(event);   
+
+    mbp_depth_.update(mbp);
+    mbp_depth_.tick_size = mbp.price_increment();
+    mbp_depth_.num_levels = std::min(mbp.max_depth(), uint16_t{1000});
+    context.depth[market].tick_size = mbp.price_increment();
+
+    umm::BestPrice& best_price = context.best_price[market];
     if(best_price_source==BestPriceSource::MARKET_BY_PRICE) {
-        umm::BestPrice& best_price = context.best_price[market];
-        if(bids.size()>0) {
-          best_price.bid_price = bids[0].price;
-          best_price.bid_volume = bids[0].quantity;
-        }
-        if(asks.size()>0) {
-          best_price.ask_price = asks[0].price;
-          best_price.ask_volume = asks[0].quantity;
-        }
+  //      mbp_depth_.update(mbp, 1);  // extract up to 1 level from roq mbp cache
+        best_price = mbp_depth_.best_price();
     }
+
+  log::info<2>("Strateg::MarketByPriceUpdate market {} BestPrice = {}, MBPDepth = {}", self()->prn(market), prn(best_price), prn(mbp_depth_));
+
     if(is_ready(market)) {
-      umm::Event<umm::DepthUpdate> depth_event = get_depth_event(market, event);
-      depth_event.header.receive_time_utc = event.message_info.receive_time_utc;
+      umm::Event<umm::DepthUpdate> depth_event;
+      if(!umm_mbp_snapshot_sent_(market, false)) {  // FIXME: this required due to possibly absent tick_size at time of MBP
+        umm_mbp_snapshot_sent_[market] = true;
+//        mbp_depth_.update(mbp, 0);  // extracts all levels from roq mbp cache
+        depth_event = depth_event_factory_(market,  mbp_depth_.bids, mbp_depth_.asks);
+        //context.depth[market].handle(depth_event);        
+        
+        context.depth[market].update(mbp_depth_); // TODO: recompute our dense depth from platform-specific depth
+
+        depth_event.set_snapshot(true);
+        depth_event.header.receive_time_utc = event.message_info.receive_time_utc;
+        log::info<2>("MBPSnapshot market {} {}", self()->prn(market), prn(depth_event.value));        
+      } else {
+        depth_event = depth_event_factory_(market, event.value.bids, event.value.asks);
+        //context.depth[market].handle(depth_event);
+        
+        context.depth[market].update(mbp_depth_); // TODO: recompute our dense depth from platform-specific depth
+
+        depth_event.set_snapshot(false);
+        depth_event.header.receive_time_utc = event.message_info.receive_time_utc;
+        log::info<2>("MBPUpdate:  market {}  {}", self()->prn(market), prn(depth_event.value));        
+      }
       //FIXME store to the cache: this->depth[market].
       quoter_->dispatch(depth_event);
 
@@ -96,6 +109,14 @@ void Strategy::operator()(const Event<MarketByPriceUpdate> &event) {
           publisher_->dispatch(quotes_event);
     }
     Base::operator()(event);    
+}
+
+void Strategy::operator()(const Event<Timer>  & event) {
+    umm::Event<umm::TimeUpdate> timer_event;
+    auto now = timer_event.header.receive_time_utc = event.message_info.receive_time_utc;
+    context.set_now(now);
+    quoter_->dispatch(timer_event);
+    Base::operator()(event);
 }
 
 void Strategy::dispatch(const umm::Event<umm::QuotesUpdate> &event) {

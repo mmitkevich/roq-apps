@@ -9,6 +9,7 @@
 #include <roq/client/config.hpp>
 #include <roq/client/dispatcher.hpp>
 
+#include "roq/mmaker/mbp_depth_array.hpp"
 #include "roq/mmaker/order_manager.hpp"
 #include "roq/mmaker/publisher.hpp"
 #include "umm/core/context.hpp"
@@ -27,6 +28,45 @@ namespace mmaker {
 
 struct Context;
 
+struct DepthEventFactory {
+    std::vector<umm::DepthLevel> bids;
+    std::vector<umm::DepthLevel> asks;
+
+    umm::Event<umm::DepthUpdate> operator()(umm::MarketIdent market, std::span<roq::MBPUpdate> bids, std::span<roq::MBPUpdate> asks);
+};
+
+inline umm::Event<umm::DepthUpdate> DepthEventFactory::operator()(umm::MarketIdent market, std::span<MBPUpdate> bids, std::span<MBPUpdate> asks) {
+    this->bids.resize(bids.size());
+    for(std::size_t i=0;i<bids.size();i++) {
+      double qty = bids[i].quantity;
+      if(qty==0)
+        qty = NAN;
+      this->bids[i] = umm::DepthLevel {
+        .price = bids[i].price,
+        .volume = qty
+      };
+      if(this->bids[i].volume.value==0) {
+          this->bids[i].volume = {};
+      }
+    }
+    this->asks.resize(asks.size());
+    for(std::size_t i=0;i<asks.size();i++) {
+      double qty = asks[i].quantity;
+      if(qty==0)
+        qty = NAN;
+
+      this->asks[i] = umm::DepthLevel {
+        .price = asks[i].price,
+        .volume = qty
+      };
+    }        
+    umm::Event<umm::DepthUpdate> event;
+    event->market = market;
+    event->bids = this->bids;
+    event->asks = this->asks;
+    return event;
+}
+
 
 struct Strategy : BasicStrategy<Strategy>, umm::IQuoter::Handler, mmaker::IOrderManager::Handler {
     using Base = BasicStrategy<Strategy>;
@@ -41,6 +81,7 @@ struct Strategy : BasicStrategy<Strategy>, umm::IQuoter::Handler, mmaker::IOrder
     /// client::Handler
     void operator()(const Event<ReferenceData> &) override;
     void operator()(const Event<MarketByPriceUpdate> &) override;
+    void operator()(const Event<Timer>  & event) override;
 
     void operator()(const Event<OMSPositionUpdate>& event);
 
@@ -59,23 +100,28 @@ struct Strategy : BasicStrategy<Strategy>, umm::IQuoter::Handler, mmaker::IOrder
         order_manager_->operator()(event);
     }
 
+    void operator()(const Event<DownloadBegin> &event) override {
+        Base::operator()(event);
+        umm_mbp_snapshot_sent_.clear();
+    }
+
     /// IQuoter::Handler
     void dispatch(const umm::Event<umm::QuotesUpdate> &) override;
 
-
+    bool is_ready(umm::MarketIdent market) const;
 private:
-    umm::Event<umm::DepthUpdate> get_depth_event(umm::MarketIdent market, const roq::Event<roq::MarketByPriceUpdate>& event);
+    
 private:
     client::Dispatcher& dispatcher_;
     mmaker::Context& context;
     std::unique_ptr<mmaker::IOrderManager> order_manager_;
     std::unique_ptr<umm::IQuoter> quoter_;    
-    std::unique_ptr<mmaker::Publisher> publisher_{};    
-    std::vector<roq::MBPUpdate> bids_storage_;
-    std::vector<roq::MBPUpdate> asks_storage_;
-    std::vector<umm::DepthLevel> depth_bid_update_storage_;
-    std::vector<umm::DepthLevel> depth_ask_update_storage_;
+    std::unique_ptr<mmaker::Publisher> publisher_{};
+    MBPDepthArray mbp_depth_;
+    DepthEventFactory depth_event_factory_;
+    
     BestPriceSource best_price_source {BestPriceSource::MARKET_BY_PRICE};
+    umm::Cache<umm::MarketIdent, bool> umm_mbp_snapshot_sent_;
     //bool ready_ = false;
 };
 

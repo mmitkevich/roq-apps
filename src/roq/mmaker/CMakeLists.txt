@@ -7,11 +7,13 @@ add_executable(
   "strategy.cpp"
   "order_manager.cpp"
   "publisher.cpp"
+  "mbp_depth_array.cpp"
   "flags/flags.cpp"
 )
 
 target_link_libraries("${TARGET_NAME}" PRIVATE roq-client::roq-client roq-logging::roq-logging absl::flags fmt::fmt ) #umm
 target_link_libraries("${TARGET_NAME}" PRIVATE _lightgbm)
+target_link_libraries("${TARGET_NAME}" PRIVATE umm)
 
 target_compile_features("${TARGET_NAME}" PUBLIC cxx_std_17)
 
