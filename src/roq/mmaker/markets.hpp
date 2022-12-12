@@ -36,6 +36,7 @@ struct Markets {
         roq::Exchange exchange;        
         roq::Symbol symbol;
         mmaker::BestPriceSource pub_price_source;
+        mmaker::BestPriceSource best_price_source = mmaker::BestPriceSource::MARKET_BY_PRICE;
         umm::Volume lot_size = 1;
         MarketInfo to_market_info(umm::MarketIdent market) const {
             return MarketInfo {
@@ -79,6 +80,7 @@ struct Markets {
             log::info<1>("symbol {}, exchange {}, market {} {}", symbol, exchange, market.value, context.prn(market));
             Data& data = emplace(market, symbol, exchange);
             data.pub_price_source = config.get_value_or(market_node, "pub_price_source", mmaker::BestPriceSource::UNDEFINED);
+            data.best_price_source = config.get_value_or(market_node, "best_price_source", mmaker::BestPriceSource::MARKET_BY_PRICE);
             data.lot_size = config.get_value_or(market_node, "lot_size", umm::Volume{1.0});
         });    
     }

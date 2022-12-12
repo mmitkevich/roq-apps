@@ -8,6 +8,7 @@
 #include <roq/cache/gateway.hpp>
 #include <roq/client/config.hpp>
 #include <roq/client/dispatcher.hpp>
+#include <roq/top_of_book.hpp>
 
 #include "roq/mmaker/mbp_depth_array.hpp"
 #include "roq/mmaker/order_manager.hpp"
@@ -81,6 +82,7 @@ struct Strategy : BasicStrategy<Strategy>, umm::IQuoter::Handler, mmaker::IOrder
     /// client::Handler
     void operator()(const Event<ReferenceData> &) override;
     void operator()(const Event<MarketByPriceUpdate> &) override;
+    void operator()(const Event<TopOfBook> &) override;
     void operator()(const Event<Timer>  & event) override;
 
     void operator()(const Event<OMSPositionUpdate>& event);
@@ -110,7 +112,7 @@ struct Strategy : BasicStrategy<Strategy>, umm::IQuoter::Handler, mmaker::IOrder
 
     bool is_ready(umm::MarketIdent market) const;
 private:
-    
+    mmaker::BestPriceSource get_best_price_source(MarketIdent market) const;
 private:
     client::Dispatcher& dispatcher_;
     mmaker::Context& context;
@@ -119,8 +121,7 @@ private:
     std::unique_ptr<mmaker::Publisher> publisher_{};
     MBPDepthArray mbp_depth_;
     DepthEventFactory depth_event_factory_;
-    
-    BestPriceSource best_price_source {BestPriceSource::MARKET_BY_PRICE};
+  
     umm::Cache<umm::MarketIdent, bool> umm_mbp_snapshot_sent_;
     //bool ready_ = false;
 };

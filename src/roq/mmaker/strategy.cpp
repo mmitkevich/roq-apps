@@ -1,10 +1,12 @@
 #include "./strategy.hpp"
+#include "roq/mmaker/best_price_source.hpp"
 #include "roq/mmaker/publisher.hpp"
 #include "umm/core/type.hpp"
 #include "umm/core/event.hpp"
 #include "roq/client.hpp"
 #include "roq/mmaker/order_manager.hpp"
 #include "umm/core/type/depth_array.ipp"
+#include <roq/top_of_book.hpp>
 
 namespace roq {
 namespace mmaker {
@@ -53,6 +55,14 @@ bool Strategy::is_ready(umm::MarketIdent market) const {
   return true;
 }
 
+mmaker::BestPriceSource Strategy::get_best_price_source(MarketIdent market) const {
+  auto best_price_source = BestPriceSource::MARKET_BY_PRICE;
+  context.get_market(market, [&](const auto& data) {
+      best_price_source = data.best_price_source;
+  });
+  return best_price_source;
+}
+
 void Strategy::operator()(const Event<MarketByPriceUpdate> &event) {
     context.set_now(event.message_info.receive_time_utc);
     auto [market_cache, is_new] = cache_.get_market_or_create(event.value.exchange, event.value.symbol);
@@ -65,14 +75,16 @@ void Strategy::operator()(const Event<MarketByPriceUpdate> &event) {
     mbp_depth_.tick_size = mbp.price_increment();
     mbp_depth_.num_levels = std::min(mbp.max_depth(), uint16_t{1000});
     context.depth[market].tick_size = mbp.price_increment();
+    log::info<2>("Strateg::MarketByPriceUpdate market {} MBPDepth = {}", self()->prn(market), prn(mbp_depth_));
 
     umm::BestPrice& best_price = context.best_price[market];
+    auto best_price_source = get_best_price_source(market);
     if(best_price_source==BestPriceSource::MARKET_BY_PRICE) {
   //      mbp_depth_.update(mbp, 1);  // extract up to 1 level from roq mbp cache
-        best_price = mbp_depth_.best_price();
+      best_price = mbp_depth_.best_price();
+      log::info<2>("Strateg::MarketByPriceUpdate market {} BestPrice = {} (from MBP)", self()->prn(market), prn(best_price));
     }
 
-  log::info<2>("Strateg::MarketByPriceUpdate market {} BestPrice = {}, MBPDepth = {}", self()->prn(market), prn(best_price), prn(mbp_depth_));
 
     if(is_ready(market)) {
       umm::Event<umm::DepthUpdate> depth_event;
@@ -100,6 +112,8 @@ void Strategy::operator()(const Event<MarketByPriceUpdate> &event) {
       //FIXME store to the cache: this->depth[market].
       quoter_->dispatch(depth_event);
 
+    log::info<2>("QuotesUpdate:  market {} BestPrice {} (from MBP)", self()->prn(market), self()->prn(best_price));
+
       umm::Event<umm::QuotesUpdate> quotes_event;
       quotes_event.header.receive_time_utc = event.message_info.receive_time_utc;
       quotes_event->market = market;
@@ -110,6 +124,35 @@ void Strategy::operator()(const Event<MarketByPriceUpdate> &event) {
           publisher_->dispatch(quotes_event);
     }
     Base::operator()(event);    
+}
+
+void Strategy::operator()(const Event<TopOfBook> &event) {
+    context.set_now(event.message_info.receive_time_utc);
+    auto [market_cache, is_new] = cache_.get_market_or_create(event.value.exchange, event.value.symbol);
+    auto market = context.get_market_ident(market_cache);
+    
+    umm::BestPrice& best_price = context.best_price[market];
+    auto best_price_source = get_best_price_source(market);
+    const auto& u = event.value;
+    if(best_price_source==BestPriceSource::TOP_OF_BOOK) {
+      best_price.bid_price = u.layer.bid_price;
+      best_price.ask_price = u.layer.ask_price;
+      best_price.bid_volume = u.layer.bid_quantity;
+      best_price.ask_volume = u.layer.ask_quantity;
+      log::info<2>("Strateg::MarketByPriceUpdate market {} BestPrice = {} (from ToB)", self()->prn(market), prn(best_price));
+    }
+    if(is_ready(market)) {
+      log::info<2>("QuotesUpdate:  market {} BestPrice {} (from ToB)", self()->prn(market), self()->prn(best_price));
+      umm::Event<umm::QuotesUpdate> quotes_event;
+      quotes_event.header.receive_time_utc = event.message_info.receive_time_utc;
+      quotes_event->market = market;
+      quoter_->dispatch(quotes_event);
+      // publish to udp
+      if(publisher_)
+            publisher_->dispatch(quotes_event);
+    }
+
+    Base::operator()(event);
 }
 
 void Strategy::operator()(const Event<Timer>  & event) {
