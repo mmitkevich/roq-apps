@@ -56,6 +56,8 @@ bool Strategy::is_ready(umm::MarketIdent market) const {
 }
 
 roq::Mask<SupportType> Strategy::get_expected_support_type(MarketIdent market) const {
+  return {};
+  /*
   roq::Mask<roq::SupportType> expected = {roq::SupportType::REFERENCE_DATA};
   context.get_market(market, [&](const auto& data) {
       if(data.best_price_source == BestPriceSource::TOP_OF_BOOK) {
@@ -66,6 +68,7 @@ roq::Mask<SupportType> Strategy::get_expected_support_type(MarketIdent market) c
       }
   });
   return expected;
+  */
 }
 
 mmaker::BestPriceSource Strategy::get_best_price_source(MarketIdent market) const {
