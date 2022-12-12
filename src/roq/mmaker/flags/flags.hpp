@@ -8,9 +8,9 @@ namespace roq {
 namespace mmaker {
 
 struct Flags {
-  static std::string_view config_file();
-  static std::string_view log_path();
-  static std::string_view strategy();
+  static const std::string& config_file();
+  static const std::string& log_path();
+  static const std::string& strategy();
   static int publisher_id();
 };
 

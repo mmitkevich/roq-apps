@@ -1,4 +1,5 @@
 /* Copyright (c) 2021 Mikhail Mitkevich */
+#include "umm/prologue.hpp"
 #include "roq/client.hpp"
 #include "roq/mmaker/publisher.hpp"
 #include "umm/core/model_api.hpp"
@@ -14,7 +15,8 @@ using namespace std::chrono_literals;
 using namespace std::literals;
 
 namespace umm {
-inline LogLevel get_log_level_from_env() {
+UMM_NOINLINE
+LogLevel get_log_level_from_env() {
     const char* v = getenv("ROQ_v");
     if(v)
         return  (umm::LogLevel)atoi(v);
@@ -30,13 +32,15 @@ Application::Application(int argc, char**argv)
 {}
 
 int Application::main(std::span<std::string_view> args) {
-  auto config_file = Flags::config_file();
+  auto config_file = roq::mmaker::Flags::config_file();
   log::info("config_file '{}'", config_file);
   umm::TomlConfig config { config_file };
   mmaker::Context context;
-  
+
   // FIXME: use ROQ_v
-  umm::set_log_level(umm::get_log_level_from_env());
+  umm::LogLevel log_level = umm::get_log_level_from_env();
+  //log_level = umm::LogLevel::TRACE;
+  umm::set_log_level(log_level);
 
   config.get_market_ident = [&](std::string_view market) -> umm::MarketIdent { return context.get_market_ident(market); };
   config.get_portfolio_ident = [&](std::string_view folio) -> umm::PortfolioIdent { return context.get_portfolio_ident(folio); };

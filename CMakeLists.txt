@@ -20,9 +20,11 @@ add_compile_options(-ftemplate-backtrace-limit=0)
 if(SANITIZE_BUILD)
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
   add_compile_options(-fno-omit-frame-pointer -fsanitize=address)
+  add_compile_options(-fno-omit-frame-pointer -fno-inline -fno-visibility-inlines-hidden)
+  add_compile_options( -fsanitize=address )
+  link_libraries("-fsanitize=address")
   message("SANITIZE BUILD = ON")
 endif (SANITIZE_BUILD)
-
 
 # rpath
 
