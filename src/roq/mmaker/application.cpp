@@ -66,11 +66,11 @@ int Application::main(std::span<std::string_view> args) {
       }
       std::unique_ptr<umm::IQuoter> quoter = quoter_factory();
 
-      /// pass parameters to the quoter
-      config(*quoter);
-      
-      /// pass positions to the quoter
       context.configure( config );
+
+      // parameters
+      config(*quoter);
+      context.initialize(*quoter);      
 
       std::unique_ptr<mmaker::OrderManager> order_manager = std::make_unique<mmaker::OrderManager>(context);
       order_manager->configure(config, strategy_node);

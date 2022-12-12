@@ -52,6 +52,8 @@ struct Context : umm::Context, client::Config {
             fn(data);
         });
     }
+    
+    void initialize(umm::IModel& model);
 
     /// client::Config
     void dispatch(roq::client::Config::Handler &) const;
