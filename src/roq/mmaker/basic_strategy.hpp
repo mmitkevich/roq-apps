@@ -9,6 +9,7 @@
 #include <roq/cache/manager.hpp>
 #include <roq/gateway_status.hpp>
 #include <roq/market_by_price_update.hpp>
+#include <roq/mask.hpp>
 #include <roq/reference_data.hpp>
 #include <roq/support_type.hpp>
 
@@ -98,6 +99,7 @@ struct BasicStrategy : BasicHandler<Self, Handler> {
             return ready;
         }
         auto& gateway = gateway_iter->second;
+        auto expected = self()->get_expected_support_type(market);
         if(!gateway.ready(expected)) {
             ready = false;
             log::info<2>("is_ready {} market {} source {} expected {} available {} unavailable {}", ready, self()->prn(market), source, expected, gateway.state.status.available, gateway.state.status.unavailable);
@@ -106,8 +108,12 @@ struct BasicStrategy : BasicHandler<Self, Handler> {
         return ready;
     }
 
+    roq::Mask<SupportType> get_expected_support_type(MarketIdent market) const {
+        return roq::Mask<SupportType> {roq::SupportType::REFERENCE_DATA};
+    }
+
 protected:
-    roq::Mask<SupportType> expected {SupportType::REFERENCE_DATA, SupportType::MARKET_BY_PRICE};
+    //roq::Mask<SupportType> expected {SupportType::REFERENCE_DATA, SupportType::MARKET_BY_PRICE};
     absl::flat_hash_map<umm::MarketIdent, uint32_t> source_by_market_;
     absl::flat_hash_map<uint32_t, cache::Gateway> gateway_by_source_;
     cache::Manager cache_;

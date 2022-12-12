@@ -111,6 +111,8 @@ struct Strategy : BasicStrategy<Strategy>, umm::IQuoter::Handler, mmaker::IOrder
     void dispatch(const umm::Event<umm::QuotesUpdate> &) override;
 
     bool is_ready(umm::MarketIdent market) const;
+    roq::Mask<SupportType> get_expected_support_type(MarketIdent market) const;
+
 private:
     mmaker::BestPriceSource get_best_price_source(MarketIdent market) const;
 private:
