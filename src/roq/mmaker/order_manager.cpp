@@ -4,6 +4,7 @@
 #include "./order_manager.hpp"
 #include <chrono>
 #include <roq/buffer_capacity.hpp>
+#include <roq/execution_instruction.hpp>
 #include <roq/order_update.hpp>
 #include "roq/utils/compare.hpp"
 #include <compare>
@@ -44,20 +45,24 @@ void OrderManager::dispatch(TargetQuotes const & target_quotes) {
 
     for(auto& [price_index, quote]: state.bids) {
         quote.target_quantity = 0;
+        quote.flags = 0;
     }
     for(auto& quote: target_quotes.bids) {
         if(!is_empty_quote(quote)) {
             auto [level,is_new] = state.get_level_or_create(Side::BUY, quote.price);
             level.target_quantity = quote.volume;
+            level.flags = quote.flags;
         }
     }
     for(auto& [price_index, quote]: state.asks) {
         quote.target_quantity = 0;
+        quote.flags = 0;
     }
     for(auto& quote: target_quotes.asks) {
         if(!is_empty_quote(quote)) {
             auto [level,is_new] = state.get_level_or_create(Side::SELL, quote.price);
             level.target_quantity = quote.volume;
+            level.flags = quote.flags;
         }
     }
     for(auto& [market, state] : state_) {
@@ -195,6 +200,7 @@ void OrderManager::State::process(OrderManager& self) {
                     .side = side,
                     .quantity = level.target_quantity - level.expected_quantity,
                     .price = level.price,
+                    .flags = level.flags
                 };
                 if(can_create(self, target_order)) {
                     //queue_.push_back(target_order); 
@@ -256,6 +262,9 @@ OrderManager::OrderState& OrderManager::State::create_order(Self& self, const Ta
     assert(!std::isnan(order.expected.quantity));
     auto r = fmt::format_to_n(self.routing_id.begin(), self.routing_id.size()-1, "{}.{}",order.order_id, order.pending.version);
     auto routing_id_v = std::string_view { self.routing_id.data(), r.size };
+    roq::Mask<roq::ExecutionInstruction> execution_instructions {};
+    if(target.flags & Quote::POST_ONLY)
+        execution_instructions.set(roq::ExecutionInstruction::PARTICIPATE_DO_NOT_INITIATE);
 
     auto create_order = roq::CreateOrder {
         .account = account,
@@ -266,13 +275,14 @@ OrderManager::OrderState& OrderManager::State::create_order(Self& self, const Ta
         //.execution_instructions = target.execution_instructions,
         .order_type = OrderType::LIMIT,
         .time_in_force = TimeInForce::GTC,
+        .execution_instructions = execution_instructions,                
         .quantity = target.quantity,        
         .price = target.price, 
         .routing_id = routing_id_v
     };
     self.market_by_order_[order_id] = market;
-    log::info<1>("OMS create_order {{ order_id={}.{} side={} price={} qty={} symbol={} exchange={} market {}, account={} }}", 
-        order_id, order.pending.version, target.side, target.price, target.quantity, symbol, exchange, self.context.prn(market), account);
+    log::info<1>("OMS create_order {{ order_id={}.{} side={} price={} qty={} symbol={} exchange={} market {}, account={}, execution_instructions={} }}", 
+        order_id, order.pending.version, target.side, target.price, target.quantity, symbol, exchange, self.context.prn(market), account, create_order.execution_instructions);
     self.dispatcher->send(create_order, self.source_id);
     return order;
 }

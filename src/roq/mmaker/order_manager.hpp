@@ -33,6 +33,7 @@ struct TargetOrder {
     Side side {Side::UNDEFINED};
     double quantity {NaN};    
     double price {NaN};
+    uint64_t flags = 0;
 };
 
 struct TargetQuotes : umm::BasicPrintable<TargetQuotes> {
@@ -140,6 +141,7 @@ struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
         double target_quantity = 0;
         double expected_quantity = 0;
         double confirmed_quantity = 0;
+        uint64_t flags = 0;
     };
     using LevelsMap = absl::flat_hash_map<int64_t, LevelState>;
     using OrdersMap = absl::flat_hash_map<uint32_t, OrderState>;
