@@ -1,5 +1,6 @@
 #include "./strategy.hpp"
 #include "roq/mmaker/best_price_source.hpp"
+#include "roq/mmaker/gateways.hpp"
 #include "roq/mmaker/publisher.hpp"
 #include "umm/core/type.hpp"
 #include "umm/core/event.hpp"
@@ -12,9 +13,11 @@ namespace roq {
 namespace mmaker {
 using namespace umm::literals;
 
-Strategy::Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, 
+Strategy::Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, std::unique_ptr<mmaker::Gateways> gateways,
   std::unique_ptr<umm::IQuoter> quoter, std::unique_ptr<mmaker::IOrderManager> order_manager, std::unique_ptr<mmaker::Publisher> publisher)
-: dispatcher_(dispatcher)
+: cache_(client::MarketByPriceFactory::create)
+, gateways_(std::move(gateways))
+, dispatcher_(dispatcher)
 , context( context )
 , quoter_(std::move(quoter))
 , order_manager_(std::move(order_manager))
@@ -42,22 +45,42 @@ void Strategy::operator()(const Event<ReferenceData> &event) {
     assert(!std::isnan(reference_data.tick_size));
     context.tick_rules.min_trade_vol[market] =  reference_data.min_trade_vol;
     context.tick_rules.tick_size[market] =  reference_data.tick_size;
+    //auto market = get_market_ident(event.value.symbol, event.value.exchange);
+    const auto &source = source_by_market_[market] = event.message_info.source;
+    log::info<2>("ReferenceData exchange {} symbol {} market {} source {}",
+               event.value.exchange, event.value.symbol, context.prn(market),
+               source);
     Base::operator()(event);
 }
 
 
-
 bool Strategy::is_ready(umm::MarketIdent market) const {
-  if(!Base::is_ready(market))
-    return false;
+  auto source_iter = source_by_market_.find(market);
+  if(source_iter==std::end(source_by_market_)) {
+      log::info<2>("is_ready=false market {} source not found", context.prn(market));
+      return false;
+  }
+  auto source = source_iter->second;
+  auto expected = get_expected_md_support(market);
+  if(!gateways_->is_ready(expected, source)) {
+    if(!gateways_->get_gateway(source, [&](const auto& gateway) {
+      log::info<2>("is_ready=false market {} source {} expected {} available {} unavailable {}", 
+          context.prn(market), source, expected, gateway.state.status.available, gateway.state.status.unavailable);
+    })) {
+      log::info<2>("is_ready=false market {} source {} expected {} gateway not found", 
+          context.prn(market), source, expected);
+      }
+      return false;
+  }   
   if(!context.tick_rules.tick_size.contains(market) || std::isnan(context.tick_rules.tick_size[market]))
     return false;
   return true;
 }
 
-roq::Mask<SupportType> Strategy::get_expected_support_type(MarketIdent market) const {
+roq::Mask<SupportType> Strategy::get_expected_md_support(MarketIdent market) const {
   return {};
-  /*
+  /* FIXME: udp gateways don't give any support
+  
   roq::Mask<roq::SupportType> expected = {roq::SupportType::REFERENCE_DATA};
   context.get_market(market, [&](const auto& data) {
       if(data.best_price_source == BestPriceSource::TOP_OF_BOOK) {
@@ -216,5 +239,12 @@ void Strategy::operator()(const Event<OMSPositionUpdate>& event) {
     quoter_->dispatch(position_event);
 }
 
-} // mmaker
+
+
+void Strategy::operator()(const Event<DownloadBegin> &event) {
+  Base::operator()(event);
+  umm_mbp_snapshot_sent_.clear();
+}
+
+} // namespace mmaker
 } // roq

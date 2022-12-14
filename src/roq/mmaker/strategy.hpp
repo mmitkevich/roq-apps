@@ -2,8 +2,6 @@
 
 #include "roq/client.hpp"
 
-#include "./basic_strategy.hpp"
-
 #include <absl/container/flat_hash_map.h>
 #include <roq/cache/gateway.hpp>
 #include <roq/client/config.hpp>
@@ -69,18 +67,18 @@ inline umm::Event<umm::DepthUpdate> DepthEventFactory::operator()(umm::MarketIde
 }
 
 
-struct Strategy : BasicStrategy<Strategy>, umm::IQuoter::Handler, mmaker::IOrderManager::Handler {
-    using Base = BasicStrategy<Strategy>;
-    
+struct Strategy : BasicHandler<Strategy>, umm::IQuoter::Handler, mmaker::IOrderManager::Handler {
+    using Base = BasicHandler<Strategy>;
+    using Self = Strategy;
+
     using Base::dispatch, Base::self;
 
-    Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, 
+    Strategy(client::Dispatcher& dispatcher, mmaker::Context& context, std::unique_ptr<mmaker::Gateways> gateways,
         std::unique_ptr<umm::IQuoter> quoter, std::unique_ptr<mmaker::IOrderManager> order_manager={}, std::unique_ptr<mmaker::Publisher> publisher={});
 
     virtual ~Strategy();
 
     /// client::Handler
-    void operator()(const Event<ReferenceData> &) override;
     void operator()(const Event<MarketByPriceUpdate> &) override;
     void operator()(const Event<TopOfBook> &) override;
     void operator()(const Event<Timer>  & event) override;
@@ -99,23 +97,27 @@ struct Strategy : BasicStrategy<Strategy>, umm::IQuoter::Handler, mmaker::IOrder
     template<class T>
     void dispatch(const roq::Event<T> &event) {
         Base::dispatch(event);
+        gateways_->operator()(event);        
         order_manager_->operator()(event);
     }
 
-    void operator()(const Event<DownloadBegin> &event) override {
-        Base::operator()(event);
-        umm_mbp_snapshot_sent_.clear();
-    }
+    void operator()(const Event<DownloadBegin> &event);
+
+    /// NOTE: market is associated with source by receiveing ReferenceData here!
+    void operator()(const Event<ReferenceData> &event) override;
 
     /// IQuoter::Handler
     void dispatch(const umm::Event<umm::QuotesUpdate> &) override;
 
     bool is_ready(umm::MarketIdent market) const;
-    roq::Mask<SupportType> get_expected_support_type(MarketIdent market) const;
+
+    roq::Mask<SupportType> get_expected_md_support(MarketIdent market) const;
 
 private:
     mmaker::BestPriceSource get_best_price_source(MarketIdent market) const;
 private:
+    std::unique_ptr<mmaker::Gateways> gateways_;
+    cache::Manager cache_;
     client::Dispatcher& dispatcher_;
     mmaker::Context& context;
     std::unique_ptr<mmaker::IOrderManager> order_manager_;
@@ -123,7 +125,8 @@ private:
     std::unique_ptr<mmaker::Publisher> publisher_{};
     MBPDepthArray mbp_depth_;
     DepthEventFactory depth_event_factory_;
-  
+      
+    absl::flat_hash_map<umm::MarketIdent, uint32_t> source_by_market_;
     umm::Cache<umm::MarketIdent, bool> umm_mbp_snapshot_sent_;
     //bool ready_ = false;
 };

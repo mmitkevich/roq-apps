@@ -21,6 +21,7 @@
 #include "umm/core/type/quote.hpp"
 #include "roq/mmaker/basic_handler.hpp"
 #include "roq/mmaker/position_source.hpp"
+#include "roq/mmaker/gateways.hpp"
 
 namespace roq::mmaker 
 {
@@ -217,20 +218,28 @@ private:
     int source_id = 0;
     std::chrono::nanoseconds now_{};
     std::chrono::nanoseconds last_process_{};
-    absl::flat_hash_map<uint8_t, bool> ready_by_gateway_;
+
+    //absl::flat_hash_map<uint8_t, GatewayFlags> ready_by_gateway_;
+    Gateways& gateways_;
+
     //absl::flat_hash_map<Account, absl::flat_hash_map<SymbolExchange, double>> position_by_account_;
 public:
-    OrderManager(mmaker::Context& context) 
+    OrderManager(mmaker::Context& context, mmaker::Gateways& gateway_manager) 
     : context(context)
-     {}
+    , gateways_(gateway_manager)
+    {}
+
     std::chrono::nanoseconds now() const { return now_; }
-    bool is_ready(uint8_t gateway_id) const {
+   /* bool is_ready(uint8_t gateway_id) const {
         auto iter = ready_by_gateway_.find(gateway_id);
         if(iter==std::end(ready_by_gateway_)) {
             return false;
         }
         return iter->second;
-    }
+    }*/
+
+    bool is_ready(uint32_t source, std::string_view account, roq::Mask<roq::SupportType> mask) const;
+    bool is_downloading(uint32_t source) const;
     
     template<class Config, class Node>
     void configure(const Config& config, Node node);

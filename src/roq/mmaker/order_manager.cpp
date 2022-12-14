@@ -17,7 +17,6 @@
 namespace roq::mmaker {
 
 
-
 void OrderManager::set_dispatcher(client::Dispatcher& dispatcher) {
     this->dispatcher = &dispatcher;
 }
@@ -106,11 +105,15 @@ bool OrderManager::State::can_modify(Self&self, OrderState& order, const TargetO
 }
 
 void OrderManager::State::process(OrderManager& self) {
-    auto now = self.now();
-    log::info<1>("OMS process now {} symbol {} exchange {} ban {} ready {} tick_size {}",
-         now, symbol, exchange, ban_until.count() ? (ban_until-now).count()/1E9:NaN, self.is_ready(gateway_id), tick_size);
-    if(!self.is_ready(gateway_id))
+    if(account.empty())
         return;
+    auto now = self.now();
+    bool ready = self.is_ready(gateway_id, account, roq::Mask{roq::SupportType::CREATE_ORDER, roq::SupportType::CANCEL_ORDER});
+    log::info<1>("OMS process now {} symbol {} exchange {} ban {} ready {} tick_size {}",
+         now, symbol, exchange, ban_until.count() ? (ban_until-now).count()/1E9:NaN, ready, tick_size);
+    if(!ready) {
+        return;
+    }
     if(std::isnan(this->tick_size)) {
         return;
     }
@@ -233,7 +236,7 @@ void OrderManager::State::process(OrderManager& self) {
 
 OrderManager::OrderState& OrderManager::State::create_order(Self& self, const TargetOrder& target) {
     assert(market == target.market);
-    assert(self.is_ready(gateway_id));
+    assert(self.is_ready(gateway_id, account, roq::Mask<roq::SupportType>{roq::SupportType::MODIFY_ORDER}));
     auto order_id = ++self.max_order_id;
     assert(orders.find(order_id)==std::end(orders));
     auto& order = orders[order_id] = OrderState {
@@ -288,7 +291,7 @@ OrderManager::OrderState& OrderManager::State::create_order(Self& self, const Ta
 }
 
 void OrderManager::State::modify_order(Self& self, OrderState& order, const TargetOrder & target) {
-    assert(self.is_ready(gateway_id));
+    assert(self.is_ready(gateway_id, account, roq::Mask<roq::SupportType>{roq::SupportType::MODIFY_ORDER}));
     ++order.pending.version;
     order.pending.price = target.price;
     order.pending.quantity = target.quantity;
@@ -298,7 +301,7 @@ void OrderManager::State::modify_order(Self& self, OrderState& order, const Targ
 }
 
 void OrderManager::State::cancel_order(Self& self, OrderState& order) {
-    assert(self.is_ready(gateway_id));
+    assert(self.is_ready(gateway_id, account, roq::Mask<roq::SupportType>{roq::SupportType::CANCEL_ORDER}));
     assert(orders.find(order.order_id)!=std::end(orders));
     ++order.pending.version;
     order.pending.type = RequestType::CANCEL_ORDER;
@@ -384,7 +387,8 @@ void OrderManager::State::order_confirm(Self&self, OrderState& order, const Orde
 }
 
 bool OrderManager::State::reconcile_positions(Self& self) {
-    if(!self.is_ready(this->gateway_id))
+    bool is_downloading = self.is_downloading(this->gateway_id);
+    if(is_downloading)
         return false;
     if(self.now()-last_position_modify_time > std::chrono::seconds{3}) {
         auto delta =  position_by_account - position_by_orders;    // stable
@@ -494,15 +498,17 @@ void OrderManager::operator()(roq::Event<Timer> const& event) {
     now_ = event.value.now;
     if(now_ - last_process_ >= std::chrono::seconds(1)) {
         for(auto& [market, state] : state_) {
-            if(is_ready(state.gateway_id))
-                state.process(*this);
+        //    if(!is_downloading(state.gateway_id))
+            state.process(*this);
+            state.reconcile_positions(*this);
         }
         last_process_ = now_;        
     }
-    for(auto& [market, state] : state_) {
-        if(is_ready(state.gateway_id))
-            state.reconcile_positions(*this);
+/*    for(auto& [market, state] : state_) {
+        //if(!is_downloading(state.gateway_id))
+        state.reconcile_positions(*this);
     }
+*/
 }
 
 void OrderManager::operator()(roq::Event<ReferenceData> const& event) {
@@ -693,7 +699,7 @@ void OrderManager::operator()(roq::Event<OrderAck> const& event) {
 
 void OrderManager::operator()(Event<PositionUpdate> const & event) {
     Base::operator()(event);
-    bool is_downloading = !this->is_ready(event.message_info.source);    
+    bool is_downloading = this->is_downloading(event.message_info.source);    
     auto [state,is_new_state] = get_market_or_create(event);
     auto& u = event.value;
     auto new_position = u.long_quantity - u.short_quantity;
@@ -726,7 +732,7 @@ void OrderManager::operator()(Event<FundsUpdate> const & event) {
 void OrderManager::operator()(roq::Event<DownloadBegin> const& event) {
     log::info<2>("DownloadBegin {}", event);
 //    position_by_account_.erase(event.value.account);
-    ready_by_gateway_[event.message_info.source] = false;
+//    ready_by_gateway_[event.message_info.source] = false;
     auto& u = event.value;
     if(!u.account.empty() && position_snapshot==PositionSnapshot::ACCOUNT) {
         for(auto & [market, state] : state_) {
@@ -780,7 +786,7 @@ void OrderManager::operator()(roq::Event<DownloadEnd> const& event) {
         }
     }
 */  
-    ready_by_gateway_[event.message_info.source] = true;
+    //ready_by_gateway_[event.message_info.source] = true;
 }
 
 void OrderManager::operator()(roq::Event<RateLimitTrigger> const& event) {
@@ -801,4 +807,12 @@ void OrderManager::operator()(roq::Event<RateLimitTrigger> const& event) {
    }
 }
 
-} // roq::mmaker
+bool OrderManager::is_ready(uint32_t source, std::string_view account, roq::Mask<roq::SupportType> mask) const {
+  return gateways_.is_ready( mask, source, account);
+}
+
+bool OrderManager::is_downloading(uint32_t source) const {
+    return gateways_.is_downloading(source);
+}
+
+} // namespace roq::mmaker
