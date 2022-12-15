@@ -353,6 +353,13 @@ void OrderManager::State::order_modify_reject(Self&self, OrderState& order, cons
     order.reject_reason = u.text;
     order.expected = order.confirmed;
     order.pending.type = RequestType::UNDEFINED;
+    if(u.text=="already_cancelled") {
+        // FIXME: workaround https://github.com/roq-rencap/roq-rencap/issues/196
+        order.confirmed.status = OrderStatus::CANCELED;
+        order.confirmed.price = order.pending.price;
+        order.confirmed.quantity = 0;
+        order.confirmed.type = RequestType::UNDEFINED;
+    }
 }
 
 void OrderManager::State::order_cancel_reject(Self&self, OrderState& order, const OrderAck& u) {
