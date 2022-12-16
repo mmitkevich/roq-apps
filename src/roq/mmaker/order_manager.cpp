@@ -353,13 +353,6 @@ void OrderManager::State::order_modify_reject(Self&self, OrderState& order, cons
     order.reject_reason = u.text;
     order.expected = order.confirmed;
     order.pending.type = RequestType::UNDEFINED;
-    if(u.text=="already_cancelled") {
-        // FIXME: workaround https://github.com/roq-rencap/roq-rencap/issues/196
-        order.confirmed.status = OrderStatus::CANCELED;
-        order.confirmed.price = order.pending.price;
-        order.confirmed.quantity = 0;
-        order.confirmed.type = RequestType::UNDEFINED;
-    }
 }
 
 void OrderManager::State::order_cancel_reject(Self&self, OrderState& order, const OrderAck& u) {
@@ -497,7 +490,6 @@ void OrderManager::State::order_canceled(Self&self, OrderState& order, const Ord
     order.expected = order.confirmed;
     assert(!std::isnan(order.expected.quantity));    
     auto order_id = order.order_id;
-
     erase_order(self, order_id);
 }
 
@@ -686,6 +678,12 @@ void OrderManager::operator()(roq::Event<OrderAck> const& event) {
                 state.order_create_reject(*this, order, u);
             } else if(u.type==RequestType::MODIFY_ORDER) {
                 state.order_modify_reject(*this, order, u);
+            }
+            if(u.error==Error::TOO_LATE_TO_MODIFY_OR_CANCEL) {
+                order.confirmed.status = OrderStatus::CANCELED;
+                order.confirmed.price = order.pending.price;
+                order.confirmed.quantity = 0;
+                order.confirmed.type = RequestType::UNDEFINED;
             }
             if(u.error==Error::REQUEST_RATE_LIMIT_REACHED || u.error==Error::GATEWAY_NOT_READY) {
                 state.ban_until = now_ + reject_timeout_;
