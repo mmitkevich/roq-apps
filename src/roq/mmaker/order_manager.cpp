@@ -40,7 +40,7 @@ void OrderManager::dispatch(TargetQuotes const & target_quotes) {
     state.exchange = target_quotes.exchange;
     state.symbol = target_quotes.symbol;
 
-    log::info<1>("TargetQuotes {}", this->context.prn(target_quotes));
+    log::info<2>("TargetQuotes {}", this->context.prn(target_quotes));
 
     for(auto& [price_index, quote]: state.bids) {
         quote.target_quantity = 0;
@@ -109,7 +109,7 @@ void OrderManager::State::process(OrderManager& self) {
         return;
     auto now = self.now();
     bool ready = self.is_ready(gateway_id, account, roq::Mask{roq::SupportType::CREATE_ORDER, roq::SupportType::CANCEL_ORDER});
-    log::info<1>("OMS process now {} symbol {} exchange {} ban {} ready {} tick_size {}",
+    log::info<2>("OMS process now {} symbol {} exchange {} ban {} ready {} tick_size {}",
          now, symbol, exchange, ban_until.count() ? (ban_until-now).count()/1E9:NaN, ready, tick_size);
     if(!ready) {
         return;
@@ -145,7 +145,7 @@ void OrderManager::State::process(OrderManager& self) {
         assert(!std::isnan(level.expected_quantity));          
         level.expected_quantity += order.expected.quantity;
         level.confirmed_quantity += order.confirmed.quantity;
-        log::info<1>("OMS order_state order_id={}.{}.{} side={} req={}  price={}  quantity={}"
+        log::info<2>("OMS order_state order_id={}.{}.{} side={} req={}  price={}  quantity={}"
             " c.status.{} c.price={}  c.quantity={} external_id={}"
             " symbol={} exchange={} market={}",
             order.order_id, order.pending.version, order.confirmed.version,order.side,order.pending.type, order.pending.price,order.pending.quantity,
@@ -153,14 +153,14 @@ void OrderManager::State::process(OrderManager& self) {
             order.external_order_id, symbol, exchange, self.context.prn(this->market));
     }
 
-    log::info<1>("OMS order_state BUY count {} pending {}  SELL count {} pending {}", 
+    log::info<2>("OMS order_state BUY count {} pending {}  SELL count {} pending {}", 
         bids.size(), pending[0],
         asks.size(), pending[1]);
 
     for(Side side: std::array {Side::BUY, Side::SELL}) {
         auto& levels = (side==Side::BUY) ? bids : asks;
         for(const auto& [price_index, level]: levels) {
-            log::info<1>("OMS level_state {} {} target {} expected {} confirmed {}", side, level.price, level.target_quantity, level.expected_quantity, level.confirmed_quantity);
+            log::info<2>("OMS level_state {} {} target {} expected {} confirmed {}", side, level.price, level.target_quantity, level.expected_quantity, level.confirmed_quantity);
         }
     }
     std::size_t orders_count = orders.size();
@@ -226,7 +226,7 @@ void OrderManager::State::process(OrderManager& self) {
                 roq::utils::compare(level.confirmed_quantity, 0.) == std::strong_ordering::equal) {
                 auto price = level.price;
                 levels.erase(it++);
-                log::info<1>("OMS erase_level {} price={} count={}", side, price, levels.size());
+                log::info<2>("OMS erase_level {} price={} count={}", side, price, levels.size());
             } else {
                 it++;
             }
@@ -642,7 +642,7 @@ std::pair<OrderManager::LevelState&, bool> OrderManager::State::get_level_or_cre
         return {iter->second, false};
     } else {
         auto & level = levels[index];
-        log::info<1>("OMS new_level {} price={} count={}", side, price, levels.size());
+        log::info<2>("OMS new_level {} price={} count={}", side, price, levels.size());
         level.price = price;
         return {level, true};
     }
