@@ -12,6 +12,7 @@ struct Flags {
   static const std::string& log_path();
   static const std::string& strategy();
   static int publisher_id();
+  static bool erase_all_orders_on_gateway_not_ready();
 };
 
 

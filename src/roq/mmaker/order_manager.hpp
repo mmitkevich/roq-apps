@@ -23,6 +23,8 @@
 #include "roq/mmaker/position_source.hpp"
 #include "roq/mmaker/gateways.hpp"
 
+#include "roq/mmaker/profit_loss.hpp"
+
 namespace roq::mmaker 
 {
 
@@ -179,6 +181,8 @@ struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
         bool get_order(uint32_t order_id, Fn&& fn);
         bool erase_order(Self& self, uint32_t order_id);
 
+        void erase_all_orders(Self& self);
+
         void order_create_reject(Self& self, OrderState& order, const OrderAck& u);
         void order_modify_reject(Self& self, OrderState& order, const OrderAck& u);
         void order_cancel_reject(Self& self, OrderState& order, const OrderAck& u);
@@ -221,6 +225,8 @@ private:
 
     //absl::flat_hash_map<uint8_t, GatewayFlags> ready_by_gateway_;
     Gateways& gateways_;
+    
+    ProfitLoss profit_loss;
 
     //absl::flat_hash_map<Account, absl::flat_hash_map<SymbolExchange, double>> position_by_account_;
 public:
@@ -256,7 +262,7 @@ public:
     void operator()(roq::Event<Timer> const& event);
     void operator()(roq::Event<OrderUpdate> const& event);
     void operator()(roq::Event<OrderAck> const& event);
-//    void operator()(roq::Event<GatewayStatus> const& event);
+    void operator()(roq::Event<GatewayStatus> const& event);
 //    void operator()(roq::Event<Disconnected> const& event);
 //    void operator()(roq::Event<Connected> const& event);
 //    void operator()(roq::Event<StreamStatus> const& event);

@@ -13,6 +13,7 @@
 #include <roq/trade.hpp>
 #include <roq/trade_update.hpp>
 #include "clock.hpp"
+#include "roq/mmaker/flags/flags.hpp"
 
 namespace roq::mmaker {
 
@@ -515,8 +516,35 @@ void OrderManager::operator()(roq::Event<ReferenceData> const& event) {
     auto [state,is_new_state] = get_market_or_create(event);
     state.tick_size = u.tick_size;
     state.min_trade_vol = u.min_trade_vol;
+    Base::operator()(event);
 }
 
+void OrderManager::operator()(roq::Event<GatewayStatus> const& event) {
+    log::info<2>("OMS GatewayStatus {}, state.size {} erase_all_orders_on_gateway_not_ready {}", event, state_.size(), mmaker::Flags::erase_all_orders_on_gateway_not_ready());
+    for(auto& [market, state]: state_) {
+        if(!event.value.account.empty() && state.account == event.value.account) {
+            if(mmaker::Flags::erase_all_orders_on_gateway_not_ready()) {
+                if(!event.value.available.has_all(roq::Mask{roq::SupportType::CREATE_ORDER, roq::SupportType::CANCEL_ORDER})) {
+                    log::info<1>("OMS GatewayStatus available {} account {} exchange {} symbol {} market {} erase_all_orders", 
+                        event.value.available, state.account, state.exchange, state.symbol, context.prn(state.market));
+                    state.erase_all_orders(*this);
+                }
+            }
+        }
+    }
+    Base::operator()(event);
+}
+
+void OrderManager::State::erase_all_orders(Self& self) {
+    for(auto& [order_id, order]: orders) {
+        log::info<1>("OMS erase_all_orders order_id={}.{} side={} price={} remaining_quantity={} status={} symbol={} exchange={} market={}", 
+            order_id, order.pending.version, order.side, order.price, order.quantity,
+            order.confirmed.status, 
+            symbol, exchange, self.context.prn(market));    
+        self.market_by_order_.erase(order_id);
+    }
+    orders.clear();
+}
 
 bool OrderManager::State::erase_order(Self& self, uint32_t order_id) {
     auto iter = orders.find(order_id);
@@ -541,7 +569,12 @@ void OrderManager::operator()(roq::Event<OrderUpdate> const& event) {
     auto [order,is_new_order] =  state.get_order_or_create(u.order_id);
     assert(order.order_id == u.order_id);
 
-    if(is_new_order) {
+    log::info<1>("OMS order_update is_new_order={} order_id={}.{} side={} price={} remaining_quantity={} status={} update_type={} symbol={} exchange={} market={}", 
+        is_new_order, u.order_id, u.max_accepted_version, u.side, u.price, u.remaining_quantity, u.status, u.update_type, u.symbol, u.exchange, context.prn(market));
+
+    if(u.update_type==roq::UpdateType::STALE) {
+        state.erase_order(*this, u.order_id);
+    } else if(is_new_order) {
         order.side = u.side;
         order.order_id = u.order_id;
         order.price = u.price;
@@ -559,17 +592,10 @@ void OrderManager::operator()(roq::Event<OrderUpdate> const& event) {
         market_by_order_[order.order_id] = market;
         
         if(u.status!=OrderStatus::WORKING) {
-            log::info<1>("OMS order_no_recover order_id={}.{} side={} price={} remaining_quantity={} status={} symbol={} exchange={} market={}", 
-                u.order_id, u.max_accepted_version, u.side, u.price, u.remaining_quantity, u.status, u.symbol, u.exchange, context.prn(market));
             // keep only working
             state.erase_order(*this, order.order_id);
-        } else {
-            log::info<1>("OMS order_recover order_id={}.{} side={} price={} remaining_quantity={} status={} symbol={} exchange={} market={}", 
-                u.order_id, u.max_accepted_version, u.side, u.price, u.remaining_quantity, u.status, u.symbol, u.exchange, context.prn(market));
         }
     } else {
-        log::info<1>("OMS order_update order_id={}.{} side={} price={} remaining_quantity={} status={} symbol={} exchange={} market={}", 
-            u.order_id, u.max_accepted_version, u.side, u.price, u.remaining_quantity, u.status, u.symbol, u.exchange, context.prn(market));    
         if(u.status==OrderStatus::WORKING) {
             state.order_confirm(*this, order, u);
         } else if(u.status == OrderStatus::COMPLETED) {
@@ -739,13 +765,17 @@ void OrderManager::operator()(roq::Event<DownloadBegin> const& event) {
 //    position_by_account_.erase(event.value.account);
 //    ready_by_gateway_[event.message_info.source] = false;
     auto& u = event.value;
-    if(!u.account.empty() && position_snapshot==PositionSnapshot::ACCOUNT) {
+    if(!u.account.empty()) {
         for(auto & [market, state] : state_) {
             if(state.account == u.account) {
-                state.position_by_orders = 0;
-                state.position_by_account = 0;
-                log::info<1>("OMS position_download_begin account {} symbol {} exchange {} market {} portfolio {}",
-                    state.account, state.symbol, state.exchange, context.prn(state.market), context.prn(portfolio));                
+                if(position_snapshot==PositionSnapshot::ACCOUNT) {
+                    state.position_by_orders = 0;
+                    state.position_by_account = 0;
+                }
+                state.erase_all_orders(*this);
+                log::info<1>("OMS position_download_begin account {} symbol {} exchange {} market {} portfolio {} position_by_orders {} position_by_account {} erase_all_orders",
+                    state.account, state.symbol, state.exchange, context.prn(state.market), context.prn(portfolio), state.position_by_orders, state.position_by_account);
+
             }
         }
     }

@@ -27,6 +27,13 @@ ABSL_FLAG(
     "publisher_id"
 );
 
+ABSL_FLAG(
+  bool,
+  erase_all_orders_on_gateway_not_ready,
+  false,
+  "erase_all_orders_on_gateway_not_ready"
+);
+
 namespace roq {
 namespace mmaker {
 
@@ -52,6 +59,11 @@ int Flags::publisher_id() {
   static const int result = absl::GetFlag(FLAGS_publisher_id);
   return result;
   //return 0;
+}
+
+bool Flags::erase_all_orders_on_gateway_not_ready() {
+  static const bool result = absl::GetFlag(FLAGS_erase_all_orders_on_gateway_not_ready);
+  return result;
 }
 
 }  // namespace mmaker
