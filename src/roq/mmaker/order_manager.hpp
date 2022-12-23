@@ -21,7 +21,6 @@
 #include "umm/core/type/quote.hpp"
 #include "roq/mmaker/basic_handler.hpp"
 #include "roq/mmaker/position_source.hpp"
-#include "roq/mmaker/gateways.hpp"
 
 #include "roq/mmaker/profit_loss.hpp"
 
@@ -224,15 +223,13 @@ private:
     std::chrono::nanoseconds last_process_{};
 
     //absl::flat_hash_map<uint8_t, GatewayFlags> ready_by_gateway_;
-    Gateways& gateways_;
     
     ProfitLoss profit_loss;
 
     //absl::flat_hash_map<Account, absl::flat_hash_map<SymbolExchange, double>> position_by_account_;
 public:
-    OrderManager(mmaker::Context& context, mmaker::Gateways& gateway_manager) 
+    OrderManager(mmaker::Context& context) 
     : context(context)
-    , gateways_(gateway_manager)
     {}
 
     std::chrono::nanoseconds now() const { return now_; }

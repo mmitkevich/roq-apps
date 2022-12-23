@@ -1,5 +1,4 @@
 /* Copyright (c) 2021 Mikhail Mitkevich */
-#include "roq/mmaker/gateways.hpp"
 #include "umm/prologue.hpp"
 #include "roq/client.hpp"
 #include "roq/mmaker/publisher.hpp"
@@ -74,14 +73,13 @@ int Application::main(std::span<std::string_view> args) {
       config(*quoter);
       context.initialize(*quoter);      
 
-      std::unique_ptr<mmaker::Gateways> gateways = std::make_unique<mmaker::Gateways>(context);
-      std::unique_ptr<mmaker::OrderManager> order_manager = std::make_unique<mmaker::OrderManager>(context, *gateways);
+      std::unique_ptr<mmaker::OrderManager> order_manager = std::make_unique<mmaker::OrderManager>(context);
 
       order_manager->configure(config, strategy_node);
       
       std::unique_ptr<mmaker::Publisher> publisher = std::make_unique<mmaker::Publisher>(context);
 
-      client::Trader(context, args).template dispatch<Strategy>(context, std::move(gateways), std::move(quoter), std::move(order_manager), std::move(publisher));
+      client::Trader(context, args).template dispatch<Strategy>(context, std::move(quoter), std::move(order_manager), std::move(publisher));
     }
   });
   if(!strategy_found) {

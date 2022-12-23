@@ -1,20 +1,26 @@
 #pragma once
+#include "roq/mmaker/basic_handler.hpp"
+#include "roq/mmaker/mbp_depth_array.hpp"
 #include "umm/prologue.hpp"
 #include "umm/core/context.hpp"
 #include "umm/core/type.hpp"
 #include <roq/cache/manager.hpp>
+#include <roq/gateway_settings.hpp>
+#include <roq/gateway_status.hpp>
 #include <roq/position_update.hpp>
 #include <roq/string_types.hpp>
+#include <roq/support_type.hpp>
 #include <sstream>
 #include "roq/logging.hpp"
 #include "roq/client.hpp"
 #include "./markets.hpp"
+#include "./gateways.hpp"
 
 namespace roq {
 namespace mmaker {
 
-struct Context : umm::Context, client::Config {
-    using Base = umm::Context;
+struct Context : BasicDispatch<Context, umm::Context, client::Config> {
+    using Base = BasicDispatch<Context, umm::Context, client::Config>;
 
     Context() = default;
     
@@ -52,14 +58,73 @@ struct Context : umm::Context, client::Config {
             fn(data);
         });
     }
+
+    template<class T>
+    void operator()(const roq::Event<T>& event) {
+        this->dispatch(event);
+    }
+
+    template<class T>
+    void dispatch(const roq::Event<T>& event) {
+        set_now(event.message_info.receive_time_utc);
+        this->gateways(event);
+        this->markets_(event);
+    }
     
+    using Base::operator();
+
+    void operator()(const Event<ReferenceData> &event);
+    void operator()(const Event<MarketByPriceUpdate> &event);
+    void operator()(const Event<TopOfBook> &event);
+
+    template<class Fn>
+    bool get_mdata_gateway(umm::MarketIdent market, Fn&& fn) const {
+        bool found = true;
+        if(!get_market(market, [&](auto& info) {
+            if(info.mdata_gateway_id==-1) {
+                found = false;
+            } else {
+                if(!gateways.get_gateway(info.mdata_gateway_id, std::forward<Fn>(fn)))
+                    found = false;
+            }
+        }))
+            found = false;
+        return found;
+    }
+
+    template<class Fn>
+    bool get_trade_gateway(umm::MarketIdent market, Fn&& fn) const {
+        bool found = true;
+        if(!get_market(market, [&](auto& info) {
+            if(info.trade_gateway_id==-1) {
+                found = false;
+            } else {
+                if(!gateways.get_gateway(info.trade_gateway_id, std::forward<Fn>(fn)))
+                    found = false;
+            }
+        }))
+            found = false;
+        return found;
+    }
+
     void initialize(umm::IModel& model);
 
     /// client::Config
     void dispatch(roq::client::Config::Handler &) const;
+
+    bool is_ready(umm::MarketIdent market) const;
+
+    mmaker::BestPriceSource get_best_price_source(MarketIdent market) const;
+
+public:
+    Gateways gateways;
 private:
+    cache::Manager cache_ {client::MarketByPriceFactory::create};
+    MBPDepthArray mbp_depth_;
     absl::flat_hash_map<roq::Exchange, roq::Account> accounts_;
     Markets markets_;
+    static roq::Mask<roq::SupportType> expected_md_support;
+
 };
 
 template<class ConfigT>

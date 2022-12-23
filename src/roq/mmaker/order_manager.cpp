@@ -843,11 +843,11 @@ void OrderManager::operator()(roq::Event<RateLimitTrigger> const& event) {
 }
 
 bool OrderManager::is_ready(uint32_t source, std::string_view account, roq::Mask<roq::SupportType> mask) const {
-  return gateways_.is_ready( mask, source, account);
+  return context.gateways.is_ready( mask, source, account);
 }
 
 bool OrderManager::is_downloading(uint32_t source) const {
-    return gateways_.is_downloading(source);
+    return context.gateways.is_downloading(source);
 }
 
 } // namespace roq::mmaker

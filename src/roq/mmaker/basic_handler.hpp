@@ -3,14 +3,29 @@
 #include "roq/client.hpp"
 namespace roq {
 
-template<class Self, class Iface = roq::client::Handler>
-struct BasicHandler : Iface {
+template<class Self, class...Bases>
+struct BasicDispatch : Bases... {
+  Self* self() { return static_cast<Self*>(this); }
+  const Self* self() const { return static_cast<const Self*>(this); }
+
+  template<class T>
+  void dispatch(const Event<T>& event) {}
+
+  template<class T>
+  void operator()(const Event<T>& event) {
+    self()->dispatch(event);
+  }
+  
+};
+
+template<class Self, class Iface = roq::client::Handler, class...Bases>
+struct BasicHandler : Iface, Bases... {
 public:
   Self* self() { return static_cast<Self*>(this); }
   const Self* self() const { return static_cast<const Self*>(this); }
 
   virtual ~BasicHandler() = default;
-
+  
   template<class T>
   void dispatch(Event<T> const& event) {}
 
