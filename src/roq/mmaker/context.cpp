@@ -119,12 +119,16 @@ void Context::operator()(const Event<MarketByPriceUpdate> &event) {
 
     mbp_depth_.update(mbp);
     mbp_depth_.tick_size = mbp.price_increment();
-    mbp_depth_.num_levels = std::min(mbp.max_depth(), uint16_t{1000});
+    uint32_t depth_num_levels = markets_.get_or(market, UMM_LAMBDA(_.depth_num_levels), 0u);
+    mbp_depth_.num_levels = static_cast<uint16_t>(depth_num_levels);
+
+    if(mbp.max_depth()!=0 && mbp_depth_.num_levels>mbp.max_depth())
+        mbp_depth_.num_levels = mbp.max_depth();
 
     this->depth[market].tick_size = mbp.price_increment();
     this->depth[market].update(mbp_depth_); 
 
-    log::info<2>("Context::MarketByPriceUpdate market {} MBPDepth = {}", this->prn(market), this->prn(mbp_depth_));
+    log::info<2>("Context::MarketByPriceUpdate market {} max_depth {} depth_num_levels {} MBPDepth = {}", this->prn(market), mbp.max_depth(), depth_num_levels, this->prn(mbp_depth_));
 
     umm::BestPrice& best_price = this->best_price[market];
     auto best_price_source = get_best_price_source(market);

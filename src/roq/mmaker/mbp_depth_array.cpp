@@ -23,9 +23,7 @@ umm::DepthLevel MBPDepthArray::operator()(umm::Side side,
     return {};
   }
 }
-void MBPDepthArray::update(const roq::cache::MarketByPrice &mbp,
-                           std::size_t num_levels) {
-  this->num_levels = num_levels;
+void MBPDepthArray::update(const roq::cache::MarketByPrice &mbp) {
   auto [bids_size, asks_size] = mbp.size();
   this->bids_storage.resize(bids_size);
   this->asks_storage.resize(asks_size);

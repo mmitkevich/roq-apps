@@ -35,7 +35,7 @@ struct SymbolExchange {
 
 struct Markets : roq::BasicDispatch<Markets> {
     using Base = roq::BasicDispatch<Markets>;
-    
+
     struct Item {
         roq::Exchange exchange;        
         roq::Symbol symbol;
@@ -46,6 +46,7 @@ struct Markets : roq::BasicDispatch<Markets> {
         uint32_t mdata_gateway_id = -1;
         roq::Source trade_gateway;
         uint32_t trade_gateway_id = -1;
+        uint32_t depth_num_levels = 0;
         MarketInfo to_market_info(umm::MarketIdent market) const {
             return MarketInfo {
                 .market = market,
@@ -109,6 +110,7 @@ struct Markets : roq::BasicDispatch<Markets> {
             item.lot_size = config.get_value_or(market_node, "lot_size", umm::Volume{1.0});
             item.mdata_gateway = mdata_gateway_str;
             item.trade_gateway = trade_gateway_str;
+            item.depth_num_levels = config.get_value_or(market_node, "depth_num_levels", umm::Integer{0});
         });    
     }
     
@@ -139,6 +141,16 @@ struct Markets : roq::BasicDispatch<Markets> {
             return true;
         }
         return false;
+    }
+
+    template<class Fn, class V>
+    auto get_or(umm::MarketIdent market, Fn&& fn, V default_value) const {
+        auto iter = item_by_market_.find(market);
+        if(iter != std::end(item_by_market_)) {
+            const auto& item = iter->second;
+            return fn(item);
+        }
+        return default_value;
     }
 private:
     absl::flat_hash_map<roq::Exchange, absl::flat_hash_map<roq::Symbol, umm::MarketIdent> > market_by_symbol_by_exchange_;

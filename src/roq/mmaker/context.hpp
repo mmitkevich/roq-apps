@@ -123,6 +123,7 @@ private:
     MBPDepthArray mbp_depth_;
     absl::flat_hash_map<roq::Exchange, roq::Account> accounts_;
     Markets markets_;
+    absl::flat_hash_map<MarketIdent, uint32_t> mbp_num_levels_;
     static roq::Mask<roq::SupportType> expected_md_support;
 
 };

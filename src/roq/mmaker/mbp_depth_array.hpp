@@ -21,8 +21,7 @@ struct MBPDepthArray : umm::BasicPrintable<MBPDepthArray> {
 
     std::size_t size(umm::Side side) const;
 
-    void update(const roq::cache::MarketByPrice &mbp,
-                std::size_t num_levels = 0);
+    void update(const roq::cache::MarketByPrice &mbp);
 
     umm::DepthLevel operator()(umm::Side side, std::size_t price_level) const;
 
