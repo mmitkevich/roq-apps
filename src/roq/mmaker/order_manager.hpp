@@ -217,7 +217,7 @@ private:
     absl::flat_hash_map<MarketIdent, State> state_;
     client::Dispatcher *dispatcher = nullptr;
     mmaker::Context& context;
-    std::deque<TargetOrder> queue_;
+    //std::deque<TargetOrder> queue_;
     int source_id = 0;
     std::chrono::nanoseconds now_{};
     std::chrono::nanoseconds last_process_{};

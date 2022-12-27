@@ -117,13 +117,15 @@ void Context::operator()(const Event<MarketByPriceUpdate> &event) {
 
     bool done = market_cache(event);   
 
-    mbp_depth_.update(mbp);
     mbp_depth_.tick_size = mbp.price_increment();
+
     uint32_t depth_num_levels = markets_.get_or(market, UMM_LAMBDA(_.depth_num_levels), 0u);
     mbp_depth_.num_levels = static_cast<uint16_t>(depth_num_levels);
-
     if(mbp.max_depth()!=0 && mbp_depth_.num_levels>mbp.max_depth())
         mbp_depth_.num_levels = mbp.max_depth();
+
+    mbp_depth_.update(mbp);
+
 
     this->depth[market].tick_size = mbp.price_increment();
     this->depth[market].update(mbp_depth_); 

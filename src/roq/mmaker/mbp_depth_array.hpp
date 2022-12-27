@@ -44,53 +44,7 @@ struct MBPDepthArray : umm::BasicPrintable<MBPDepthArray> {
             fn(this->operator()(side, i));
         }
     }
-/*
-    const umm::DepthLevel bid(std::size_t price_level) const { 
-        assert(price_level< size(umm::Side::BUY)); 
-        assert(price_level>=0);  
-        const auto& bid = bids[price_level];
-        return umm::DepthLevel {
-            .price = bid.price,
-            .volume = bid.quantity,
-            //.create_time = ? TODO
-        };
-    }
-    
-    const umm::DepthLevel ask(std::size_t price_level) const { 
-        assert(price_level< size(umm::Side::SELL)); 
-        assert(price_level>=0);  
-        const auto& ask = asks[price_level];
-        return umm::DepthLevel {
-            .price = ask.price,
-            .volume = ask.quantity,
-            // .create_time = ? TODO
-        };
-    }
 
-    const umm::Price bid_price() const {
-        if(bids_size())
-            return bids[0].price;
-        return {};
-    }
-
-    const umm::Price ask_price() const {
-        if(asks_size())
-            return asks[0].price;
-        return {};
-    }
-
-    const umm::Volume bid_volume() const {
-        if(bids_size())
-            return bids[0].quantity;
-        return {};
-    }
-
-    const umm::Volume ask_volume() const {
-        if(asks_size())
-            return asks[0].quantity;
-        return {};
-    }
-*/
     template<class Format, class Context>
     decltype(auto) format(Format& fmt, const Context& ctx) const {
         fmt::format_to(fmt.out(),"(tick_size={} num_levels={}) *** bids *** [{}] {{", tick_size, num_levels, bids.size());
