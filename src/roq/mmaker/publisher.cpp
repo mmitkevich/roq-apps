@@ -9,7 +9,7 @@ Publisher::Publisher( mmaker::Context& context)
 : context(context) { }
 
 
-void Publisher::dispatch(const umm::Event<umm::QuotesUpdate> & event) {
+void Publisher::dispatch(const umm::Event<umm::BestPriceUpdate> & event) {
     if(Flags::publisher_id()==0) {
         return;
     }

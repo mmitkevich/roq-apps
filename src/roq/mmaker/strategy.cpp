@@ -54,14 +54,14 @@ void Strategy::operator()(const Event<TopOfBook> &event) {
     const auto& u = event.value;
     MarketIdent market = context.get_market_ident(u.exchange, u.symbol);
     if(context.is_ready(market)) {
-      log::info<2>("QuotesUpdate:  market {} BestPrice {} (from ToB)", context.prn(market), context.prn(context.best_price(market)));
-      umm::Event<umm::QuotesUpdate> quotes_event;
-      quotes_event.header.receive_time_utc = event.message_info.receive_time_utc;
-      quotes_event->market = market;
-      quoter_->dispatch(quotes_event);
+      log::info<2>("TopOfBook:  market {} BestPrice {} (from ToB)", context.prn(market), context.prn(context.best_price(market)));
+      umm::Event<umm::BestPriceUpdate> best_price_event;
+      best_price_event.header.receive_time_utc = event.message_info.receive_time_utc;
+      best_price_event->market = market;
+      quoter_->dispatch(best_price_event);
       // publish to udp
       if(publisher_)
-            publisher_->dispatch(quotes_event);
+            publisher_->dispatch(best_price_event);
     }
 }
 
@@ -82,17 +82,17 @@ void Strategy::operator()(const Event<MarketByPriceUpdate>& event) {
       log::info<2>("DepthUpdate: market {} Depth {}", self()->prn(market), prn(depth_event.value));        
       quoter_->dispatch(depth_event);
 
-      umm::Event<umm::QuotesUpdate> quotes_event;
+      umm::Event<umm::BestPriceUpdate> best_price_event;
       auto& best_price = context.best_price[market];
-      quotes_event.header.receive_time_utc = event.message_info.receive_time_utc;
-      quotes_event->market = market;
+      best_price_event.header.receive_time_utc = event.message_info.receive_time_utc;
+      best_price_event->market = market;
 
-      log::info<2>("QuotesUpdate:  market {} BestPrice {} (from MBP)", self()->prn(market), self()->prn(best_price));      
-      quoter_->dispatch(quotes_event);
+      log::info<2>("MarketByPrice:  market {} BestPrice {} (from MBP)", self()->prn(market), self()->prn(best_price));      
+      quoter_->dispatch(best_price_event);
       
       // publish to udp
       if(publisher_)
-          publisher_->dispatch(quotes_event);
+          publisher_->dispatch(best_price_event);
     }
 }
 

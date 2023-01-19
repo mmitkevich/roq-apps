@@ -16,7 +16,7 @@ struct Publisher {
 
     void set_dispatcher(client::Dispatcher& dispatcher) { dispatcher_ = &dispatcher; }
   
-    void dispatch(const umm::Event<umm::QuotesUpdate> & event);
+    void dispatch(const umm::Event<umm::BestPriceUpdate> & event);
 
     bool publish(const MarketInfo& market, const umm::BestPrice& best_price);
 
