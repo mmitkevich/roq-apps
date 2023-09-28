@@ -116,7 +116,7 @@ struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
     };
 
     struct OrderState {
-        uint32_t order_id = 0;
+        uint64_t order_id = 0;
         Side side = Side::UNDEFINED;
         double price = NaN;
         double quantity = NaN;
@@ -146,7 +146,7 @@ struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
         uint64_t flags = 0;
     };
     using LevelsMap = absl::flat_hash_map<int64_t, LevelState>;
-    using OrdersMap = absl::flat_hash_map<uint32_t, OrderState>;
+    using OrdersMap = absl::flat_hash_map<uint64_t, OrderState>;
     
     struct State {
         OrdersMap orders;
@@ -175,10 +175,10 @@ struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
         std::pair<LevelState&, bool> get_level_or_create(Side side, double price);        
         LevelsMap& get_levels(Side side);
         // order&, is_new
-        std::pair<OrderState&,bool> get_order_or_create(uint32_t order_id);
+        std::pair<OrderState&,bool> get_order_or_create(uint64_t order_id);
         template<class Fn>
-        bool get_order(uint32_t order_id, Fn&& fn);
-        bool erase_order(Self& self, uint32_t order_id);
+        bool get_order(uint64_t order_id, Fn&& fn);
+        bool erase_order(Self& self, uint64_t order_id);
 
         void erase_all_orders(Self& self);
 
@@ -210,10 +210,10 @@ public:
     umm::PortfolioIdent portfolio;
 private:
     std::chrono::nanoseconds reject_timeout_ = std::chrono::seconds {2};
-    uint32_t max_order_id = 0;
+    uint64_t max_order_id = 0;
     Handler* handler_ {nullptr};
     std::array<char, 32> routing_id;
-    absl::flat_hash_map<uint32_t, umm::MarketIdent> market_by_order_;
+    absl::flat_hash_map<uint64_t, umm::MarketIdent> market_by_order_;
     absl::flat_hash_map<MarketIdent, State> state_;
     client::Dispatcher *dispatcher = nullptr;
     mmaker::Context& context;
@@ -275,7 +275,7 @@ public:
 
 
 template<class Fn>
-inline bool OrderManager::State::get_order(uint32_t order_id, Fn&& fn) {
+inline bool OrderManager::State::get_order(uint64_t order_id, Fn&& fn) {
     auto iter = orders.find(order_id);
     if(iter!=orders.end()) {
         fn(iter->second);

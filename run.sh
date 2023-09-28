@@ -1,7 +1,7 @@
 #!/bin/bash
 ROQ_DIR=$(realpath $(dirname $0)/../roq-rencap)
 UMM_DIR=$(realpath $(dirname $0)/../umm)
-STRATEGY=${STRATEGY:-AlphaMakerDeribit}
+STRATEGY=${STRATEGY:-AlphaMaker@deribt}
 cd $ROQ_DIR
 ROQ_v=2 ./bin/roq-mmaker-app \
     --name mmaker \

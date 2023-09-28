@@ -1,6 +1,10 @@
 /* Copyright (c) 2021 Mikhail Mitkevich */
 #include "umm/prologue.hpp"
 #include "roq/client.hpp"
+
+#include "roq/flags/args.hpp"
+#include "roq/logging/flags/settings.hpp"
+
 #include "roq/mmaker/publisher.hpp"
 #include "umm/core/model_api.hpp"
 #include "umm/model/provider.hpp"
@@ -10,6 +14,7 @@
 #include "./strategy.hpp"
 #include <cstdlib>
 #include <memory>
+#include <roq/client/config.hpp>
 #include <roq/logging.hpp>
 
 using namespace std::chrono_literals;
@@ -28,11 +33,8 @@ LogLevel get_log_level_from_env() {
 namespace roq {
 namespace mmaker {
 
-Application::Application(int argc, char**argv)
-: Service(argc, argv, Info {})
-{}
-
-int Application::main(std::span<std::string_view> args) {
+int Application::main(args::Parser const &parser) {
+  auto args = parser.params();
   auto config_file = roq::mmaker::Flags::config_file();
   log::info("config_file '{}'", config_file);
   umm::TomlConfig config { config_file };
@@ -78,8 +80,9 @@ int Application::main(std::span<std::string_view> args) {
       order_manager->configure(config, strategy_node);
       
       std::unique_ptr<mmaker::Publisher> publisher = std::make_unique<mmaker::Publisher>(context);
+      client::Settings2 settings;
 
-      client::Trader(context, args).template dispatch<Strategy>(context, std::move(quoter), std::move(order_manager), std::move(publisher));
+      client::Trader{settings, context, args}.template dispatch<Strategy>(context, std::move(quoter), std::move(order_manager), std::move(publisher));
     }
   });
   if(!strategy_found) {
@@ -89,25 +92,22 @@ int Application::main(std::span<std::string_view> args) {
   return EXIT_SUCCESS;
 }
 
-int Application::main(int argc, char **argv) {
-  std::vector<std::string_view> args;
-  args.reserve(argc);
-  for (int i = 0; i < argc; ++i)
-    args.emplace_back(argv[i]);
-  assert(!args.empty());
- // if (args.size() == 1u)
-    //throw RuntimeErrorException("Expected arguments"sv);
-  //if (args.size() != 2u)
-    //throw RuntimeErrorException("Expected exactly one argument"sv);
-  return main(std::span(args).subspan(1));
-}
 
 }  // namespace mmaker
 }  // namespace roq
 
 
+namespace {
+auto const INFO = roq::Service::Info{
+    .description = ROQ_PACKAGE_NAME,
+    .package_name = ROQ_PACKAGE_NAME,
+    .build_version = ROQ_VERSION,
+};
+}  // namespace
+
 
 int main(int argc, char **argv) {
-  auto app = roq::mmaker::Application(argc, argv);
-  return app.run();
+  roq::flags::Args args{argc, argv, INFO.description, INFO.build_version};
+  roq::logging::flags::Settings settings{args};
+  return roq::mmaker::Application{args, settings, INFO}.run();
 }

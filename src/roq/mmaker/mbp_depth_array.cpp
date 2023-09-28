@@ -24,15 +24,14 @@ umm::DepthLevel MBPDepthArray::operator()(umm::Side side,
   }
 }
 void MBPDepthArray::update(const roq::cache::MarketByPrice &mbp) {
-  auto [bids_size, asks_size] = mbp.size();
-  if(num_levels) {
-    bids_size = std::min(bids_size, num_levels);
-    asks_size = std::min(asks_size, num_levels);
-  }
-  this->bids_storage.resize(bids_size);
-  this->asks_storage.resize(asks_size);
-  std::tie(bids, asks) = mbp.extract(this->bids_storage, this->asks_storage,
-                                     /*.allow_truncate=*/true);
+  //auto [bids_size, asks_size] = mbp.size();
+  //if(num_levels) {
+  //  bids_size = std::min(bids_size, num_levels);
+  //  asks_size = std::min(asks_size, num_levels);
+  //}
+  //this->bids_storage.resize(bids_size);
+  //this->asks_storage.resize(asks_size);
+  mbp.extract_2(this->bids, this->asks, /*.max_depth=*/num_levels);
 }
 
 std::size_t MBPDepthArray::size(umm::Side side) const {

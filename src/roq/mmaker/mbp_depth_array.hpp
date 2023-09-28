@@ -10,10 +10,10 @@ namespace mmaker {
 
 /// view for roq::cache::MarketByPrice
 struct MBPDepthArray : umm::BasicPrintable<MBPDepthArray> {
-    std::vector<roq::MBPUpdate> bids_storage;
-    std::vector<roq::MBPUpdate> asks_storage;
-    std::span<roq::MBPUpdate> bids { bids_storage.data(), bids_storage.size() };
-    std::span<roq::MBPUpdate> asks { asks_storage.data(), asks_storage.size() };
+    std::vector<roq::MBPUpdate> bids;
+    std::vector<roq::MBPUpdate> asks;
+//    std::span<roq::MBPUpdate> bids { bids_storage.data(), bids_storage.size() };
+//    std::span<roq::MBPUpdate> asks { asks_storage.data(), asks_storage.size() };
     umm::Double tick_size;                       // required when exclude_empty=false!
     std::size_t num_levels = 0;             // max depth levels
     bool exclude_empty {true};              // empty levels are excluded. indexing not possible

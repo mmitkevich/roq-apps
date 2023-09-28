@@ -546,7 +546,7 @@ void OrderManager::State::erase_all_orders(Self& self) {
     orders.clear();
 }
 
-bool OrderManager::State::erase_order(Self& self, uint32_t order_id) {
+bool OrderManager::State::erase_order(Self& self, uint64_t order_id) {
     auto iter = orders.find(order_id);
     assert(iter!=std::end(orders));
     if(iter==std::end(orders))
@@ -610,7 +610,7 @@ void OrderManager::operator()(roq::Event<OrderUpdate> const& event) {
 
 }
 
-std::pair<OrderManager::OrderState&,bool> OrderManager::State::get_order_or_create(uint32_t order_id) {
+std::pair<OrderManager::OrderState&,bool> OrderManager::State::get_order_or_create(uint64_t order_id) {
     auto iter = orders.find(order_id);
     if(iter==std::end(orders)) {
         auto& order = orders[order_id];

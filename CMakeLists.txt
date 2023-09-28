@@ -49,6 +49,7 @@ find_package(roq-client REQUIRED)
 find_package(roq-logging REQUIRED)
 find_package(roq-logging REQUIRED)
 find_package(tomlplusplus REQUIRED)
+find_package(roq-flags REQUIRED)
 
 add_compile_options(-DUMM_USE_ROQ -DUMM_USE_ABSL -DUMM_USE_TOML)
 

@@ -1,5 +1,6 @@
 set(TARGET_NAME "${PROJECT_NAME}-app")
 
+
 add_executable(
   "${TARGET_NAME}"
   "application.cpp"
@@ -11,9 +12,19 @@ add_executable(
   "flags/flags.cpp"
 )
 
+target_compile_definitions(${TARGET_NAME} PRIVATE ROQ_PACKAGE_NAME="${PROJECT_NAME}")
+
 add_subdirectory(flags)
 
-target_link_libraries("${TARGET_NAME}" PRIVATE  ${PROJECT_NAME}-flags roq-client::roq-client roq-logging::roq-logging absl::flags fmt::fmt ) #umm
+target_link_libraries("${TARGET_NAME}" PRIVATE  ${PROJECT_NAME}-flags 
+  roq-client::roq-client 
+  roq-logging::roq-logging 
+  absl::flags 
+  fmt::fmt 
+  roq-flags::roq-flags
+  roq-logging::roq-logging-flags
+  )
+
 target_link_libraries("${TARGET_NAME}" PRIVATE _lightgbm)
 target_link_libraries("${TARGET_NAME}" PRIVATE umm)
 

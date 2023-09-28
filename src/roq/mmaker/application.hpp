@@ -11,11 +11,9 @@ namespace roq {
 namespace mmaker {
 
 struct Application final : roq::Service  {
-    Application(int argc, char**argv);
+    using roq::Service::Service;
 
-    int main(std::span<std::string_view> args);
-
-    int main(int argc, char **argv) override;
+    int main(args::Parser const &) override;
 };
 
 }  // namespace mmaker
