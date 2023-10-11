@@ -1,3 +1,4 @@
+# (c) copyright 2023 Mikhail Mitkevich
 cmake_minimum_required(VERSION 3.12)
 
 project(roq-mmaker)

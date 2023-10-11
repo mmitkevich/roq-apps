@@ -1,3 +1,5 @@
+// (c) copyright 2023 Mikhail Mitkevich
+
 #include "context.hpp"
 #include <roq/client/config.hpp>
 #include <roq/support_type.hpp>

@@ -1,3 +1,4 @@
+// (c) copyright 2023 Mikhail Mitkevich
 #pragma once
 #include "roq/mmaker/basic_handler.hpp"
 #include "roq/mmaker/mbp_depth_array.hpp"

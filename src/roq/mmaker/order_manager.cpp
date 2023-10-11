@@ -1,3 +1,4 @@
+// (c) copyright 2023 Mikhail Mitkevich
 #include "roq/mmaker/position_source.hpp"
 #include "umm/prologue.hpp"
 #include "umm/core/type.hpp"
