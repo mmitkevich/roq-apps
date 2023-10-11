@@ -44,7 +44,7 @@ void Strategy::operator()(const Event<Timer>  & event) {
     auto recv_time_utc = event.message_info.receive_time_utc;
     timer_event.header.receive_time_utc = recv_time_utc;
     auto now = event.value.now;
-    UMM_TRACE("Timer recv_time_utc {} now {}", recv_time_utc, now);
+//    UMM_TRACE("Timer recv_time_utc {} now {}", recv_time_utc, now);
     quoter_->dispatch(timer_event);
 }
 

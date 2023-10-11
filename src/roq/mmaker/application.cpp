@@ -80,8 +80,7 @@ int Application::main(args::Parser const &parser) {
       order_manager->configure(config, strategy_node);
       
       std::unique_ptr<mmaker::Publisher> publisher = std::make_unique<mmaker::Publisher>(context);
-      client::Settings2 settings;
-
+      client::flags::Settings settings {parser};
       client::Trader{settings, context, args}.template dispatch<Strategy>(context, std::move(quoter), std::move(order_manager), std::move(publisher));
     }
   });

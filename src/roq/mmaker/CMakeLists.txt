@@ -18,6 +18,7 @@ add_subdirectory(flags)
 
 target_link_libraries("${TARGET_NAME}" PRIVATE  ${PROJECT_NAME}-flags 
   roq-client::roq-client 
+  roq-client::roq-client-flags
   roq-logging::roq-logging 
   absl::flags 
   fmt::fmt 

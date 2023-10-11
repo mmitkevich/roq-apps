@@ -9,6 +9,7 @@
 #include "roq/utils/compare.hpp"
 #include <compare>
 #include <roq/request_status.hpp>
+#include <roq/request_type.hpp>
 #include <roq/time_in_force.hpp>
 #include <roq/trade.hpp>
 #include <roq/trade_update.hpp>
@@ -98,7 +99,8 @@ bool OrderManager::State::can_cancel(Self&self, OrderState& order) {
 
 bool OrderManager::State::can_modify(Self&self, OrderState& order, const TargetOrder* target_order/*=nullptr*/) {
     return false;
-    if(order.is_confirmed())
+    //if(!order.is_confirmed())
+    if(!order.confirmed.version)    
         return false;   // still pending    
     if(order.is_pending())
         return false;   // something in-flight
@@ -168,9 +170,18 @@ void OrderManager::State::process(OrderManager& self) {
     for(auto& [order_id, order] : orders) {
         auto [level,is_new_level] = get_level_or_create(order.side, order.price);
         if(utils::compare(level.expected_quantity, level.target_quantity)==std::strong_ordering::greater) {
-            if(can_modify(self, order)) {
+            bool flag = can_modify(self, order);
+            log::info<2>("OMS can_modify {} order_id={}.{}.{} side={} req={}  price={}  quantity={}"
+            " c.req={}, c.status.{} c.price={}  c.quantity={} external_id={}"
+            " symbol={} exchange={} market={}", flag,
+            order.order_id, order.pending.version, order.confirmed.version,order.side,order.pending.type, order.pending.price,order.pending.quantity,
+            order.confirmed.type, order.confirmed.status, order.confirmed.price, order.confirmed.quantity,
+            order.external_order_id, symbol, exchange, self.context.prn(this->market));
+
+            if(flag) {
                 const auto& levels = get_levels(order.side);                
-                for(const auto& [new_price_index, new_level]: levels) {
+                for(const auto& [new_price_index, new_level]: 
+                levels) {
                     assert(!std::isnan(new_level.target_quantity));
                     assert(!std::isnan(new_level.expected_quantity));                    
                     assert(!std::isnan(order.confirmed.quantity));
@@ -294,11 +305,26 @@ OrderManager::OrderState& OrderManager::State::create_order(Self& self, const Ta
 void OrderManager::State::modify_order(Self& self, OrderState& order, const TargetOrder & target) {
     assert(self.is_ready(gateway_id, account, roq::Mask<roq::SupportType>{roq::SupportType::MODIFY_ORDER}));
     ++order.pending.version;
+    order.pending.type = RequestType::MODIFY_ORDER;
     order.pending.price = target.price;
     order.pending.quantity = target.quantity;
 
+    auto modify_order = ModifyOrder {
+        .account = account,
+        .order_id = order.order_id,
+        .quantity = target.quantity,
+        .price = target.price,
+        .version = order.pending.version,
+        .conditional_on_version = order.confirmed.version
+    };
+    
+    log::info<1>("OMS modify_order {{ order_id={}.{}/{}, side={} price={}->{} qty={}->{} external_id={} market={} symbol={} exchange={} account={} }}", 
+        modify_order.order_id, modify_order.version, modify_order.conditional_on_version, 
+        order.side, order.price, modify_order.price, order.quantity, modify_order.quantity, order.external_order_id, self.context.prn(this->market), symbol, this->exchange, this->account);
+    
     order.expected = order.pending;
-    // TODO
+
+    self.dispatcher->send(modify_order, self.source_id);
 }
 
 void OrderManager::State::cancel_order(Self& self, OrderState& order) {
