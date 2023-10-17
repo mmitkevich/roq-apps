@@ -24,14 +24,13 @@
 #include "roq/mmaker/position_source.hpp"
 
 #include "roq/mmaker/profit_loss.hpp"
-#include "roq/core/target_quotes.hpp"
-#include "roq/core/quote.hpp"
+#include "roq/core/quotes.hpp"
 
 namespace roq::mmaker 
 {
 
 
-struct TargetOrder {
+struct Order {
     core::MarketIdent market {};
     roq::Side side {};
     core::Double quantity {};
@@ -46,7 +45,7 @@ struct IOrderManager : client::Handler {
     virtual ~IOrderManager() = default;
     virtual void set_dispatcher(client::Dispatcher& dispatcher) = 0;
     virtual void set_handler(Handler& handler) = 0;
-    virtual void dispatch(core::TargetQuotes const &quotes) = 0;
+    virtual void dispatch(core::Quotes const &quotes) = 0;
 };
 
 
@@ -175,12 +174,12 @@ struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
         void order_fills(Self& self, const T& u, double fill_size);
 
         bool is_throttled(Self& self, RequestType req);
-        bool can_create(Self& self, const TargetOrder & target_order);
+        bool can_create(Self& self, const mmaker::Order & target_order);
         bool can_cancel(Self& self, OrderState& order);
-        bool can_modify(Self& self, OrderState& order, const TargetOrder* target_order=nullptr);
+        bool can_modify(Self& self, OrderState& order, const mmaker::Order* target_order=nullptr);
 
-        OrderState& create_order(Self& self, const TargetOrder& target);
-        void modify_order(Self& self, OrderState& order, const TargetOrder& target);
+        OrderState& create_order(Self& self, const mmaker::Order& target);
+        void modify_order(Self& self, OrderState& order, const mmaker::Order& target);
         void cancel_order(Self& self, OrderState& order);
         void process(Self& self);
     };
@@ -197,7 +196,7 @@ private:
     absl::flat_hash_map<core::MarketIdent, State> state_;
     client::Dispatcher *dispatcher = nullptr;
     mmaker::Context& context;
-    //std::deque<TargetOrder> queue_;
+    //std::deque<mmaker::Order> queue_;
     int source_id = 0;
     std::chrono::nanoseconds now_{};
     std::chrono::nanoseconds last_process_{};
@@ -235,7 +234,7 @@ public:
     std::pair<State&, bool> get_market_or_create(const roq::Event<T>& event);
     void set_handler(Handler& handler);
     void set_dispatcher(client::Dispatcher& dispatcher);
-    void dispatch(core::TargetQuotes const& target_quotes);
+    void dispatch(core::Quotes const& target_quotes);
     void operator()(roq::Event<Timer> const& event);
     void operator()(roq::Event<OrderUpdate> const& event);
     void operator()(roq::Event<OrderAck> const& event);

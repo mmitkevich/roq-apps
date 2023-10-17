@@ -10,6 +10,7 @@ add_executable(
   "publisher.cpp"
   "mbp_depth_array.cpp"
   "flags/flags.cpp"
+  "../quoter/quoter.cpp"
 )
 
 target_compile_definitions(${TARGET_NAME} PRIVATE ROQ_PACKAGE_NAME="${PROJECT_NAME}")

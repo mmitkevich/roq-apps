@@ -78,7 +78,7 @@ struct Context : BasicDispatch<Context, umm::Context, client::Config> {
     void operator()(const Event<MarketByPriceUpdate> &event);
     void operator()(const Event<TopOfBook> &event);
 
-    template<class Fn>
+    /*template<class Fn>
     bool get_mdata_gateway(core::MarketIdent market, Fn&& fn) const {
         bool found = true;
         if(!get_market(market, [&](auto& info) {
@@ -91,8 +91,9 @@ struct Context : BasicDispatch<Context, umm::Context, client::Config> {
         }))
             found = false;
         return found;
-    }
+    }*/
 
+    /*
     template<class Fn>
     bool get_trade_gateway(core::MarketIdent market, Fn&& fn) const {
         bool found = true;
@@ -107,8 +108,9 @@ struct Context : BasicDispatch<Context, umm::Context, client::Config> {
             found = false;
         return found;
     }
-
-    void initialize(umm::IModel& model);
+    */
+    
+    //void initialize(umm::IModel& model);
 
     /// client::Config
     void dispatch(roq::client::Config::Handler &) const;

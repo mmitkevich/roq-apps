@@ -34,7 +34,7 @@ inline bool is_empty_quote(const core::Quote& quote) {
     return false;
 }
 
-void OrderManager::dispatch(core::TargetQuotes const & target_quotes) {
+void OrderManager::dispatch(core::Quotes const & target_quotes) {
     auto market = target_quotes.market;
     auto [state,is_new_state] = get_market_or_create_internal(market);
     assert(!is_new_state);
@@ -77,7 +77,7 @@ bool OrderManager::State::is_throttled(Self& self, RequestType req) {
     return false;
 }
 
-bool OrderManager::State::can_create(Self& self, const TargetOrder & target_order) {
+bool OrderManager::State::can_create(Self& self, const mmaker::Order & target_order) {
     if(pending[target_order.side==Side::SELL]>0)
         return false;
 
@@ -98,7 +98,7 @@ bool OrderManager::State::can_cancel(Self&self, OrderState& order) {
     return true;
 }
 
-bool OrderManager::State::can_modify(Self&self, OrderState& order, const TargetOrder* target_order/*=nullptr*/) {
+bool OrderManager::State::can_modify(Self&self, OrderState& order, const mmaker::Order* target_order/*=nullptr*/) {
     return false;
     //if(!order.is_confirmed())
     if(!order.confirmed.version)    
@@ -188,7 +188,7 @@ void OrderManager::State::process(OrderManager& self) {
                     assert(!std::isnan(order.confirmed.quantity));
                     if(utils::compare(new_level.target_quantity,new_level.expected_quantity+order.confirmed.quantity)!=std::strong_ordering::less) {
                         ///
-                        modify_order(self, order, TargetOrder {
+                        modify_order(self, order, mmaker::Order {
                             .quantity = order.confirmed.quantity,    // can_modify_qty?new_level.target_quantity-new_level.expected_quantity : order.confirmed.quantity
                             .price = new_level.price,
 
@@ -211,7 +211,7 @@ void OrderManager::State::process(OrderManager& self) {
             assert(!std::isnan(level.target_quantity));
             assert(!std::isnan(level.expected_quantity));
             if(utils::compare(level.target_quantity, level.expected_quantity)==std::strong_ordering::greater) {
-                auto target_order = TargetOrder {
+                auto target_order = mmaker::Order {
                     .market = market,
                     .side = side,
                     .quantity = level.target_quantity - level.expected_quantity,
@@ -247,7 +247,7 @@ void OrderManager::State::process(OrderManager& self) {
     }
 }
 
-OrderManager::OrderState& OrderManager::State::create_order(Self& self, const TargetOrder& target) {
+OrderManager::OrderState& OrderManager::State::create_order(Self& self, const mmaker::Order& target) {
     assert(market == target.market);
     assert(self.is_ready(gateway_id, account, roq::Mask<roq::SupportType>{roq::SupportType::MODIFY_ORDER}));
     auto order_id = ++self.max_order_id;
@@ -304,7 +304,7 @@ OrderManager::OrderState& OrderManager::State::create_order(Self& self, const Ta
     return order;
 }
 
-void OrderManager::State::modify_order(Self& self, OrderState& order, const TargetOrder & target) {
+void OrderManager::State::modify_order(Self& self, OrderState& order, const mmaker::Order & target) {
     assert(self.is_ready(gateway_id, account, roq::Mask<roq::SupportType>{roq::SupportType::MODIFY_ORDER}));
     ++order.pending.version;
     order.pending.type = RequestType::MODIFY_ORDER;

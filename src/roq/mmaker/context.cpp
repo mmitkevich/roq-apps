@@ -33,6 +33,7 @@ inline void Context::dispatch(roq::client::Config::Handler &handler) const {
     };
 }
 
+/*
 void Context::initialize(umm::IModel& model) {
 
     for(auto & [folio, portfolio]: portfolios) {
@@ -46,6 +47,7 @@ void Context::initialize(umm::IModel& model) {
         }
     }
 }
+*/
 
 roq::Mask<roq::SupportType> Context::expected_md_support = {};
 

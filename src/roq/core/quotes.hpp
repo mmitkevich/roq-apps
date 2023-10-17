@@ -6,7 +6,7 @@
 namespace roq::core {
 
 
-struct TargetQuotes  {
+struct Quotes  {
     core::MarketIdent market {};
     std::string_view account {};
     std::string_view exchange {};
@@ -20,13 +20,13 @@ struct TargetQuotes  {
 
 
 template <> 
-struct fmt::formatter<roq::core::TargetQuotes> {
+struct fmt::formatter<roq::core::Quotes> {
     template <typename Context> 
     constexpr auto parse(Context &context) {
       return std ::begin(context);
     }
     template <typename Context>
-    auto format(const roq ::core ::TargetQuotes &_, Context &context) const {
+    auto format(const roq::core::Quotes &_, Context &context) const {
       using namespace std ::literals;
       using namespace roq::core;
       Price bid_price, ask_price;

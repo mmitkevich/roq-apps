@@ -11,16 +11,16 @@
 #include "roq/mmaker/mbp_depth_array.hpp"
 #include "roq/mmaker/order_manager.hpp"
 #include "roq/mmaker/publisher.hpp"
-#include "umm/core/context.hpp"
-#include "umm/core/type.hpp"
+//#include "umm/core/context.hpp"
+//#include "umm/core/type.hpp"
 #include "umm/core/type/depth_level.hpp"
-#include "umm/core/event.hpp"
-#include "umm/core/model_api.hpp"
+//#include "umm/core/event.hpp"
+//#include "umm/core/model_api.hpp"
 //#include "umm/core/model.hpp"
 //#include "application.hpp"
 #include "./context.hpp"
 #include "./markets.hpp"
-
+#include "roq/quoter/quoter.hpp"
 
 namespace roq {
 namespace mmaker {
@@ -74,8 +74,14 @@ struct Strategy : BasicHandler<Strategy>,  mmaker::IOrderManager::Handler {
 
     using Base::dispatch, Base::self;
 
-    Strategy(client::Dispatcher& dispatcher, mmaker::Context& context,
-        std::unique_ptr<umm::IQuoter> quoter, std::unique_ptr<mmaker::IOrderManager> order_manager={}, std::unique_ptr<mmaker::Publisher> publisher={});
+    struct Args {
+      mmaker::Context& context;
+      std::unique_ptr<roq::quoter::Quoter> quoter;
+      std::unique_ptr<mmaker::IOrderManager> order_manager;
+      std::unique_ptr<mmaker::Publisher> publisher;
+    };
+
+    Strategy(client::Dispatcher& dispatcher, Args args);
 
     virtual ~Strategy();
 
@@ -116,7 +122,8 @@ private:
     client::Dispatcher& dispatcher_;
     mmaker::Context& context;
     std::unique_ptr<mmaker::IOrderManager> order_manager_;
-    std::unique_ptr<umm::IQuoter> quoter_;    
+    //std::unique_ptr<mmaker::IQuoter> quoter_;    
+    std::unique_ptr<roq::quoter::Quoter> quoter_;
     std::unique_ptr<mmaker::Publisher> publisher_{};
 
 //    DepthEventFactory depth_event_factory_;

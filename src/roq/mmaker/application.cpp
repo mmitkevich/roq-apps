@@ -62,18 +62,19 @@ int Application::main(args::Parser const &parser) {
     if(!strategy_found &&  strategy_str == strategy) {
       strategy_found = true;
       auto model_str = config.get_string(strategy_node, "model");
-      auto quoter_factory = umm::Provider::create(static_cast<umm::Context&>(context), config, model_str);
-      if(!quoter_factory) {
-        log::warn<0>("error: strategy {} not supported", strategy);
-        return;
-      }
-      std::unique_ptr<umm::IQuoter> quoter = quoter_factory();
+      //auto quoter_factory = umm::Provider::create(static_cast<umm::Context&>(context), config, model_str);
+      //if(!quoter_factory) {
+      //  log::warn<0>("error: strategy {} not supported", strategy);
+      //  return;
+      //}
+      //std::unique_ptr<umm::IQuoter> quoter = quoter_factory();
 
       context.configure( config );
 
       // parameters
-      config(*quoter);
-      context.initialize(*quoter);      
+      //config(*quoter);
+      
+      //context.initialize(*quoter);      
 
       std::unique_ptr<mmaker::OrderManager> order_manager = std::make_unique<mmaker::OrderManager>(context);
 
@@ -81,7 +82,11 @@ int Application::main(args::Parser const &parser) {
       
       std::unique_ptr<mmaker::Publisher> publisher = std::make_unique<mmaker::Publisher>(context);
       client::flags::Settings settings {parser};
-      client::Trader{settings, context, args}.template dispatch<Strategy>(context, std::move(quoter), std::move(order_manager), std::move(publisher));
+      client::Trader{settings, context, args}.template dispatch<Strategy>(Strategy::Args {
+        .context = context, 
+        //.quoter = std::move(quoter), 
+        .order_manager = std::move(order_manager), 
+        .publisher = std::move(publisher)});
     }
   });
   if(!strategy_found) {
