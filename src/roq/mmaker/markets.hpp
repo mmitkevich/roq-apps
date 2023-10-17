@@ -1,21 +1,21 @@
 #pragma once
-#include "roq/mmaker/best_price_source.hpp"
 #include "string_view"
-#include "umm/core/type.hpp"
+//#include "umm/core/type.hpp"
+#include "roq/core/best_price_source.hpp"
 #include "absl/container/flat_hash_map.h"
 #include <absl/container/node_hash_map.h>
 #include <roq/gateway_status.hpp>
 #include <roq/string_types.hpp>
 #include <roq/logging.hpp>
-#include "roq/mmaker/basic_handler.hpp"
+#include "roq/core/basic_handler.hpp"
+#include "roq/core/types.hpp"
 
 namespace roq {
 namespace mmaker {
 
-using MarketIdent = umm::MarketIdent;
 
 struct MarketInfo {
-    umm::MarketIdent market;
+    core::MarketIdent market;
     std::string_view symbol;
     std::string_view exchange;
 };
@@ -39,15 +39,15 @@ struct Markets : roq::BasicDispatch<Markets> {
     struct Item {
         roq::Exchange exchange;        
         roq::Symbol symbol;
-        mmaker::BestPriceSource pub_price_source;
-        mmaker::BestPriceSource best_price_source = mmaker::BestPriceSource::MARKET_BY_PRICE;
+        core::BestPriceSource pub_price_source;
+        core::BestPriceSource best_price_source = core::BestPriceSource::MARKET_BY_PRICE;
         umm::Volume lot_size = 1;
         roq::Source mdata_gateway;
         uint32_t mdata_gateway_id = -1;
         roq::Source trade_gateway;
         uint32_t trade_gateway_id = -1;
         uint32_t depth_num_levels = 0;
-        MarketInfo to_market_info(umm::MarketIdent market) const {
+        MarketInfo to_market_info(core::MarketIdent market) const {
             return MarketInfo {
                 .market = market,
                 .symbol = symbol,
@@ -69,7 +69,7 @@ struct Markets : roq::BasicDispatch<Markets> {
         }
     }
     
-    Markets::Item& emplace(MarketIdent market, std::string_view symbol, std::string_view exchange) {
+    Markets::Item& emplace(core::MarketIdent market, std::string_view symbol, std::string_view exchange) {
         auto& market_config = item_by_market_[market] = Markets::Item { 
             .exchange = exchange, 
             .symbol = symbol
@@ -102,11 +102,11 @@ struct Markets : roq::BasicDispatch<Markets> {
             auto market_str = config.get_string(market_node, "market");
             auto mdata_gateway_str = config.get_string_or(market_node, "mdata_gateway", "");
             auto trade_gateway_str = config.get_string_or(market_node, "trade_gateway", "");
-            umm::MarketIdent market = context.get_market_ident(market_str);
-            log::info<1>("symbol {}, exchange {}, market {} {} mdata_gateway '{}' trade_gateway '{}'", symbol, exchange, market.value, context.prn(market), mdata_gateway_str, trade_gateway_str);
+            core::MarketIdent market = context.get_market_ident(market_str);
+            log::info<1>("symbol {}, exchange {}, market {} {} mdata_gateway '{}' trade_gateway '{}'", symbol, exchange, market, "FIXME", mdata_gateway_str, trade_gateway_str);
             Item& item = emplace(market, symbol, exchange);
-            item.pub_price_source = config.get_value_or(market_node, "pub_price_source", mmaker::BestPriceSource::UNDEFINED);
-            item.best_price_source = config.get_value_or(market_node, "best_price_source", mmaker::BestPriceSource::MARKET_BY_PRICE);
+            item.pub_price_source = config.get_value_or(market_node, "pub_price_source", core::BestPriceSource::UNDEFINED);
+            item.best_price_source = config.get_value_or(market_node, "best_price_source", core::BestPriceSource::MARKET_BY_PRICE);
             item.lot_size = config.get_value_or(market_node, "lot_size", umm::Volume{1.0});
             item.mdata_gateway = mdata_gateway_str;
             item.trade_gateway = trade_gateway_str;
@@ -119,7 +119,7 @@ struct Markets : roq::BasicDispatch<Markets> {
         item_by_market_.clear();
     }
 
-    umm::MarketIdent get_market_ident(std::string_view symbol, std::string_view exchange) const {
+    core::MarketIdent get_market_ident(std::string_view symbol, std::string_view exchange) const {
         auto iter_1 = market_by_symbol_by_exchange_.find(exchange);
         if(iter_1 == std::end(market_by_symbol_by_exchange_)) {
             return {};
@@ -133,7 +133,7 @@ struct Markets : roq::BasicDispatch<Markets> {
     }
 
     template<class Fn>
-    bool get_market(umm::MarketIdent market, Fn&& fn) const {
+    bool get_market(core::MarketIdent market, Fn&& fn) const {
         auto iter = item_by_market_.find(market);
         if(iter != std::end(item_by_market_)) {
             const auto& item = iter->second;
@@ -144,7 +144,7 @@ struct Markets : roq::BasicDispatch<Markets> {
     }
 
     template<class Fn, class V>
-    auto get_or(umm::MarketIdent market, Fn&& fn, V default_value) const {
+    auto get_or(core::MarketIdent market, Fn&& fn, V default_value) const {
         auto iter = item_by_market_.find(market);
         if(iter != std::end(item_by_market_)) {
             const auto& item = iter->second;
@@ -153,8 +153,8 @@ struct Markets : roq::BasicDispatch<Markets> {
         return default_value;
     }
 private:
-    absl::flat_hash_map<roq::Exchange, absl::flat_hash_map<roq::Symbol, umm::MarketIdent> > market_by_symbol_by_exchange_;
-    absl::node_hash_map<umm::MarketIdent, Markets::Item> item_by_market_;
+    absl::flat_hash_map<roq::Exchange, absl::flat_hash_map<roq::Symbol, core::MarketIdent> > market_by_symbol_by_exchange_;
+    absl::node_hash_map<core::MarketIdent, Markets::Item> item_by_market_;
 };
 
 } // namespace mmaker

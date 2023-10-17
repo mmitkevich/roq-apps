@@ -1,7 +1,7 @@
 #pragma once
 #include <chrono>
 
-namespace roq::mmaker {
+namespace roq::core {
 
 struct Clock {
     static std::chrono::nanoseconds now() {
@@ -9,4 +9,4 @@ struct Clock {
     }
 };
 
-}
+} // roq::core

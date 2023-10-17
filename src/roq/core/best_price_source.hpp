@@ -1,7 +1,6 @@
 #pragma once
 
-namespace roq {
-namespace mmaker {
+namespace roq::core {
 
 enum class BestPriceSource {
     UNDEFINED,
@@ -10,6 +9,4 @@ enum class BestPriceSource {
     VWAP
 };
 
-
-} // mmaker
-} // roq
+} // roq::core

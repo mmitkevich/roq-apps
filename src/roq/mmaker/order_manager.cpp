@@ -1,7 +1,7 @@
 // (c) copyright 2023 Mikhail Mitkevich
 #include "roq/mmaker/position_source.hpp"
-#include "umm/prologue.hpp"
-#include "umm/core/type.hpp"
+//#include "umm/prologue.hpp"
+//#include "umm/core/type.hpp"
 #include "./order_manager.hpp"
 #include <chrono>
 #include <roq/buffer_capacity.hpp>
@@ -14,7 +14,7 @@
 #include <roq/time_in_force.hpp>
 #include <roq/trade.hpp>
 #include <roq/trade_update.hpp>
-#include "clock.hpp"
+#include "roq/core/clock.hpp"
 #include "roq/mmaker/flags/flags.hpp"
 
 namespace roq::mmaker {
@@ -24,7 +24,7 @@ void OrderManager::set_dispatcher(client::Dispatcher& dispatcher) {
     this->dispatcher = &dispatcher;
 }
 
-inline bool is_empty_quote(const Quote& quote) {
+inline bool is_empty_quote(const core::Quote& quote) {
     if(umm::is_empty_value(quote.price))
         return true;
     if(umm::is_empty_value(quote.volume))
@@ -34,7 +34,7 @@ inline bool is_empty_quote(const Quote& quote) {
     return false;
 }
 
-void OrderManager::dispatch(TargetQuotes const & target_quotes) {
+void OrderManager::dispatch(core::TargetQuotes const & target_quotes) {
     auto market = target_quotes.market;
     auto [state,is_new_state] = get_market_or_create_internal(market);
     assert(!is_new_state);
@@ -43,28 +43,28 @@ void OrderManager::dispatch(TargetQuotes const & target_quotes) {
     state.exchange = target_quotes.exchange;
     state.symbol = target_quotes.symbol;
 
-    log::info<2>("TargetQuotes {}", this->context.prn(target_quotes));
+    log::info<2>("TargetQuotes {}", target_quotes);
 
     for(auto& [price_index, quote]: state.bids) {
         quote.target_quantity = 0;
-        quote.flags = 0;
+        quote.exec_inst = {};
     }
     for(auto& quote: target_quotes.bids) {
         if(!is_empty_quote(quote)) {
             auto [level,is_new] = state.get_level_or_create(Side::BUY, quote.price);
             level.target_quantity = quote.volume;
-            level.flags = quote.flags;
+            level.exec_inst = quote.exec_inst;
         }
     }
     for(auto& [price_index, quote]: state.asks) {
         quote.target_quantity = 0;
-        quote.flags = 0;
+        quote.exec_inst = {};
     }
     for(auto& quote: target_quotes.asks) {
         if(!is_empty_quote(quote)) {
             auto [level,is_new] = state.get_level_or_create(Side::SELL, quote.price);
             level.target_quantity = quote.volume;
-            level.flags = quote.flags;
+            level.exec_inst = quote.exec_inst;
         }
     }
     for(auto& [market, state] : state_) {
@@ -216,7 +216,7 @@ void OrderManager::State::process(OrderManager& self) {
                     .side = side,
                     .quantity = level.target_quantity - level.expected_quantity,
                     .price = level.price,
-                    .flags = level.flags
+                    .exec_inst = level.exec_inst
                 };
                 if(can_create(self, target_order)) {
                     //queue_.push_back(target_order); 
@@ -279,7 +279,8 @@ OrderManager::OrderState& OrderManager::State::create_order(Self& self, const Ta
     auto r = fmt::format_to_n(self.routing_id.begin(), self.routing_id.size()-1, "{}.{}",order.order_id, order.pending.version);
     auto routing_id_v = std::string_view { self.routing_id.data(), r.size };
     roq::Mask<roq::ExecutionInstruction> execution_instructions {};
-    if(target.flags & Quote::POST_ONLY)
+    
+    if(target.exec_inst.has(roq::ExecutionInstruction::PARTICIPATE_DO_NOT_INITIATE))
         execution_instructions.set(roq::ExecutionInstruction::PARTICIPATE_DO_NOT_INITIATE);
 
     auto create_order = roq::CreateOrder {
@@ -664,7 +665,7 @@ std::pair<OrderManager::State&, bool> OrderManager::get_market_or_create_interna
 }
 
 
-std::pair<OrderManager::State&, bool> OrderManager::get_market_or_create_internal(MarketIdent market) {
+std::pair<OrderManager::State&, bool> OrderManager::get_market_or_create_internal(core::MarketIdent market) {
     auto iter = state_.find(market);
     if(iter!=std::end(state_)) {
         return {iter->second, false};
@@ -704,7 +705,7 @@ std::pair<OrderManager::LevelState&, bool> OrderManager::State::get_level_or_cre
 void OrderManager::operator()(roq::Event<OrderAck> const& event) {
     auto& u = event.value;
     auto iter = market_by_order_.find(u.order_id);
-    MarketIdent market;
+    core::MarketIdent market;
     if(iter!=market_by_order_.end())
         market = iter->second;
     else {

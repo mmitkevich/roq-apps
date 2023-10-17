@@ -16,58 +16,37 @@
 #include "umm/printable.hpp"
 #include "roq/mmaker/context.hpp"
 #include "markets.hpp"
-#include "clock.hpp"
+#include "roq/core/clock.hpp"
 
 #include "umm/core/type.hpp"
 #include "umm/core/type/quote.hpp"
-#include "roq/mmaker/basic_handler.hpp"
+#include "roq/core/basic_handler.hpp"
 #include "roq/mmaker/position_source.hpp"
 
 #include "roq/mmaker/profit_loss.hpp"
+#include "roq/core/target_quotes.hpp"
+#include "roq/core/quote.hpp"
 
 namespace roq::mmaker 
 {
 
-// TODO struct Quote { double price; double quantity;  uint64_t flags; }
-using Quote = umm::Quote;
 
 struct TargetOrder {
-    MarketIdent market {};
-    Side side {Side::UNDEFINED};
-    double quantity {NaN};    
-    double price {NaN};
-    uint64_t flags = 0;
+    core::MarketIdent market {};
+    roq::Side side {};
+    core::Double quantity {};
+    core::Double price {};
+    roq::Mask<roq::ExecutionInstruction> exec_inst = {};
 };
 
-struct TargetQuotes : umm::BasicPrintable<TargetQuotes> {
-    MarketIdent market {};
-    std::string_view account {};
-    std::string_view exchange {};
-    std::string_view symbol {};
-    std::string_view portfolio {};
-    std::span<const Quote> bids = {};
-    std::span<const Quote> asks = {};
 
-    template<class Format, class Context>
-    constexpr decltype(auto) format(Format& fmt, const Context& context) const {
-        using namespace std::literals;
-        return fmt::format_to(
-        fmt.out(),
-        "market {} bid_price {} ask_price {} bid_volume {} ask_volume {}"sv,
-        umm::prn(market, context),
-        bids.size()>0 ? bids[0].price.value : NAN,
-        asks.size()>0 ? asks[0].price.value : NAN,
-        bids.size()>0 ? bids[0].volume.value : NAN,
-        asks.size()>0 ? asks[0].volume.value : NAN);
-    }
-};
 
 struct IOrderManager : client::Handler {
     struct Handler;
     virtual ~IOrderManager() = default;
     virtual void set_dispatcher(client::Dispatcher& dispatcher) = 0;
     virtual void set_handler(Handler& handler) = 0;
-    virtual void dispatch(TargetQuotes const &quotes) = 0;
+    virtual void dispatch(core::TargetQuotes const &quotes) = 0;
 };
 
 
@@ -79,8 +58,8 @@ struct OMSPositionUpdate {
     std::string_view exchange;
     std::string_view symbol;
     std::string_view account;
-    umm::PortfolioIdent portfolio;
-    MarketIdent market;
+    core::PortfolioIdent portfolio;
+    core::MarketIdent market;
 };
 
 struct IOrderManager::Handler {
@@ -112,7 +91,7 @@ struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
         }
         
         std::chrono::nanoseconds latency() const { 
-            return Clock::now() - created_time;
+            return core::Clock::now() - created_time;
         }
     };
 
@@ -144,7 +123,7 @@ struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
         double target_quantity = 0;
         double expected_quantity = 0;
         double confirmed_quantity = 0;
-        uint64_t flags = 0;
+        roq::Mask<roq::ExecutionInstruction> exec_inst {};
     };
     using LevelsMap = absl::flat_hash_map<int64_t, LevelState>;
     using OrdersMap = absl::flat_hash_map<uint64_t, OrderState>;
@@ -159,7 +138,7 @@ struct OrderManager final : BasicHandler<OrderManager, IOrderManager>
         roq::Account account;
         double tick_size = NAN;
         double min_trade_vol = NAN;
-        umm::MarketIdent market {};
+        core::MarketIdent market {};
         std::chrono::nanoseconds ban_until {};
         std::array<uint16_t,2> pending={0,0};
         double position_by_orders = 0;
@@ -214,8 +193,8 @@ private:
     uint64_t max_order_id = 0;
     Handler* handler_ {nullptr};
     std::array<char, 32> routing_id;
-    absl::flat_hash_map<uint64_t, umm::MarketIdent> market_by_order_;
-    absl::flat_hash_map<MarketIdent, State> state_;
+    absl::flat_hash_map<uint64_t, core::MarketIdent> market_by_order_;
+    absl::flat_hash_map<core::MarketIdent, State> state_;
     client::Dispatcher *dispatcher = nullptr;
     mmaker::Context& context;
     //std::deque<TargetOrder> queue_;
@@ -250,13 +229,13 @@ public:
 
 //    double get_position(std::string_view account, std::string_view symbol, std::string_view exchange);
 
-    std::pair<State&, bool> get_market_or_create_internal(MarketIdent market);
+    std::pair<State&, bool> get_market_or_create_internal(core::MarketIdent market);
     std::pair<State&, bool> get_market_or_create_internal(std::string_view symbol, std::string_view exchange);
     template<class T>
     std::pair<State&, bool> get_market_or_create(const roq::Event<T>& event);
     void set_handler(Handler& handler);
     void set_dispatcher(client::Dispatcher& dispatcher);
-    void dispatch(TargetQuotes const& target_quotes);
+    void dispatch(core::TargetQuotes const& target_quotes);
     void operator()(roq::Event<Timer> const& event);
     void operator()(roq::Event<OrderUpdate> const& event);
     void operator()(roq::Event<OrderAck> const& event);

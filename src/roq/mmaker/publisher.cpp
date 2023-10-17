@@ -14,7 +14,7 @@ void Publisher::dispatch(const umm::Event<umm::BestPriceUpdate> & event) {
         return;
     }
     context.get_market(event->market, [&](const auto& market) {
-        if(market.pub_price_source == BestPriceSource::TOP_OF_BOOK) {
+        if(market.pub_price_source == core::BestPriceSource::TOP_OF_BOOK) {
             umm::BestPrice& best_price = context.best_price[event->market];
             publish(market.to_market_info(event->market), best_price);
         }

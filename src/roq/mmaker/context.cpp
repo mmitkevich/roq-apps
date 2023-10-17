@@ -5,6 +5,7 @@
 #include <roq/support_type.hpp>
 #include "umm/core/type/depth_array.ipp"
 
+#include "roq/core/types.hpp"
 
 namespace roq { 
 namespace mmaker {
@@ -48,7 +49,7 @@ void Context::initialize(umm::IModel& model) {
 
 roq::Mask<roq::SupportType> Context::expected_md_support = {};
 
-bool Context::is_ready(umm::MarketIdent market) const {
+bool Context::is_ready(core::MarketIdent market) const {
     bool ready = true;
     ready &= get_market(market, [&](const Markets::Item &market_item) {
         ready &= gateways.get_gateway(market_item.mdata_gateway_id, [&](const Gateways::Item& gateway_item) {
@@ -76,7 +77,7 @@ void Context::operator()(const Event<TopOfBook> &event) {
     umm::BestPrice& best_price = this->best_price[market];
     auto best_price_source = get_best_price_source(market);
 
-    if(best_price_source==BestPriceSource::TOP_OF_BOOK) {
+    if(best_price_source==core::BestPriceSource::TOP_OF_BOOK) {
       best_price.bid_price = u.layer.bid_price;
       best_price.ask_price = u.layer.ask_price;
       best_price.bid_volume = u.layer.bid_quantity;
@@ -103,8 +104,8 @@ void Context::operator()(const Event<ReferenceData> &event) {
 }
 
 
-mmaker::BestPriceSource Context::get_best_price_source(MarketIdent market) const {
-  auto best_price_source = BestPriceSource::MARKET_BY_PRICE;
+core::BestPriceSource Context::get_best_price_source(core::MarketIdent market) const {
+  auto best_price_source = core::BestPriceSource::MARKET_BY_PRICE;
   this->get_market(market, [&](const auto& item) {
       best_price_source = item.best_price_source;
   });
@@ -136,11 +137,11 @@ void Context::operator()(const Event<MarketByPriceUpdate> &event) {
 
     umm::BestPrice& best_price = this->best_price[market];
     auto best_price_source = get_best_price_source(market);
-    if(best_price_source==BestPriceSource::MARKET_BY_PRICE) {
+    if(best_price_source==core::BestPriceSource::MARKET_BY_PRICE) {
   //      mbp_depth_.update(mbp, 1);  // extract up to 1 level from roq mbp cache
       best_price = mbp_depth_.best_price();
       log::info<2>("Context::MarketByPriceUpdate market {} BestPrice = {} (from MBP)", self()->prn(market), prn(best_price));
-    }
+    }   
 
     Base::operator()(event);    
 }

@@ -1,5 +1,5 @@
 #include "./strategy.hpp"
-#include "roq/mmaker/best_price_source.hpp"
+#include "roq/core/best_price_source.hpp"
 #include "roq/mmaker/gateways.hpp"
 #include "roq/mmaker/publisher.hpp"
 #include "umm/core/type.hpp"
@@ -28,9 +28,10 @@ Strategy::Strategy(client::Dispatcher& dispatcher, mmaker::Context& context,
     if(publisher_) {
       publisher_->set_dispatcher(dispatcher_);
     }
-    if(quoter_) {
-      quoter_->set_handler(*this);
-    }    
+    // FIXME:
+    //if(quoter_) {
+    //  quoter_->set_handler(*this);
+    //}    
 }
 
 Strategy::~Strategy() {}
@@ -52,7 +53,7 @@ void Strategy::operator()(const Event<TopOfBook> &event) {
     Base::operator()(event);  // calls dispatch
 
     const auto& u = event.value;
-    MarketIdent market = context.get_market_ident(u.exchange, u.symbol);
+    core::MarketIdent market = context.get_market_ident(u.exchange, u.symbol);
     if(context.is_ready(market)) {
       log::info<2>("TopOfBook:  market {} BestPrice {} (from ToB)", context.prn(market), context.prn(context.best_price(market)));
       umm::Event<umm::BestPriceUpdate> best_price_event;
@@ -69,7 +70,7 @@ void Strategy::operator()(const Event<MarketByPriceUpdate>& event) {
     Base::operator()(event);
 
     const auto& u = event.value;
-    MarketIdent market = context.get_market_ident(u.symbol, u.exchange);
+    core::MarketIdent market = context.get_market_ident(u.symbol, u.exchange);
 
     if(context.is_ready(market)) {
       umm::Event<umm::DepthUpdate> depth_event;
@@ -96,12 +97,13 @@ void Strategy::operator()(const Event<MarketByPriceUpdate>& event) {
     }
 }
 
+/*
 void Strategy::dispatch(const umm::Event<umm::QuotesUpdate> &event) {
-    umm::MarketIdent market = event->market;
+    core::MarketIdent market = event->market;
     context.get_market(market, [&](const auto& data) {
       context.get_account(data.exchange, [&](std::string_view account) {
         umm::QuotesView quotes = quoter_->get_quotes(market);
-        TargetQuotes target_quotes {
+        core::TargetQuotes target_quotes {
           .market = market,
           .account = account,
           .exchange = data.exchange,
@@ -114,7 +116,7 @@ void Strategy::dispatch(const umm::Event<umm::QuotesUpdate> &event) {
           order_manager_->dispatch(target_quotes);
       });
     });
-}
+}*/
 
 void Strategy::operator()(const Event<OMSPositionUpdate>& event) {
     // cache position

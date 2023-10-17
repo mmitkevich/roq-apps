@@ -1,6 +1,6 @@
 // (c) copyright 2023 Mikhail Mitkevich
 #pragma once
-#include "roq/mmaker/basic_handler.hpp"
+#include "roq/core/basic_handler.hpp"
 #include "roq/mmaker/mbp_depth_array.hpp"
 #include "umm/prologue.hpp"
 #include "umm/core/context.hpp"
@@ -31,16 +31,16 @@ struct Context : BasicDispatch<Context, umm::Context, client::Config> {
     using umm::Context::get_market_ident;
 
 
-    umm::MarketIdent get_market_ident(std::string_view symbol, std::string_view exchange) {
+    core::MarketIdent get_market_ident(std::string_view symbol, std::string_view exchange) {
         return markets_.get_market_ident(symbol, exchange);
     }
 
-    umm::MarketIdent get_market_ident(roq::cache::Market const & market) {
+    core::MarketIdent get_market_ident(roq::cache::Market const & market) {
         return this->get_market_ident(market.context.symbol, market.context.exchange);
     }
 
     template<class T>
-    umm::MarketIdent get_market_ident(const Event<T> &event) {
+    core::MarketIdent get_market_ident(const Event<T> &event) {
         return this->get_market_ident(event.value.symbol, event.value.exchange);
     }
 
@@ -54,7 +54,7 @@ struct Context : BasicDispatch<Context, umm::Context, client::Config> {
     }
 
     template<class Fn>
-    bool get_market(MarketIdent market, Fn&& fn) const {
+    bool get_market(core::MarketIdent market, Fn&& fn) const {
         return markets_.get_market(market, [&](const auto &data) {
             fn(data);
         });
@@ -79,7 +79,7 @@ struct Context : BasicDispatch<Context, umm::Context, client::Config> {
     void operator()(const Event<TopOfBook> &event);
 
     template<class Fn>
-    bool get_mdata_gateway(umm::MarketIdent market, Fn&& fn) const {
+    bool get_mdata_gateway(core::MarketIdent market, Fn&& fn) const {
         bool found = true;
         if(!get_market(market, [&](auto& info) {
             if(info.mdata_gateway_id==-1) {
@@ -94,7 +94,7 @@ struct Context : BasicDispatch<Context, umm::Context, client::Config> {
     }
 
     template<class Fn>
-    bool get_trade_gateway(umm::MarketIdent market, Fn&& fn) const {
+    bool get_trade_gateway(core::MarketIdent market, Fn&& fn) const {
         bool found = true;
         if(!get_market(market, [&](auto& info) {
             if(info.trade_gateway_id==-1) {
@@ -113,9 +113,9 @@ struct Context : BasicDispatch<Context, umm::Context, client::Config> {
     /// client::Config
     void dispatch(roq::client::Config::Handler &) const;
 
-    bool is_ready(umm::MarketIdent market) const;
+    bool is_ready(core::MarketIdent market) const;
 
-    mmaker::BestPriceSource get_best_price_source(MarketIdent market) const;
+    core::BestPriceSource get_best_price_source(core::MarketIdent market) const;
 
 public:
     Gateways gateways;
@@ -124,7 +124,7 @@ private:
     MBPDepthArray mbp_depth_;
     absl::flat_hash_map<roq::Exchange, roq::Account> accounts_;
     Markets markets_;
-    absl::flat_hash_map<MarketIdent, uint32_t> mbp_num_levels_;
+    absl::flat_hash_map<core::MarketIdent, uint32_t> mbp_num_levels_;
     static roq::Mask<roq::SupportType> expected_md_support;
 
 };

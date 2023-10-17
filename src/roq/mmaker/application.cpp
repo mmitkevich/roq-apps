@@ -1,5 +1,5 @@
 /* Copyright (c) 2021 Mikhail Mitkevich */
-#include "umm/prologue.hpp"
+//#include "umm/prologue.hpp"
 #include "roq/client.hpp"
 
 #include "roq/flags/args.hpp"
@@ -45,8 +45,8 @@ int Application::main(args::Parser const &parser) {
   //log_level = umm::LogLevel::TRACE;
   umm::set_log_level(log_level);
 
-  config.get_market_ident = [&](std::string_view market) -> umm::MarketIdent { return context.get_market_ident(market); };
-  config.get_portfolio_ident = [&](std::string_view folio) -> umm::PortfolioIdent { return context.get_portfolio_ident(folio); };
+  config.get_market_ident = [&](std::string_view market) -> core::MarketIdent { return context.get_market_ident(market); };
+  config.get_portfolio_ident = [&](std::string_view folio) -> core::PortfolioIdent { return context.get_portfolio_ident(folio); };
 
   auto strategy = Flags::strategy();
   if(strategy.empty()) {

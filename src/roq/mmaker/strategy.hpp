@@ -32,10 +32,10 @@ struct DepthEventFactory {
     std::vector<umm::DepthLevel> asks;
 
     template<class 
-    umm::Event<umm::DepthUpdate> operator()(umm::MarketIdent market, std::span<roq::MBPUpdate> bids, std::span<roq::MBPUpdate> asks);
+    umm::Event<umm::DepthUpdate> operator()(core::MarketIdent market, std::span<roq::MBPUpdate> bids, std::span<roq::MBPUpdate> asks);
 };
 
-inline umm::Event<umm::DepthUpdate> DepthEventFactory::operator()(umm::MarketIdent market, std::span<MBPUpdate> bids, std::span<MBPUpdate> asks) {
+inline umm::Event<umm::DepthUpdate> DepthEventFactory::operator()(core::MarketIdent market, std::span<MBPUpdate> bids, std::span<MBPUpdate> asks) {
     this->bids.resize(bids.size());
     for(std::size_t i=0;i<bids.size();i++) {
       double qty = bids[i].quantity;
@@ -68,7 +68,7 @@ inline umm::Event<umm::DepthUpdate> DepthEventFactory::operator()(umm::MarketIde
 }
 */
 
-struct Strategy : BasicHandler<Strategy>, umm::IQuoter::Handler, mmaker::IOrderManager::Handler {
+struct Strategy : BasicHandler<Strategy>,  mmaker::IOrderManager::Handler {
     using Base = BasicHandler<Strategy>;
     using Self = Strategy;
 
@@ -108,10 +108,10 @@ struct Strategy : BasicHandler<Strategy>, umm::IQuoter::Handler, mmaker::IOrderM
     void operator()(const Event<Timer>  & event);
 
     /// IQuoter::Handler
-    void dispatch(const umm::Event<umm::QuotesUpdate> &) override;
+    //void dispatch(const umm::Event<umm::QuotesUpdate> &) override;
 
 private:
-      umm::Cache<umm::MarketIdent, bool> umm_mbp_snapshot_sent_;
+      umm::Cache<core::MarketIdent, bool> umm_mbp_snapshot_sent_;
 private:
     client::Dispatcher& dispatcher_;
     mmaker::Context& context;

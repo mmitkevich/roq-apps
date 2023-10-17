@@ -1,6 +1,8 @@
 #pragma once
 
-#include "roq/client.hpp"
+#include "roq/event.hpp"
+#include "roq/client/handler.hpp"
+
 namespace roq {
 
 template<class Self, class...Bases>
