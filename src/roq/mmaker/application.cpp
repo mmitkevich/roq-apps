@@ -5,10 +5,10 @@
 #include "roq/flags/args.hpp"
 #include "roq/logging/flags/settings.hpp"
 
-#include "roq/mmaker/publisher.hpp"
-#include "umm/core/model_api.hpp"
-#include "umm/model/provider.hpp"
-#include "./context.hpp"
+//#include "roq/mmaker/publisher.hpp"
+//#include "umm/core/model_api.hpp"
+//#include "umm/model/provider.hpp"
+//#include "./context.hpp"
 #include "./application.hpp"
 #include "./flags/flags.hpp"
 #include "./strategy.hpp"
@@ -16,10 +16,12 @@
 #include <memory>
 #include <roq/client/config.hpp>
 #include <roq/logging.hpp>
+#include "roq/config/toml_config.hpp"
 
 using namespace std::chrono_literals;
 using namespace std::literals;
 
+/*
 namespace umm {
 UMM_NOINLINE
 LogLevel get_log_level_from_env() {
@@ -29,70 +31,53 @@ LogLevel get_log_level_from_env() {
     return LogLevel::WARN;
 }
 }
+*/
 
 namespace roq {
 namespace mmaker {
 
+void Application::dispatch(roq::client::Config::Handler &handler) const {
+    using namespace std::literals;
+    //log::info<1>("Config::dispatch"sv);
+
+
+    handler(client::Symbol{
+        .regex = ".*",
+        .exchange = ".*"
+    });
+    
+    handler(client::Account { .regex = ".*" });
+
+    handler(client::Settings {
+        .order_cancel_policy = OrderCancelPolicy::BY_ACCOUNT
+    });
+
+    /*markets_.get_markets([&](const auto& data) {
+        log::info<1>("symbol={}, exchange={}, market {}"sv, data.symbol, data.exchange, this->markets(data.market));
+        handler(client::Symbol {
+            .regex = data.symbol,
+            .exchange = data.exchange
+        });
+    });*/
+
+
+    /*for(auto& [exchange, account]: accounts_) {
+        log::info<1>("account {} exchange {}"sv, account, exchange);
+        handler(client::Account {
+            .regex = account
+        });
+    };*/
+}
+
+
 int Application::main(args::Parser const &parser) {
-  auto args = parser.params();
-  auto config_file = roq::mmaker::Flags::config_file();
-  log::info("config_file '{}'", config_file);
-  umm::TomlConfig config { config_file };
-  mmaker::Context context;
+  
+  this->strategy = Flags::strategy();
+  auto config_file = Flags::config_file();
+  log::info<1>("using strategy={} config_file={}", strategy, config_file);
 
-  // FIXME: use ROQ_v
-  umm::LogLevel log_level = umm::get_log_level_from_env();
-  //log_level = umm::LogLevel::TRACE;
-  umm::set_log_level(log_level);
-
-  config.get_market_ident = [&](std::string_view market) -> core::MarketIdent { return context.get_market_ident(market); };
-  config.get_portfolio_ident = [&](std::string_view folio) -> core::PortfolioIdent { return context.get_portfolio_ident(folio); };
-
-  auto strategy = Flags::strategy();
-  if(strategy.empty()) {
-    log::warn<0>("--strategy=STRATEGY option expected");
-    return EXIT_FAILURE;
-  }
-  log::debug<2>("finding strategy {}", strategy);
-
-  bool strategy_found = false;
-  config.get_nodes("strategy", [&](auto strategy_node) {
-    auto strategy_str = config.get_string(strategy_node, "strategy");
-    log::debug<2>("finding strategy {} current {}", strategy, strategy_str);
-    if(!strategy_found &&  strategy_str == strategy) {
-      strategy_found = true;
-      auto model_str = config.get_string(strategy_node, "model");
-      //auto quoter_factory = umm::Provider::create(static_cast<umm::Context&>(context), config, model_str);
-      //if(!quoter_factory) {
-      //  log::warn<0>("error: strategy {} not supported", strategy);
-      //  return;
-      //}
-      //std::unique_ptr<umm::IQuoter> quoter = quoter_factory();
-
-      context.configure( config );
-
-      // parameters
-      //config(*quoter);
-      
-      //context.initialize(*quoter);      
-
-      std::unique_ptr<mmaker::OrderManager> order_manager = std::make_unique<mmaker::OrderManager>(context);
-
-      order_manager->configure(config, strategy_node);
-      
-      std::unique_ptr<mmaker::Publisher> publisher = std::make_unique<mmaker::Publisher>(context);
-      client::flags::Settings settings {parser};
-      client::Trader{settings, context, args}.template dispatch<Strategy>(Strategy::Args {
-        .context = context, 
-        //.quoter = std::move(quoter), 
-        .order_manager = std::move(order_manager), 
-        .publisher = std::move(publisher)});
-    }
-  });
-  if(!strategy_found) {
-    log::warn<0>("strategy {} not found", strategy);
-    return EXIT_FAILURE;
-  }
+  client::flags::Settings settings {parser};
+  client::Trader{settings, *this, parser.params()}.template dispatch<Strategy>(*this);
   return EXIT_SUCCESS;
 }
 

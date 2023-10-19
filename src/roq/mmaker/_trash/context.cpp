@@ -3,7 +3,7 @@
 #include "context.hpp"
 #include <roq/client/config.hpp>
 #include <roq/support_type.hpp>
-#include "umm/core/type/depth_array.ipp"
+//#include "umm/core/type/depth_array.ipp"
 
 #include "roq/core/types.hpp"
 

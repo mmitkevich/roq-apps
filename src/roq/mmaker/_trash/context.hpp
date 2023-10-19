@@ -1,10 +1,12 @@
 // (c) copyright 2023 Mikhail Mitkevich
 #pragma once
+#include "roq/cache/portfolio_cache.hpp"
 #include "roq/core/basic_handler.hpp"
-#include "roq/mmaker/mbp_depth_array.hpp"
-#include "umm/prologue.hpp"
-#include "umm/core/context.hpp"
-#include "umm/core/type.hpp"
+//#include "roq/mmaker/mbp_depth_array.hpp"
+//#include "umm/prologue.hpp"
+//#include "umm/core/context.hpp"
+//#include "umm/core/type.hpp"
+#include "roq/core/types.hpp"
 #include <roq/cache/manager.hpp>
 #include <roq/gateway_settings.hpp>
 #include <roq/gateway_status.hpp>
@@ -14,21 +16,21 @@
 #include <sstream>
 #include "roq/logging.hpp"
 #include "roq/client.hpp"
-#include "./markets.hpp"
-#include "./gateways.hpp"
+
+#include "roq/cache/manager_2.hpp"
 
 namespace roq {
 namespace mmaker {
 
-struct Context : BasicDispatch<Context, umm::Context, client::Config> {
-    using Base = BasicDispatch<Context, umm::Context, client::Config>;
+struct Context : BasicDispatch<Context, client::Config> {
+    using Base = BasicDispatch<Context, client::Config>;
 
     Context() = default;
     
     template<class Config>
     void configure(const Config& config);
 
-    using umm::Context::get_market_ident;
+    //using umm::Context::get_market_ident;
 
 
     core::MarketIdent get_market_ident(std::string_view symbol, std::string_view exchange) {
@@ -119,13 +121,10 @@ struct Context : BasicDispatch<Context, umm::Context, client::Config> {
 
     core::BestPriceSource get_best_price_source(core::MarketIdent market) const;
 
-public:
-    Gateways gateways;
 private:
-    cache::Manager cache_ {client::MarketByPriceFactory::create};
-    MBPDepthArray mbp_depth_;
-    absl::flat_hash_map<roq::Exchange, roq::Account> accounts_;
-    Markets markets_;
+    cache::Manager_2 cache_;
+    //MBPDepthArray mbp_depth_;
+
     absl::flat_hash_map<core::MarketIdent, uint32_t> mbp_num_levels_;
     static roq::Mask<roq::SupportType> expected_md_support;
 
@@ -138,12 +137,12 @@ void Context::configure(const ConfigT& config) {
     portfolios.clear();
     config.get_nodes("position", [&]( auto position_node) {
         auto folio = umm::PortfolioIdent {config.get_string(position_node, "portfolio") };
-        config.template get_pairs(umm::type_c<umm::Volume>{}, position_node, "market", "position", [&](auto market_str, auto position) {
+        config.template get_pairs(umm::type_c<core::Volume>{}, position_node, "market", "position", [&](auto market_str, auto position) {
             auto market = this->get_market_ident(market_str);
             UMM_INFO("market {} position {}", this->markets(market), position);
             portfolios[folio][market] = position;
 //            umm::Event<umm::PositionUpdate> event;
-//            quoter.dispatch(event);
+//            pricer.dispatch(event);
         });
     });
 

@@ -3,7 +3,7 @@
 #include "roq/event.hpp"
 #include "roq/client/handler.hpp"
 
-namespace roq {
+namespace roq::core {
 
 template<class Self, class...Bases>
 struct BasicDispatch : Bases... {
@@ -86,4 +86,4 @@ public:
   virtual void operator()(metrics::Writer & event) const { }
 };
 
-} // namespace roq
+} // namespace roq::core

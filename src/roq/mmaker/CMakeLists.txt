@@ -4,13 +4,8 @@ set(TARGET_NAME "${PROJECT_NAME}-app")
 add_executable(
   "${TARGET_NAME}"
   "application.cpp"
-  "context.cpp"
   "strategy.cpp"
-  "order_manager.cpp"
-  "publisher.cpp"
-  "mbp_depth_array.cpp"
   "flags/flags.cpp"
-  "../quoter/quoter.cpp"
 )
 
 target_compile_definitions(${TARGET_NAME} PRIVATE ROQ_PACKAGE_NAME="${PROJECT_NAME}")
@@ -25,6 +20,10 @@ target_link_libraries("${TARGET_NAME}" PRIVATE  ${PROJECT_NAME}-flags
   fmt::fmt 
   roq-flags::roq-flags
   roq-logging::roq-logging-flags
+  roq-mmaker-core
+  roq-mmaker-config  
+  roq-mmaker-pricer
+  roq-mmaker-oms
   )
 
 target_link_libraries("${TARGET_NAME}" PRIVATE _lightgbm)

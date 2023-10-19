@@ -16,6 +16,9 @@ struct Quotes  {
     std::span<const Quote> asks = {};
 };
 
+using TargetQuotes = core::Quotes;
+
+
 } // roq::core
 
 

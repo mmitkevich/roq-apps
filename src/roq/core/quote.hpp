@@ -1,7 +1,9 @@
 #pragma once
-#include "roq/core/types.hpp"
 #include <roq/execution_instruction.hpp>
 #include <roq/mask.hpp>
+
+#include "roq/core/types.hpp"
+#include "roq/core/empty_value.hpp"
 
 namespace roq::core {
 
@@ -26,6 +28,17 @@ struct Quote {
         return !operator==(that);
     }
 };
+
+template<>
+inline bool is_empty_value(const core::Quote& quote) {
+    if(is_empty_value(quote.price))
+        return true;
+    if(is_empty_value(quote.volume))
+        return true;
+    if(quote.volume==0.)
+        return true;
+    return false;
+}
 
 } // roq::core
 

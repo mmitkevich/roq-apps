@@ -1,6 +1,6 @@
 #pragma once
 namespace roq {
-namespace mmaker {
+namespace core {
 
 enum class PositionSource {
     UNDEFINED,
@@ -15,5 +15,5 @@ enum class PositionSnapshot {
     ACCOUNT
 };
 
-} // mmaker
+} // core
 } // roq

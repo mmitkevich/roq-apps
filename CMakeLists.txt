@@ -52,7 +52,7 @@ find_package(roq-logging REQUIRED)
 find_package(tomlplusplus REQUIRED)
 find_package(roq-flags REQUIRED)
 
-add_compile_options(-DUMM_USE_ROQ -DUMM_USE_ABSL -DUMM_USE_TOML)
+#add_compile_options(-DUMM_USE_ROQ -DUMM_USE_ABSL -DUMM_USE_TOML)
 
 #find_package(umm REQUIRED)
 
@@ -64,7 +64,12 @@ include_directories("${CMAKE_SOURCE_DIR}/src")
 
 # sub-projects
 
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/core")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/config")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/pricer")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/oms")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/mmaker")
+
 
 install(
   TARGETS roq-mmaker-app
