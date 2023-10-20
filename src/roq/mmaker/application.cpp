@@ -16,7 +16,7 @@
 #include <memory>
 #include <roq/client/config.hpp>
 #include <roq/logging.hpp>
-#include "roq/config/toml_config.hpp"
+#include "roq/config/toml_file.hpp"
 
 using namespace std::chrono_literals;
 using namespace std::literals;
@@ -69,15 +69,23 @@ void Application::dispatch(roq::client::Config::Handler &handler) const {
     };*/
 }
 
+void Application::operator()(roq::Event<roq::ParametersUpdate> const & event) {
+
+}
+    
 
 int Application::main(args::Parser const &parser) {
   
-  this->strategy = Flags::strategy();
+  strategy_name = Flags::strategy();
   auto config_file = Flags::config_file();
-  log::info<1>("using strategy={} config_file={}", strategy, config_file);
+  
+  log::info<1>("using strategy={} config_file={}", strategy_name, config_file);
+
+  config.load(config_file);
 
   client::flags::Settings settings {parser};
-  client::Trader{settings, *this, parser.params()}.template dispatch<Strategy>(*this);
+  
+  client::Trader{settings,/*client::Config=*/ *this, /* argv */parser.params()}.template dispatch<Strategy>(/*context*/*this);
   return EXIT_SUCCESS;
 }
 

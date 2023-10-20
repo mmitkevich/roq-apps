@@ -2,27 +2,31 @@
 
 #pragma once
 
+#include <roq/parameters_update.hpp>
 #include <string_view>
 #include <span>
 #include <roq/service.hpp>
 #include <roq/client.hpp>
-#include "roq/config/toml_config.hpp"
+#include "roq/config/manager.hpp"
 
 namespace roq::mmaker {
 
-struct Application final : roq::Service, client::Config  {
+struct Application final : roq::Service, client::Config, config::Handler  {
     using roq::Service::Service;
     
-    config::TomlConfig config;
-    std::string strategy;
+    config::Manager config;
+    std::string strategy_name;
 
     void get_markets(auto&& fn) {
-        config.get_nodes("market", [&](auto node) {
-            auto market_name = get_string(node, "market");
+        auto& toml = config.toml;
+        toml.get_nodes("market", [&](auto node) {
+            auto market_name = toml.get_string(node, "market");
             //auto market = context.get_market_ident(market_str);
             fn(market_name, node);
         });
     }
+
+    void operator()(roq::Event<roq::ParametersUpdate> const & event);
 
     void dispatch(roq::client::Config::Handler &handler) const override;
 

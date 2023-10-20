@@ -1,6 +1,6 @@
 #pragma once
 
-#include "roq/config/toml_config.hpp"
+#include "roq/config/manager.hpp"
 #include "roq/core/manager.hpp"
 #include "roq/client.hpp"
 #include "roq/core/basic_handler.hpp"
@@ -71,8 +71,17 @@ inline umm::Event<umm::DepthUpdate> DepthEventFactory::operator()(core::MarketId
 */
 
 
-struct Strategy : core::BasicHandler<Strategy>,  oms::Handler {
-    using Base = core::BasicHandler<Strategy>;
+struct Strategy final
+: core::BasicHandler < Strategy
+, oms::Handler
+, client::Handler
+, config::Handler
+> {
+    using Base = core::BasicHandler < Strategy
+    , oms::Handler
+    , client::Handler
+    , config::Handler
+    >;
     using Self = Strategy;
 
     using Base::dispatch, Base::self;
@@ -86,23 +95,19 @@ struct Strategy : core::BasicHandler<Strategy>,  oms::Handler {
     , oms(*this, dispatcher, core)
     , pricer(oms, core)
     , config(context.config)
-    , strategy(context.strategy) {}
+    , strategy_name(context.strategy_name) {
+      
+      initialize();
+    }
     
+    void initialize();
+
     ~Strategy();
 
     /// client::Handler
 
     void operator()(const Event<core::ExposureUpdate>& event);
-
-    //MarketIdent get_market_ident(std::string_view symbol, std::string_view exchange) const {
-    //    return context.get_market_ident(symbol, exchange);
-    //}
-
-    //template<class T>
-    //auto prn(const T& val) const {
-    //    return context.prn(val);
-    //}
-
+    void operator()(Event<ParametersUpdate> const& event) override;
 
     // route events
     template<class T>
@@ -137,8 +142,8 @@ private:
     core::Manager core;
     oms::Manager oms;
     pricer::Manager pricer;
-    config::TomlConfig& config;
-    std::string strategy;
+    config::Manager& config;
+    std::string strategy_name;
 };
 
 

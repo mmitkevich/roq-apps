@@ -21,7 +21,7 @@ namespace roq::config {
 
 using TomlNode = toml::node_view<const toml::node>;
 
-class TomlConfig {
+class TomlFile {
 public:    
     using Node = TomlNode;
     using Document = toml::table;
@@ -35,14 +35,14 @@ public:
     : root_(&root)
     , markets_(&markets) {}*/
     
-    TomlConfig() = default;
+    TomlFile() = default;
 
-    TomlConfig(std::string_view path)
+    TomlFile(std::string_view path)
     : root_(toml::parse_file(path))
     , path_(std::move(path)) 
     {}
 
-    TomlConfig(toml::table&& root, std::string path) 
+    TomlFile(toml::table&& root, std::string path) 
     : root_(std::move(root))
     , path_(std::move(path)) {}
 
@@ -137,7 +137,7 @@ private:
 
 
 template<class T>
-auto TomlConfig::get_value_helper(TomlNode node) const {
+auto TomlFile::get_value_helper(TomlNode node) const {
     auto opt_value =  node.template value<T>();
     if(opt_value.has_value()) {
         return opt_value.value();
@@ -147,7 +147,7 @@ auto TomlConfig::get_value_helper(TomlNode node) const {
 
 
 template<class T>
-auto TomlConfig::get_value_or(TomlNode node, T&& default_value) const -> std::decay_t<T> {
+auto TomlFile::get_value_or(TomlNode node, T&& default_value) const -> std::decay_t<T> {
     if(node)
         return get_value<std::decay_t<T>>(node);
     else 
@@ -155,13 +155,13 @@ auto TomlConfig::get_value_or(TomlNode node, T&& default_value) const -> std::de
 }
 
 template<class T>
-auto TomlConfig::get_value_or(TomlNode node, std::string_view path,  T&& default_value) const {
+auto TomlFile::get_value_or(TomlNode node, std::string_view path,  T&& default_value) const {
     return get_value_or(node.at_path(path), std::forward<T>(default_value));
 }
 
 
 template<class T>
-auto TomlConfig::get_value(TomlNode parent, std::string_view path) const {
+auto TomlFile::get_value(TomlNode parent, std::string_view path) const {
     if(!parent[path]) {
         throw_bad_node(parent, path);
     } else {
@@ -170,7 +170,7 @@ auto TomlConfig::get_value(TomlNode parent, std::string_view path) const {
 }
 
 template<class T>
-auto TomlConfig::get_value(TomlNode node) const {
+auto TomlFile::get_value(TomlNode node) const {
     if constexpr(
             std::is_same_v<roq::core::Double, T> || 
             std::is_same_v<roq::core::Price, T> ||
@@ -200,7 +200,7 @@ auto TomlConfig::get_value(TomlNode node) const {
 
 
 template<class V, class Fn>
-inline void TomlConfig::get_pairs(type_c<V>, Node parent, std::string_view key, std::string_view value, Fn&& fn) const {
+inline void TomlFile::get_pairs(type_c<V>, Node parent, std::string_view key, std::string_view value, Fn&& fn) const {
     auto values_node = parent[value];
     auto keys_node = parent[key];
     if(!values_node || !keys_node) {
@@ -231,7 +231,7 @@ inline void TomlConfig::get_pairs(type_c<V>, Node parent, std::string_view key, 
 
 
 template<class V, class Fn>
-inline void TomlConfig::get_values(type_c<V>, Node parent, std::string_view value, Fn&& fn) const {
+inline void TomlFile::get_values(type_c<V>, Node parent, std::string_view value, Fn&& fn) const {
     auto values_node = parent[value];
     if(!values_node) {
       return;
@@ -248,12 +248,12 @@ inline void TomlConfig::get_values(type_c<V>, Node parent, std::string_view valu
 }
 
 
-inline void TomlConfig::get_nodes(TomlNode parent, std::string_view path, std::function<void(TomlNode)> fn) const {
+inline void TomlFile::get_nodes(TomlNode parent, std::string_view path, std::function<void(TomlNode)> fn) const {
     auto node = parent.at_path(path);
     return get_nodes(node, fn);
 }
 
-inline std::size_t  TomlConfig::get_size(TomlNode node) const {
+inline std::size_t  TomlFile::get_size(TomlNode node) const {
     if(!node)
         return 0;
     if(!node.is_array())
@@ -261,7 +261,7 @@ inline std::size_t  TomlConfig::get_size(TomlNode node) const {
     return node.as_array()->size();
 }
 
-inline void TomlConfig::get_nodes(TomlNode node, std::function<void(TomlNode)> fn) const {
+inline void TomlFile::get_nodes(TomlNode node, std::function<void(TomlNode)> fn) const {
     std::size_t i=0;
     if(node) {
         if(node.is_array()) {
@@ -273,7 +273,7 @@ inline void TomlConfig::get_nodes(TomlNode node, std::function<void(TomlNode)> f
     }
 }
 
-inline void TomlConfig::get_fields(TomlNode parent, std::function<void(std::string_view key, TomlNode val)> fn) const {
+inline void TomlFile::get_fields(TomlNode parent, std::function<void(std::string_view key, TomlNode val)> fn) const {
     if(parent.is_table()) {
         for(auto const& kv: *parent.as_table()) {
             fn(kv.first.str(), TomlNode(kv.second));
@@ -281,7 +281,7 @@ inline void TomlConfig::get_fields(TomlNode parent, std::function<void(std::stri
     }
 }
 
-inline  std::string TomlConfig::get_string(TomlNode parent, std::string_view path) const  {
+inline  std::string TomlFile::get_string(TomlNode parent, std::string_view path) const  {
     auto node = parent.at_path(path);
     if(node) {
         return get_value_helper<std::string>(node);
@@ -289,13 +289,13 @@ inline  std::string TomlConfig::get_string(TomlNode parent, std::string_view pat
     throw_bad_node(parent, path);
 }
 
-inline std::string TomlConfig::get_string_or(Node node, std::string default_value) const {
+inline std::string TomlFile::get_string_or(Node node, std::string default_value) const {
     if(node)
         return get_value_helper<std::string>(node);
     return default_value;
 }
 
-inline std::string TomlConfig::get_string_or(Node parent, std::string_view path, std::string default_value) const {
+inline std::string TomlFile::get_string_or(Node parent, std::string_view path, std::string default_value) const {
     auto node = parent.at_path(path);
     if(node)
         return get_value_helper<std::string>(node);
@@ -303,7 +303,7 @@ inline std::string TomlConfig::get_string_or(Node parent, std::string_view path,
 }
 
 
-inline std::string TomlConfig::node_path(TomlNode node) const {
+inline std::string TomlFile::node_path(TomlNode node) const {
   if (!node)
     return "";
   const auto &src = node.node()->source();
@@ -316,7 +316,7 @@ inline std::string TomlConfig::node_path(TomlNode node) const {
   return ss.str();
 }
 
-inline void TomlConfig::throw_bad_node(TomlNode node, std::string_view what) const {
+inline void TomlFile::throw_bad_node(TomlNode node, std::string_view what) const {
   throw roq::RuntimeError("{}:{}", node_path(node), what);
 }
 

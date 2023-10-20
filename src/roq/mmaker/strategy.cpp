@@ -8,12 +8,21 @@
 #include "roq/core/exposure_update.hpp"
 #include "roq/oms/manager.hpp"
 //#include "umm/core/type/depth_array.ipp"
+#include <roq/parameters_update.hpp>
 #include <roq/top_of_book.hpp>
 
 namespace roq::mmaker {
 //using namespace umm::literals;
 
+void Strategy::initialize() {
+  config.dispatch(*this);
+}
+
 Strategy::~Strategy() {}
+
+void Strategy::operator()(Event<ParametersUpdate> const& event) {
+
+}
 
 void Strategy::operator()(const Event<Timer>  & event) {
     Base::operator()(event);  // calls dispatch
