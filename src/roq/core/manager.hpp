@@ -12,13 +12,35 @@
 
 namespace roq::core {
 
-struct Manager : core::BasicDispatch<Manager> {
+struct Manager : core::BasicDispatch<Manager> 
+{
+    using Base = core::BasicDispatch<Manager>;
 
     operator cache::Manager&() { return cache; }
     operator Gateways&() { return gateways; }
     operator Markets&() { return markets; }
     operator Portfolios&() { return portfolios; }
     //operator Accounts&() { return accounts; }
+
+    template<class T>
+    bool dispatch(const roq::Event<T> &event) {
+        Base::dispatch(event);
+        bool result = true;
+        if constexpr(std::is_invocable_v<decltype(cache), decltype(event)>) {
+          if(!cache(event))
+            result = false;
+        }
+        if constexpr(std::is_invocable_v<decltype(gateways), decltype(event)>) {
+          gateways(event);
+        }
+        if constexpr(std::is_invocable_v<decltype(markets), decltype(event)>) {
+          markets(event);        
+        }
+        if constexpr(std::is_invocable_v<decltype(portfolios), decltype(event)>) {
+          portfolios(event);        
+        }
+        return result;
+    }
 
     template<class T>
     core::MarketIdent get_market_ident (const Event<T>& event) { return markets.get_market_ident(event); }

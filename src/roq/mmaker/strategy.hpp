@@ -107,7 +107,6 @@ struct Strategy final
     /// client::Handler
 
     void operator()(const Event<core::ExposureUpdate>& event);
-    void operator()(Event<ParametersUpdate> const& event) override;
 
     // route events
     template<class T>
@@ -124,11 +123,8 @@ struct Strategy final
         }
     }
 
-    void operator()(const Event<DownloadBegin> &event);
-
     void operator()(const Event<TopOfBook> &event);
     void operator()(const Event<MarketByPriceUpdate>& event);
-    void operator()(const Event<Timer>  & event);
 
     /// IQuoter::Handler
     //void dispatch(const umm::Event<umm::QuotesUpdate> &) override;

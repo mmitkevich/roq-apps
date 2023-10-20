@@ -20,17 +20,6 @@ void Strategy::initialize() {
 
 Strategy::~Strategy() {}
 
-void Strategy::operator()(Event<ParametersUpdate> const& event) {
-
-}
-
-void Strategy::operator()(const Event<Timer>  & event) {
-    Base::operator()(event);  // calls dispatch
-
-//    UMM_TRACE("Timer recv_time_utc {} now {}", recv_time_utc, now);
-    pricer(event);
-}
-
 void Strategy::operator()(const Event<TopOfBook> &event) {
     Base::operator()(event);  // calls dispatch
 
@@ -99,39 +88,11 @@ void Strategy::operator()(const Event<MarketByPriceUpdate>& event) {
     roq::Event event_2 {event.message_info, quotes};
     pricer(event_2);
 
-    //umm::Event<umm::BestPriceUpdate> best_price_event;
-    //auto& best_price = context.best_price[market];
-    //best_price_event.header.receive_time_utc = event.message_info.receive_time_utc;
-    //best_price_event->market = market;
-
-    //log::info<2>("MarketByPrice:  market {} BestPrice {} (from MBP)", self()->prn(market), self()->prn(best_price));      
-    
     // publish to udp
     //if(publisher_)
     //    publisher_->dispatch(best_price_event);
 
 }
-
-/*
-void Strategy::dispatch(const umm::Event<umm::QuotesUpdate> &event) {
-    core::MarketIdent market = event->market;
-    context.get_market(market, [&](const auto& data) {
-      context.get_account(data.exchange, [&](std::string_view account) {
-        umm::QuotesView quotes = quoter_->get_quotes(market);
-        core::Quotes target_quotes {
-          .market = market,
-          .account = account,
-          .exchange = data.exchange,
-          .symbol = data.symbol,
-          .portfolio = "FIXME",       
-          .bids = quotes.bids,
-          .asks = quotes.asks,
-        };
-        if(order_manager_)
-          order_manager_->dispatch(target_quotes);
-      });
-    });
-}*/
 
 void Strategy::operator()(const Event<core::ExposureUpdate>& event) {
     // cache position
@@ -147,10 +108,5 @@ void Strategy::operator()(const Event<core::ExposureUpdate>& event) {
 }
 
 
-
-void Strategy::operator()(const Event<DownloadBegin> &event) {
-  Base::operator()(event);
-  //umm_mbp_snapshot_sent_.clear();
-}
 
 } // namespace roq::mmaker
