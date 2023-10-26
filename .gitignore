@@ -2,4 +2,4 @@
 build/**
 **/contrib/**
 **/compile_commands.json
-**/_garbage
+**/_trash
