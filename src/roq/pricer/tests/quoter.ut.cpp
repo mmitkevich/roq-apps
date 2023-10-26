@@ -1,3 +1,4 @@
+// (c) copyright 2023 Mikhail Mitkevich
 #include "roq/pricer/pricer.hpp"
 #include "roq/core/manager.hpp"
 #include "roq/pricer/aggr/sum.hpp"

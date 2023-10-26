@@ -1,3 +1,4 @@
+# (c) copyright 2023 Mikhail Mitkevich
 set(TARGET_NAME "${PROJECT_NAME}-app")
 
 

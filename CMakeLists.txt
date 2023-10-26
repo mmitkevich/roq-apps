@@ -14,7 +14,7 @@ if(DEFINED ENV{CONDA_PREFIX} AND NOT DEFINED ENV{CONDA_BUILD})
   set(CMAKE_FIND_ROOT_PATH $ENV{CONDA_PREFIX})
 endif()
 
-option(SANITIZE_BUILD "SANITIZE BUILD" OFF)
+option(SANITIZE_BUILD "SANITIZE BUILD" ON)
 
 add_compile_options(-ftemplate-backtrace-limit=0)
 

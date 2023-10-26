@@ -4,6 +4,7 @@
 #include <roq/parameter.hpp>
 #include <roq/parameters_update.hpp>
 #include <roq/string_types.hpp>
+#include <roq/client/config.hpp>
 
 namespace roq::config {
 
@@ -25,13 +26,15 @@ enum class ConfigType {
     TOML=1
 };
 
-struct Manager {
+struct Manager : client::Config {
     ConfigType config_type;
 
     TomlFile toml;
     std::string url;
     bool is_downloading = false;
     roq::User user;
+    
+    using Handler = config::Handler;
 
     std::vector<roq::Parameter> parameters;
 
@@ -42,6 +45,8 @@ struct Manager {
         }
     }
     
+    void dispatch(client::Config::Handler& handler) const override;
+
     // cache only
     void load(std::string_view url);
 

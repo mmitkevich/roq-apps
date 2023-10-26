@@ -1,4 +1,5 @@
 // (c) copyright 2023 Mikhail Mitkevich
+
 #pragma once
 #include <absl/container/flat_hash_map.h>
 #include <roq/client.hpp>
@@ -41,11 +42,10 @@ namespace roq::oms
 {
 
 struct Manager final 
-: core::BasicHandler<Manager, client::Handler>
-, pricer::Handler
+: core::BasicHandler<Manager, client::Handler, pricer::Handler>
 {
     using Self = Manager;
-    using Base = BasicHandler<Manager, client::Handler>;
+    using Base = BasicHandler<Manager, client::Handler, pricer::Handler>;
     using Handler = oms::Handler;
 
     using Base::dispatch;
@@ -54,11 +54,7 @@ public:
     Manager(Manager const&) = delete;
     Manager(Manager &&) = delete;
 
-    Manager(oms::Handler& handler, client::Dispatcher& dispatcher, core::Manager& core) 
-    : handler_(handler)
-    , dispatcher_(dispatcher)
-    , core_{core}
-    {}
+    Manager(oms::Handler& handler, client::Dispatcher& dispatcher, core::Manager& core);
 
     std::chrono::nanoseconds now() const { return now_; }
 
@@ -74,7 +70,8 @@ public:
     
     template<class T>
     std::pair<oms::Market&, bool> emplace_market(roq::Event<T> const& e) {
-        return emplace_market(core_.markets.emplace_market(e));
+        auto [market, is_new] = core_.markets.emplace_market(e);
+        return emplace_market(market);
     }
 
     // roq::client::Handler
@@ -134,14 +131,14 @@ private:
     std::array<char, 32> routing_id;
     absl::flat_hash_map<uint64_t, core::MarketIdent> market_by_order_;
     absl::flat_hash_map<core::MarketIdent, Market> markets_;
-    client::Dispatcher *dispatcher = nullptr;
     int source_id = 0;
     std::chrono::nanoseconds now_{};
     std::chrono::nanoseconds last_process_{};
-
+    
+    client::Dispatcher & dispatcher;
     core::Manager& core_;
     oms::Handler& handler_;
-    client::Dispatcher& dispatcher_;
+    //client::Dispatcher& dispatcher_;
 };
 
 

@@ -1,3 +1,4 @@
+// (c) copyright 2023 Mikhail Mitkevich
 #pragma once
 
 #include "roq/config/manager.hpp"
@@ -73,13 +74,13 @@ inline umm::Event<umm::DepthUpdate> DepthEventFactory::operator()(core::MarketId
 
 struct Strategy final
 : core::BasicHandler < Strategy
-, oms::Handler
 , client::Handler
+, oms::Handler
 , config::Handler
 > {
     using Base = core::BasicHandler < Strategy
-    , oms::Handler
     , client::Handler
+    , oms::Handler
     , config::Handler
     >;
     using Self = Strategy;
@@ -89,13 +90,18 @@ struct Strategy final
     Strategy(Strategy const&) = delete;
     Strategy(Strategy&&) = delete;
 
+    Strategy&operator=(Strategy const&) = delete;
+    Strategy&operator=(Strategy&&) = delete;
+
     template<class Context>
     Strategy(client::Dispatcher& dispatcher, Context& context)
     : dispatcher_(dispatcher)
+    , strategy_name(context.strategy_name)
+    , config(context.config)
+    , core()
     , oms(*this, dispatcher, core)
     , pricer(oms, core)
-    , config(context.config)
-    , strategy_name(context.strategy_name) {
+     {
       
       initialize();
     }
@@ -133,13 +139,14 @@ private:
     //core::Hash<core::MarketIdent, bool> umm_mbp_snapshot_sent_;
 private:
     client::Dispatcher& dispatcher_;
-
+    std::string strategy_name;
+    config::Manager& config;
     // components
     core::Manager core;
     oms::Manager oms;
     pricer::Manager pricer;
-    config::Manager& config;
-    std::string strategy_name;
+
+
 };
 
 

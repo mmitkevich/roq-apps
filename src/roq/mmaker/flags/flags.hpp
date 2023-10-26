@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 Mikhail Mitkevich */
+// (c) copyright 2023 Mikhail Mitkevich
 
 #pragma once
 

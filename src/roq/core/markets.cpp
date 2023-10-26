@@ -1,16 +1,31 @@
+// (c) copyright 2023 Mikhail Mitkevich
 #include "roq/core/markets.hpp" 
+#include <roq/exceptions.hpp>
 
 namespace roq::core {
 
-core::Market& Markets::emplace_market(core::Market const& market) {
-    auto market_id = market.market;
-    if(market_id==0) {
-      market_id = ++last_market_id;
-    }
-    auto &market_2 = market_by_id_[market_id] = market;
-    market_2.market = market_id;
-    market_by_symbol_by_exchange_[market.exchange][market.symbol] = market_id;
-    return market_2;
+std::pair<core::Market&, bool> Markets::emplace_market(core::MarketIdent market_id, std::string_view symbol, std::string_view exchange) {
+    if(0==market_id) {
+      // find by symbol/exchange index
+      market_id = get_market_ident(symbol, exchange);
+      if(0==market_id) {
+        // not found in index => new market, insert
+          market_id = ++last_market_id;
+          market_by_symbol_by_exchange_[exchange][symbol] = market_id;
+          auto &market_2 = market_by_id_[market_id];
+          market_2.symbol = symbol;
+          market_2.exchange = exchange;
+          market_2.market = market_id;      
+          return {market_2, true};
+      }
+    } 
+    // market_id !=0 => should exist
+    auto iter = market_by_id_.find(market_id);
+    if(iter==std::end(market_by_id_))
+      throw roq::RuntimeError("UNEXPECTED");
+    auto& market_2 = iter->second;
+    assert(market_2.market == market_id);
+    return {market_2, false};
 }
 
 void Markets::operator()(const Event<GatewayStatus> &event) {

@@ -1,3 +1,4 @@
+// (c) copyright 2023 Mikhail Mitkevich
 #pragma once
 #include "string_view"
 //#include "umm/core/type.hpp"
@@ -23,22 +24,18 @@ struct Markets : core::BasicDispatch<Markets> {
         }
     }
 
-    core::Market &emplace_market(core::Market const& arg);
+    std::pair<core::Market&, bool> emplace_market(core::MarketIdent market_id, std::string_view symbol, std::string_view exchange);
 
     // helper
     template<class T>
-    core::Market &emplace_market(roq::Event<T> const& e) {
+    std::pair<core::Market&, bool> emplace_market(roq::Event<T> const& e) {
         auto & u = e.value;
-        auto source = e.message_info.source;
-        core::Market market {
-            .symbol = u.symbol, 
-            .exchange = u.exchange, 
-            .mdata_gateway_id = source,
-            .mdata_gateway_name = e.message_info.source_name,
-            .trade_gateway_id = source,
-            .trade_gateway_name = e.message_info.source_name,
-        }; 
-        return emplace_market(market);
+        auto [market, is_new] = emplace_market(0, u.symbol, u.exchange);
+        if(is_new) {
+            market.mdata_gateway_id = market.trade_gateway_id = e.message_info.source;
+            market.mdata_gateway_name = market.trade_gateway_name = e.message_info.source_name;
+        }
+        return {market, is_new};
     }
 
     using Base::operator();

@@ -1,3 +1,4 @@
+// (c) copyright 2023 Mikhail Mitkevich
 #pragma once
 
 #include "roq/event.hpp"
@@ -20,7 +21,7 @@ struct BasicDispatch : Bases... {
   
 };
 
-template<class Self, class Iface = roq::client::Handler, class...Bases>
+template<class Self, class Iface, class...Bases>
 struct BasicHandler : Iface, Bases... {
 public:
   Self* self() { return static_cast<Self*>(this); }

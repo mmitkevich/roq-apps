@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 Mikhail Mitkevich */
+// (c) copyright 2023 Mikhail Mitkevich
 //#include "umm/prologue.hpp"
 #include "roq/client.hpp"
 
@@ -36,44 +36,6 @@ LogLevel get_log_level_from_env() {
 namespace roq {
 namespace mmaker {
 
-void Application::dispatch(roq::client::Config::Handler &handler) const {
-    using namespace std::literals;
-    //log::info<1>("Config::dispatch"sv);
-
-
-    handler(client::Symbol{
-        .regex = ".*",
-        .exchange = ".*"
-    });
-    
-    handler(client::Account { .regex = ".*" });
-
-    handler(client::Settings {
-        .order_cancel_policy = OrderCancelPolicy::BY_ACCOUNT
-    });
-
-    /*markets_.get_markets([&](const auto& data) {
-        log::info<1>("symbol={}, exchange={}, market {}"sv, data.symbol, data.exchange, this->markets(data.market));
-        handler(client::Symbol {
-            .regex = data.symbol,
-            .exchange = data.exchange
-        });
-    });*/
-
-
-    /*for(auto& [exchange, account]: accounts_) {
-        log::info<1>("account {} exchange {}"sv, account, exchange);
-        handler(client::Account {
-            .regex = account
-        });
-    };*/
-}
-
-void Application::operator()(roq::Event<roq::ParametersUpdate> const & event) {
-
-}
-    
-
 int Application::main(args::Parser const &parser) {
   
   strategy_name = Flags::strategy();
@@ -85,7 +47,7 @@ int Application::main(args::Parser const &parser) {
 
   client::flags::Settings settings {parser};
   
-  client::Trader{settings,/*client::Config=*/ *this, /* argv */parser.params()}.template dispatch<Strategy>(/*context*/*this);
+  client::Trader{settings, config, /* argv */parser.params()}.template dispatch<Strategy>(/*context*/*this);
   return EXIT_SUCCESS;
 }
 

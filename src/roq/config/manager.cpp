@@ -1,9 +1,13 @@
+#include <string_view>
+
 #include "roq/config/manager.hpp"
 #include <roq/message_info.hpp>
 #include <roq/parameter.hpp>
 #include <roq/parameters_update.hpp>
 
 namespace roq::config {
+
+using namespace std::literals;
 
 bool Query::operator()(roq::Parameter const& item) const {
     if(!label.empty() && item.label!=label)
@@ -57,6 +61,32 @@ void Manager::operator()(roq::Event<roq::ParametersUpdate> const & event) {
             parameters.push_back(u);
         }
     }
+}
+
+
+void Manager::dispatch(client::Config::Handler& handler) const {
+    handler(client::Settings {
+        .order_cancel_policy = OrderCancelPolicy::BY_ACCOUNT
+    });
+
+    toml.get_nodes("market", [&](auto node) {
+        std::string exchange = toml.get_string(node, "exchange"sv);
+        std::string symbol = toml.get_string(node, "symbol"sv);
+        
+        log::info<1>("config::Manager::dispatch symbol={}, exchange={}"sv, symbol, exchange);
+        handler(client::Symbol {
+            .regex = symbol,
+            .exchange = exchange
+        });
+    });
+    toml.get_nodes("account", [&](auto node) {
+        std::string account = toml.get_string(node, "account"sv);
+        std::string exchange = toml.get_string(node, "exchange"sv);
+        log::info<1>("config::Manager::dispatch account {} exchange {}"sv, account, exchange);
+        handler(client::Account {
+            .regex = account
+        });
+    });
 }
 
 } // roq::config

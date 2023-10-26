@@ -1,3 +1,4 @@
+// (c) copyright 2023 Mikhail Mitkevich
 #pragma once
 #include "roq/core/types.hpp"
 #include <roq/request_type.hpp>

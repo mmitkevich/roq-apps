@@ -1,3 +1,4 @@
+// (c) copyright 2023 Mikhail Mitkevich
 #pragma once
 
 #include "roq/core/basic_handler.hpp"
@@ -32,7 +33,7 @@ struct Manager : core::Handler {
 
     pricer::Node *get_node(core::MarketIdent market);
 
-    std::pair<pricer::Node&, bool> emplace_node(core::MarketIdent market, pricer::Node&& node = {});
+    std::pair<pricer::Node&, bool> emplace_node(core::MarketIdent market);
     
     void operator()(const roq::Event<roq::MarketStatus>&);
     void operator()(const roq::Event<roq::Timer> &);
@@ -53,7 +54,7 @@ public:
     void target_quotes(Node& node);
   public:
     core::Manager& core; 
-    pricer::Handler& handler;
+    pricer::Handler* handler;
     core::Hash<core::MarketIdent, pricer::Node> nodes;
     core::Hash<core::MarketIdent, std::vector<core::MarketIdent> > paths;
 };

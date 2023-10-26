@@ -22,20 +22,29 @@
 #include <roq/trade_update.hpp>
 #include "roq/core/clock.hpp"
 #include "roq/mmaker/flags/flags.hpp"
+#include "roq/logging.hpp"
 
 namespace roq::oms {
+
+Manager::Manager(oms::Handler& handler, client::Dispatcher& dispatcher, core::Manager& core) 
+: handler_(handler)
+, dispatcher(dispatcher)
+, core_{core}
+{
+    log::debug<2>("oms::Manager this={}", (void*)this);
+}
 
 
 void Manager::operator()(roq::Event<core::TargetQuotes> const & event) {
     auto& target_quotes = event.value;
+    log::info<2>("TargetQuotes {}", target_quotes);    
     auto [market,is_new] = emplace_market(event);
-    assert(!is_new);
-
-    market.account = target_quotes.account;
-    market.exchange = target_quotes.exchange;
-    market.symbol = target_quotes.symbol;
-
-    log::info<2>("TargetQuotes {}", target_quotes);
+    //assert(!is_new);
+    if(is_new) {
+        market.account = target_quotes.account;
+    }
+    assert(market.exchange == target_quotes.exchange);
+    assert(market.symbol == target_quotes.symbol);
 
     for(auto& [price_index, quote]: market.bids) {
         quote.target_quantity = 0;
@@ -299,7 +308,7 @@ oms::Order& Manager::create_order(oms::Market& market, const core::TargetOrder& 
         order_id, order.pending.version, target.side, target.price, target.quantity, 
         market.symbol, market.exchange, market.market, market.account, 
         create_order.execution_instructions);
-    dispatcher->send(create_order, source_id);
+    dispatcher.send(create_order, source_id);
     return order;
 }
 
@@ -328,7 +337,7 @@ void Manager::modify_order(oms::Market& market, oms::Order& order, const core::T
     
     order.expected = order.pending;
 
-    dispatcher->send(modify_order, source_id);
+    dispatcher.send(modify_order, source_id);
 }
 
 void Manager::cancel_order(oms::Market& market, oms::Order& order) {
@@ -353,7 +362,7 @@ void Manager::cancel_order(oms::Market& market, oms::Order& order) {
     
     order.expected = order.pending;
 
-    dispatcher->send(cancel_order, source_id);
+    dispatcher.send(cancel_order, source_id);
 }
 
 

@@ -1,1 +1,3 @@
-Copyright (c) 2023 Mikhail Mitkevich
+(c) copyright 2023 Mikhail Mitkevich
+
+see [LICENSE](./LICENSE)

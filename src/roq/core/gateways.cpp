@@ -1,3 +1,4 @@
+// (c) copyright 2023 Mikhail Mitkevich
 #include "roq/core/gateways.hpp"
 #include <roq/message_info.hpp>
 

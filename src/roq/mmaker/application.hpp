@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 Mikhail Mitkevich */
+// (c) copyright 2023 Mikhail Mitkevich
 
 #pragma once
 
@@ -11,7 +11,7 @@
 
 namespace roq::mmaker {
 
-struct Application final : roq::Service, client::Config, config::Handler  {
+struct Application final : roq::Service {
     using roq::Service::Service;
     
     config::Manager config;
@@ -27,8 +27,6 @@ struct Application final : roq::Service, client::Config, config::Handler  {
     }
 
     void operator()(roq::Event<roq::ParametersUpdate> const & event);
-
-    void dispatch(roq::client::Config::Handler &handler) const override;
 
     int main(args::Parser const &) override;
 };

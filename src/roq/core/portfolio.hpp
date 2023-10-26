@@ -3,6 +3,7 @@
 #include <memory>
 #include <roq/string_types.hpp>
 #include "roq/core/types.hpp"
+// (c) copyright 2023 Mikhail Mitkevich
 #include "roq/core/hash.hpp"
 
 

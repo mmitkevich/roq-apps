@@ -1,3 +1,4 @@
+// (c) copyright 2023 Mikhail Mitkevich
 #include "roq/core/types.hpp"
 #include "roq/pricer/manager.hpp"
 #include "roq/pricer/aggr/sum.hpp"
@@ -8,7 +9,7 @@
 namespace roq::pricer {
 
 Manager::Manager(pricer::Handler& handler, core::Manager& core ) 
-: handler(handler) 
+: handler(&handler) 
 , core(core)
 {}
 
@@ -30,8 +31,13 @@ void Manager::operator()(const roq::Event<roq::MarketStatus>&) {
 void Manager::operator()(const Event<core::Quotes> &event) {
     auto & quotes = event.value;
     auto [node, is_new] = emplace_node(quotes.market);
-    node.bid = quotes.bids[0];
-    node.ask = quotes.asks[0];
+    node.bid = { .price = quotes.bids.empty() ? core::Price{} : quotes.bids[0].price, .volume = 1 };
+    node.ask = { .price = quotes.asks.empty() ? core::Price{}  : quotes.asks[0].price, .volume = 1 };
+
+    log::debug<2>("pricer::Quotes Node market={} symbol={} exchange={} bid={} ask={}",node.market, quotes.symbol, quotes.exchange, node.bid, node.ask);
+    
+    target_quotes(node);
+/*
     /// compute dependents and publish
     get_path(quotes.market, [&](core::MarketIdent item) {
         bool changed = false;
@@ -44,16 +50,20 @@ void Manager::operator()(const Event<core::Quotes> &event) {
             target_quotes(node);
         }
     });
+*/        
 }
 
 void Manager::target_quotes(Node& node) {
+    assert(node.market!=0);
     core::TargetQuotes quotes {
+        .market = node.market,
         .bids = std::span {&node.bid, 1}, 
         .asks = std::span {&node.ask, 1}
     };
-    roq::MessageInfo info;
+    roq::MessageInfo info {};
     roq::Event event {info, quotes};
-    handler(event);
+    log::debug<2>("pricer::handler={}",(void*)handler);
+    (*handler)(event);
 }
 
 Node *Manager::get_node(core::MarketIdent market) {
@@ -63,8 +73,11 @@ Node *Manager::get_node(core::MarketIdent market) {
   return nullptr;
 }
 
-std::pair<Node&, bool> Manager::emplace_node(core::MarketIdent market, Node&& node) {
-  auto [iter, is_new] = nodes.try_emplace(market, std::move(node));
+std::pair<Node&, bool> Manager::emplace_node(core::MarketIdent market_id) {
+  auto [iter, is_new] = nodes.try_emplace(market_id);
+  if(is_new) {
+    iter->second.market = market_id;
+  }
   return {iter->second, is_new};
 }
 

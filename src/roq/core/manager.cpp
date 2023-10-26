@@ -1,3 +1,4 @@
+// (c) copyright 2023 Mikhail Mitkevich
 #include "roq/core/manager.hpp"
 //#include "roq/cache/market_cache.hpp"
 

@@ -1,3 +1,4 @@
+// (c) copyright 2023 Mikhail Mitkevich
 #include "roq/mmaker/strategy.hpp"
 #include "roq/core/best_price_source.hpp"
 #include "roq/core/gateways.hpp"
@@ -44,6 +45,8 @@ void Strategy::operator()(const Event<TopOfBook> &event) {
 
     core::Quotes quotes {
         .market = market_id,
+        .exchange = u.exchange,        
+        .symbol = u.symbol,
         .bids = std::span { &bid, 1},
         .asks = std::span { &ask, 1}
     };
@@ -82,6 +85,8 @@ void Strategy::operator()(const Event<MarketByPriceUpdate>& event) {
     };
     core::Quotes quotes {
       .market = market_id,
+      .exchange = u.exchange,      
+      .symbol = u.symbol,
       .bids = std::span { &bid, 1},
       .asks = std::span { &ask, 1}
     };
