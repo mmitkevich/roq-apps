@@ -71,7 +71,7 @@ public:
     template<class T>
     std::pair<oms::Market&, bool> emplace_market(roq::Event<T> const& e) {
         auto [market, is_new] = core_.markets.emplace_market(e);
-        return emplace_market(market);
+        return this->emplace_market(market);
     }
 
     // roq::client::Handler
@@ -131,6 +131,7 @@ private:
     std::array<char, 32> routing_id;
     absl::flat_hash_map<uint64_t, core::MarketIdent> market_by_order_;
     absl::flat_hash_map<core::MarketIdent, Market> markets_;
+    absl::flat_hash_map<roq::Exchange, roq::Account> account_by_exchange_;
     int source_id = 0;
     std::chrono::nanoseconds now_{};
     std::chrono::nanoseconds last_process_{};
@@ -146,9 +147,17 @@ template<class Config, class Node>
 void oms::Manager::configure(const Config& config, Node node) {
     this->position_snapshot = config.get_value_or(node, "position_snapshot", core::PositionSnapshot::PORTFOLIO);
     this->position_source = config.get_value_or(node, "position_source", core::PositionSource::ORDERS);
-    this->portfolio = config.get_value_or(node, "portfolio", core::PortfolioIdent{});
+    std::string_view portfolio = config.get_string_or(node, "portfolio", {});
+    // FIXME:
+    // this->portfolio  = portfolio;
+
     this->reject_timeout_ = std::chrono::nanoseconds { uint64_t(
         std::max(core::Double(100.0), config.get_value_or(node, "reject_timeout_ms", core::Double(1000.0))*1E6)) };
+    config.get_nodes(node, "account", [&](auto node) {
+        roq::Exchange exchange = config.get_string_or(node, "exchange", {});
+        roq::Account account = config.get_string_or(node, "account", {});
+        account_by_exchange_[exchange] = account;
+    });
 }
 
 

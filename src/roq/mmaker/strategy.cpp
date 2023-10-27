@@ -16,7 +16,7 @@ namespace roq::mmaker {
 //using namespace umm::literals;
 
 void Strategy::initialize() {
-  config.dispatch(*this);
+  config.configure(*this);
 }
 
 Strategy::~Strategy() {}
@@ -45,8 +45,8 @@ void Strategy::operator()(const Event<TopOfBook> &event) {
 
     core::Quotes quotes {
         .market = market_id,
+        .symbol = u.symbol,        
         .exchange = u.exchange,        
-        .symbol = u.symbol,
         .bids = std::span { &bid, 1},
         .asks = std::span { &ask, 1}
     };
@@ -85,8 +85,8 @@ void Strategy::operator()(const Event<MarketByPriceUpdate>& event) {
     };
     core::Quotes quotes {
       .market = market_id,
+      .symbol = u.symbol,      
       .exchange = u.exchange,      
-      .symbol = u.symbol,
       .bids = std::span { &bid, 1},
       .asks = std::span { &ask, 1}
     };

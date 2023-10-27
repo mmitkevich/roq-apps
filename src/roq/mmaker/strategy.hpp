@@ -108,6 +108,11 @@ struct Strategy final
     
     void initialize();
 
+    template<class Config, class Node>
+    void configure(Config& config, Node node) {
+      oms.configure(config, node); 
+    }
+
     ~Strategy();
 
     /// client::Handler

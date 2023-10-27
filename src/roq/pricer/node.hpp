@@ -3,6 +3,7 @@
 
 #include "roq/core/quote.hpp"
 #include "roq/pricer/compute.hpp"
+#include <roq/string_types.hpp>
 
 namespace roq::pricer {
 
@@ -14,7 +15,10 @@ struct Node {
         void *ctx; // user context
     };
 
-    core::MarketIdent market; // publish into    
+    core::MarketIdent market; // receive from or publish into
+    roq::Symbol symbol;
+    roq::Exchange exchange;
+
     core::Quote bid;
     core::Quote ask;
     core::Double exposure;

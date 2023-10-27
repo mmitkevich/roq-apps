@@ -19,7 +19,7 @@ void Manager::operator()(const Event<roq::Timer> &event) {
 
 void Manager::operator()(const Event<core::ExposureUpdate> &event) {
     for(auto& exposure : event.value.exposure) {
-        auto [node, is_new] = emplace_node(exposure.market);
+        auto [node, is_new] = emplace_node(exposure.market, exposure.symbol, exposure.exchange);
         node.exposure = exposure.exposure;
     }
 }
@@ -30,7 +30,7 @@ void Manager::operator()(const roq::Event<roq::MarketStatus>&) {
 
 void Manager::operator()(const Event<core::Quotes> &event) {
     auto & quotes = event.value;
-    auto [node, is_new] = emplace_node(quotes.market);
+    auto [node, is_new] = emplace_node(quotes.market, quotes.symbol, quotes.exchange);
     node.bid = { .price = quotes.bids.empty() ? core::Price{} : quotes.bids[0].price, .volume = 1 };
     node.ask = { .price = quotes.asks.empty() ? core::Price{}  : quotes.asks[0].price, .volume = 1 };
 
@@ -57,6 +57,8 @@ void Manager::target_quotes(Node& node) {
     assert(node.market!=0);
     core::TargetQuotes quotes {
         .market = node.market,
+        .symbol = node.symbol,
+        .exchange = node.exchange,
         .bids = std::span {&node.bid, 1}, 
         .asks = std::span {&node.ask, 1}
     };
@@ -73,10 +75,13 @@ Node *Manager::get_node(core::MarketIdent market) {
   return nullptr;
 }
 
-std::pair<Node&, bool> Manager::emplace_node(core::MarketIdent market_id) {
+std::pair<Node&, bool> Manager::emplace_node(core::MarketIdent market_id, std::string_view symbol, std::string_view exchange) {
   auto [iter, is_new] = nodes.try_emplace(market_id);
   if(is_new) {
-    iter->second.market = market_id;
+    auto& r = iter->second;
+    r.market = market_id;
+    r.symbol = symbol;
+    r.exchange = exchange;
   }
   return {iter->second, is_new};
 }

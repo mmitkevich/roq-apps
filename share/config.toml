@@ -1,0 +1,95 @@
+################ M A R K E T S #################
+[[market]]
+    market          = "BTC.Q4@deribit"
+    symbol          = "BTC-27OCT23"
+    exchange        = "deribit"
+    tick_size       = 0.01
+    mdata_gateway   = "deribit"
+    trade_gateway   = "deribit"
+
+[[market]]
+    market          = "BTC.P@deribit"
+    symbol          = "BTC-PERPETUAL"
+    exchange        = "deribit"
+    tick_size       = 0.01
+    mdata_gateway   = "deribit"
+    trade_gateway   = "deribit"
+
+################### M O D E L ##################
+[[parameter]]
+    model           = "MData"
+    market          = [ "BTC.P@deribit",    "BTC.4Q@deribit" ]
+    #FxMarket       = [ "",                "" ]
+    #FxAdjType      = [ "MULTIPLY"   ] # "DIVIDE"
+    #FxMult         = [ 1.0 ]
+
+[[parameter]]
+    model           = "Mixer"
+    target_market   = "BTC.Q4@deribit"
+
+# TheoRatio =  Sum(Weight*MarkPrice/UnderlyingPrice/Multiplier)/Sum(Weight)
+
+    market              = [ "BTC.Q4@deribit",        "BTC.P@deribit" ]
+    underlying_market   = [ "BTC.P@deribit",         "BTC.P@deribit" ]
+        
+    # optional with default Weight=1
+    Weight              = [ 1,                       0 ]                 
+    
+    # optional with default Multiplier=1
+#    Multiplier          = [ 1000 ]              
+    
+    # optional with default UnderlyingPrice = 1
+
+
+# MeanTheoRatio = EMA(TheoRatio, Lambda)
+    Lambda          = 1.0                       # optional, default Lambda = 1
+    
+    MinSpread       = 100 #BP
+    # MaxSpread       = nan
+
+[[parameter]]
+    model           = "Shifter"
+    portfolio       = "P101"    # used to calculate the exposure
+
+    market          = [ "BTC.P@deribit",        "BTC.Q4@deribit"]
+
+    BuyVolume       = [ 5,                      5               ]
+    SellVolume      = [ 5,                      5               ]
+
+    # exposure weights
+    Beta            = [ 1.0,                    1.0             ]
+
+    MaxDelta        = [ 10,                     10              ]
+    MinDelta        = [ -10,                    -10             ]
+
+    ShiftPrice      = [ 0.5,                    0.5             ]
+    ShiftVolume     = [ 100,                    100             ]
+
+[[parameter]]
+    model                   = "SingleQuoter"
+    market                  = "BTC.Q4@deribit"
+    QuotingEnabled          = true
+    MoveThreshold           = 0
+#    AggressionThreshold    = 3
+    PostOnly                = true
+
+############# P O S I T I O N S ################
+[[position]]
+    portfolio               = "P101"
+    market                  = [ "BTC.P@deribit",        "BTC.Q4@deribit" ]
+    position                = [ 0.0,                    0.0              ]
+
+[[account]]
+    account                 = "A1"
+    exchange                = "deribit"
+
+[[model]]
+    model           = "MarketMixer"
+    Units           = "BP"           # "BP", "PRICE", "TICK"
+    DeltaMode       = "PORTFOLIO"      # individual
+
+[[strategy]]
+    strategy        = "MarketMixer@deribit"
+    model           = "MarketMixer"
+    portfolio       = "P101"
+    market          = [ "BTC.P@deribit" ]

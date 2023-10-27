@@ -9,9 +9,9 @@ namespace roq::core {
 
 struct Quotes  {
     core::MarketIdent market {};
-    std::string_view account {};
+    std::string_view symbol {};    
     std::string_view exchange {};
-    std::string_view symbol {};
+    std::string_view account {};
     std::string_view portfolio {};
     std::span<const Quote> bids = {};
     std::span<const Quote> asks = {};

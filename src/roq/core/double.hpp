@@ -8,7 +8,9 @@ namespace roq::core {
 
 struct Double  {
     double value {NAN};
-        
+    
+    using value_type = double;
+
     constexpr Double() = default;
     template<class T>
     constexpr Double(T val) : value(val) {}

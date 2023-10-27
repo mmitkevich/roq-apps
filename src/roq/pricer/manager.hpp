@@ -33,7 +33,7 @@ struct Manager : core::Handler {
 
     pricer::Node *get_node(core::MarketIdent market);
 
-    std::pair<pricer::Node&, bool> emplace_node(core::MarketIdent market);
+    std::pair<pricer::Node&, bool> emplace_node(core::MarketIdent market, std::string_view symbol, std::string_view exchange);
     
     void operator()(const roq::Event<roq::MarketStatus>&);
     void operator()(const roq::Event<roq::Timer> &);

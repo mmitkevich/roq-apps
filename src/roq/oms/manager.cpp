@@ -1,6 +1,7 @@
 // (c) copyright 2023 Mikhail Mitkevich
 #include "roq/core/exposure.hpp"
 #include "roq/core/exposure_update.hpp"
+#include "roq/core/hash.hpp"
 #include "roq/core/order.hpp"
 #include "roq/core/position_source.hpp"
 //#include "umm/prologue.hpp"
@@ -40,9 +41,17 @@ void Manager::operator()(roq::Event<core::TargetQuotes> const & event) {
     log::info<2>("TargetQuotes {}", target_quotes);    
     auto [market,is_new] = emplace_market(event);
     //assert(!is_new);
-    if(is_new) {
+    
+    // FIXME
+    //if(is_new) {
+    if(!target_quotes.account.empty())
         market.account = target_quotes.account;
-    }
+    else
+        core::hash_get_value(account_by_exchange_, market.exchange, [&](auto& account) {
+            market.account = account;
+        });
+    //}
+
     assert(market.exchange == target_quotes.exchange);
     assert(market.symbol == target_quotes.symbol);
 
