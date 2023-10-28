@@ -24,6 +24,7 @@ target_link_libraries("${TARGET_NAME}" PRIVATE  ${PROJECT_NAME}-flags
   roq-mmaker-core
   roq-mmaker-config  
   roq-mmaker-pricer
+  roq-mmaker-pricer-ops
   roq-mmaker-oms
   )
 

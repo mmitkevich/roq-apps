@@ -65,6 +65,11 @@ public:
     std::string get_string_or(Node node, std::string default_value) const;
     std::string get_string_or(Node node, std::string_view path, std::string default_value) const;
 
+    template<class V>
+    void operator()(V& value, Node node, std::string_view path) const {
+        value = get_value_or(node, path, value);
+    }
+    
     // extract attribute
     template<class V> 
     auto get_value(Node node, std::string_view path) const;

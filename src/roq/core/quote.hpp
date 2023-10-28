@@ -10,7 +10,8 @@ namespace roq::core {
 
 struct Quote {
     Price price {};
-    Volume volume {};        
+    Volume volume {};     
+       
     roq::Mask<roq::ExecutionInstruction> exec_inst {}; // TAKER/MAKER
 
     bool empty() const { return core::is_empty_value(price); }

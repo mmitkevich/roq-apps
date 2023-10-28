@@ -18,3 +18,14 @@
 [[account]]
     account                 = "A1"
     exchange                = "deribit"
+
+[[model]]
+    model           = "MarketMixer"
+    Units           = "BP"           # "BP", "PRICE", "TICK"
+    DeltaMode       = "PORTFOLIO"      # individual
+
+[[strategy]]
+    strategy        = "MarketMixer@deribit"
+    model           = "MarketMixer"
+    portfolio       = "P101"
+    market          = [ "BTC.P@deribit" ]

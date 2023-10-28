@@ -11,11 +11,15 @@
 //#include "umm/core/type/depth_array.ipp"
 #include <roq/parameters_update.hpp>
 #include <roq/top_of_book.hpp>
+#include "roq/pricer/factory.hpp"
 
 namespace roq::mmaker {
 //using namespace umm::literals;
 
 void Strategy::initialize() {
+
+  pricer::Factory::initialize_all();
+
   config.configure(*this);
 }
 

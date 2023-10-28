@@ -54,6 +54,8 @@ struct Markets : core::BasicDispatch<Markets> {
             core::MarketIdent market = context.get_market_ident(market_str);
             log::info<1>("symbol {}, exchange {}, market {} {} mdata_gateway '{}' trade_gateway '{}'", symbol, exchange, market, "FIXME", mdata_gateway_name, trade_gateway_name);
             core::Market& item = emplace(market, symbol, exchange);
+            // FIXME:
+            //item.market = market_str;
             item.pub_price_source = config.get_value_or(market_node, "pub_price_source", core::BestPriceSource::UNDEFINED);
             item.best_price_source = config.get_value_or(market_node, "best_price_source", core::BestPriceSource::MARKET_BY_PRICE);
             item.lot_size = config.get_value_or(market_node, "lot_size", core::Volume{1.0});

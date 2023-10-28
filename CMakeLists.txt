@@ -67,6 +67,7 @@ include_directories("${CMAKE_SOURCE_DIR}/src")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/core")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/config")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/pricer")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/pricer/ops")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/oms")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/mmaker")
 

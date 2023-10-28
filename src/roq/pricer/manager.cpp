@@ -1,9 +1,8 @@
 // (c) copyright 2023 Mikhail Mitkevich
 #include "roq/core/types.hpp"
 #include "roq/pricer/manager.hpp"
-#include "roq/pricer/aggr/sum.hpp"
-#include "roq/pricer/aggr/product.hpp"
 #include <roq/message_info.hpp>
+#include <roq/parameters_update.hpp>
 //#include "roq/core/dispatcher.hpp"
 
 namespace roq::pricer {
@@ -28,13 +27,18 @@ void Manager::operator()(const roq::Event<roq::MarketStatus>&) {
 
 }
 
+void Manager::operator()(const roq::Event<roq::ParametersUpdate>& e) {
+    get_nodes([&](auto& node) {
+        node(e);
+    });
+}
+
 void Manager::operator()(const Event<core::Quotes> &event) {
     auto & quotes = event.value;
     auto [node, is_new] = emplace_node(quotes.market, quotes.symbol, quotes.exchange);
-    node.bid = { .price = quotes.bids.empty() ? core::Price{} : quotes.bids[0].price, .volume = 1 };
-    node.ask = { .price = quotes.asks.empty() ? core::Price{}  : quotes.asks[0].price, .volume = 1 };
+    node.update(quotes);
 
-    log::debug<2>("pricer::Quotes Node market={} symbol={} exchange={} bid={} ask={}",node.market, quotes.symbol, quotes.exchange, node.bid, node.ask);
+    log::debug<2>("pricer::Quotes Node market={} symbol={} exchange={} bid={} ask={}",node.market, quotes.symbol, quotes.exchange, node.quotes.bid, node.quotes.ask);
     
     target_quotes(node);
 /*
@@ -59,8 +63,8 @@ void Manager::target_quotes(Node& node) {
         .market = node.market,
         .symbol = node.symbol,
         .exchange = node.exchange,
-        .bids = std::span {&node.bid, 1}, 
-        .asks = std::span {&node.ask, 1}
+        .bids = std::span {&node.quotes.bid, 1}, 
+        .asks = std::span {&node.quotes.ask, 1}
     };
     roq::MessageInfo info {};
     roq::Event event {info, quotes};
