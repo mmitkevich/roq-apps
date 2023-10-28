@@ -13,8 +13,8 @@ namespace roq::pricer::ops {
 
 
 struct TargetSpread : pricer::Compute {
-    static constexpr std::string_view NAME = "Spread";
-    
+    static constexpr std::string_view NAME = "target_spread";
+
     struct State {
         core::Double target_spread = {};
         pricer::PriceUnits price_units = pricer::PriceUnits::UNDEFINED;

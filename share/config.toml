@@ -1,6 +1,6 @@
 ################ M A R K E T S #################
 [[market]]
-    market          = "BTC.Q4@deribit"
+    label           = "~FUT ~Q1 ~BIT" # set of labels (groups) for the symbol
     symbol          = "BTC-27OCT23"
     exchange        = "deribit"
     tick_size       = 0.01
@@ -8,7 +8,7 @@
     trade_gateway   = "deribit"
 
 [[market]]
-    market          = "BTC.P@deribit"
+    label           = "~PERP"
     symbol          = "BTC-PERPETUAL"
     exchange        = "deribit"
     tick_size       = 0.01
@@ -18,3 +18,53 @@
 [[account]]
     account                 = "A1"
     exchange                = "deribit"
+
+# set multiplier=1 for mdata node for deribit BTC-PERPETUAL contract (implicitly creates node)
+[[parameter]]
+    label           = "mdata set multiplier"
+    symbol          = "~FUT ~Q1 ~BIT" # selector: only for Q1 FUTURES for BIT
+    exchange        = "deribit"
+    value           = "1"
+
+# set target_spread to 10 bp for quote node 
+[[parameter]]
+    label           = "quote set target_spread"
+    symbol          = "BTC-PERPETUAL"
+    exchange        = "deribit"
+    value           = "bp 10"
+
+# reference mdata:deribit:BTC-PERPETUAL node from quote:deribit:BTC-PERPETUAL node with weight 0.5
+[[parameter]]
+label           = "mdata to quote deribit BTC-PERPETUAL"
+symbol          = "BTC-PERPETUAL"
+exchange        = "deribit" 
+value           = "0.5"
+
+# change quote:deribit:PERPETUAL operations to first get product of all references and then apply ema smoothing
+[[parameter]]
+label           = "quote ops"
+symbol          = "BTC-PERPETUAL"
+exchange        = "deribit"
+value           = "product ema"
+
+# change quote:deribit:PERPETUAL multiplier
+[[parameter]]
+label           = "quote set multiplier"
+symbol          = "BTC-PERPETUAL"
+exchange        = "deribit"
+value           = "bp 10"
+
+# change quote:deribit:PERPETUAL enabled
+[[parameter]]
+label           = "quote set enabled"
+symbol          = "BTC-PERPETUAL"
+exchange        = "deribit"
+value           = "true"
+
+# change quote:deribit:PERPETUAL started
+[[parameter]]
+label           = "quote set enabled"
+symbol          = "BTC-PERPETUAL"
+exchange        = "deribit"
+value           = "true"
+
