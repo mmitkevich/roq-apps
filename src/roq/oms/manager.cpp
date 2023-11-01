@@ -646,7 +646,7 @@ void Manager::operator()(roq::Event<OrderUpdate> const& event) {
     process(market);
 }
 
-std::pair<oms::Market&, bool> Manager::emplace_market(core::Market const& market) {
+std::pair<oms::Market&, bool> Manager::emplace_market(core::MarketInfo const& market) {
     auto iter = markets_.find(market.market);
     if(iter!=std::end(markets_)) {
         return {iter->second, false};

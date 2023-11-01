@@ -19,52 +19,52 @@
     account                 = "A1"
     exchange                = "deribit"
 
-# set multiplier=1 for mdata node for deribit BTC-PERPETUAL contract (implicitly creates node)
+# set parameter multiplier=1 for 'mdata.deribit:BTC.P' node
 [[parameter]]
-    label           = "mdata set multiplier"
-    symbol          = "~FUT ~Q1 ~BIT" # selector: only for Q1 FUTURES for BIT
-    exchange        = "deribit"
+    label           = "multiplier"
+    symbol          = "BTC.P"
+    exchange        = "mdata.deribit"
     value           = "1"
 
-# set target_spread to 10 bp for quote node 
+# set spread.target=10bp for 'mdata.deribit:BTC.P' node 
 [[parameter]]
-    label           = "quote set target_spread"
-    symbol          = "BTC-PERPETUAL"
-    exchange        = "deribit"
+    label           = "spread.target"
+    symbol          = "BTC.P"
+    exchange        = "mdata.deribit"
     value           = "bp 10"
 
-# reference mdata:deribit:BTC-PERPETUAL node from quote:deribit:BTC-PERPETUAL node with weight 0.5
+#  'mdata.deribit:BTC.P' node to consume 'deribit:BTC-PERPETUAL' market for market data
 [[parameter]]
-label           = "mdata to quote deribit BTC-PERPETUAL"
-symbol          = "BTC-PERPETUAL"
-exchange        = "deribit" 
-value           = "0.5"
+    label           = "mdata"
+    symbol          = "BTC.P"
+    exchange        = "mdata.deribit"
+    value           = "deribit:BTC-PERPETUAL"
 
-# change quote:deribit:PERPETUAL operations to first get product of all references and then apply ema smoothing
+# set ref to src node 'mdata.deribit:BTC.P'  from dst node 'quote.deribit:BTC.P' with weight 0.5
 [[parameter]]
-label           = "quote ops"
-symbol          = "BTC-PERPETUAL"
-exchange        = "deribit"
-value           = "product ema"
+label           = "ref.weight"
+symbol          = "BTC.P"
+exchange        = "quote.deribit"  # dst
+value           = "mdata.deribit:BTC.P 0.5" # src
 
-# change quote:deribit:PERPETUAL multiplier
+# list functions to apply to 'quote.deribit:BTC.P' node, in order
 [[parameter]]
-label           = "quote set multiplier"
-symbol          = "BTC-PERPETUAL"
-exchange        = "deribit"
-value           = "bp 10"
+label           = "func"
+symbol          = "BTC.P"
+exchange        = "quote.deribit"
+value           = "product ema shift spread"
 
-# change quote:deribit:PERPETUAL enabled
+# set parameter ema.omega=1 for 'quote.deribit:BTC.P' node
 [[parameter]]
-label           = "quote set enabled"
-symbol          = "BTC-PERPETUAL"
-exchange        = "deribit"
-value           = "true"
+label           = "ema.omega" # name of struct and name of field
+symbol          = "BTC.P"
+exchange        = "quote.deribit"
+value           = "0.001"
 
-# change quote:deribit:PERPETUAL started
+
+# set execution for 'quote.deribit:BTC.P' node to 'deribit:BTC-PERPETUAL' instrument
 [[parameter]]
-label           = "quote set enabled"
-symbol          = "BTC-PERPETUAL"
-exchange        = "deribit"
-value           = "true"
-
+label           = "exec"
+symbol          = "BTC.P"
+exchange        = "quote.deribit"
+value           = "deribit:BTC-PERPETUAL"

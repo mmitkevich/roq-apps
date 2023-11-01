@@ -1,6 +1,7 @@
 #pragma once
 
 #include "roq/core/best_quotes.hpp"
+#include "roq/core/market.hpp"
 #include "roq/core/quote.hpp"
 #include "roq/core/types.hpp"
 #include "roq/pricer/aggr_type.hpp"
@@ -39,14 +40,20 @@ struct Compute {
 
 
 struct Node {
-    core::MarketIdent market; // receive from or publish into
-    roq::Symbol symbol;
-    roq::Exchange exchange;
+    enum class Flags : uint64_t{
+        UNDEFINED       = 0,
+        MDATA_IN        = 1,  // node is used as market data input
+    };
+
+    core::Market market;            // node has 1-1 mapping to associated (input/output) market
+    //core::Market publish_market;    // FIXME: node could publish to other market ?
 
     core::BestQuotes quotes;
     core::Double exposure;
 
     core::Double multiplier {1.0};
+    
+    roq::Mask<Flags> flags {};
 
     void clear();
     // update from computed values, returns if changed

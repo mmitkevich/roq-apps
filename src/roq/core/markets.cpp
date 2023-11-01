@@ -4,17 +4,18 @@
 
 namespace roq::core {
 
-std::pair<core::Market&, bool> Markets::emplace_market(core::MarketIdent market_id, std::string_view symbol, std::string_view exchange) {
+std::pair<core::MarketInfo&, bool> Markets::emplace_market(core::Market const&market) {
+    auto market_id  = market.market;
     if(0==market_id) {
       // find by symbol/exchange index
-      market_id = get_market_ident(symbol, exchange);
+      market_id = get_market_ident(market.symbol, market.exchange);
       if(0==market_id) {
         // not found in index => new market, insert
           market_id = ++last_market_id;
-          market_by_symbol_by_exchange_[exchange][symbol] = market_id;
+          market_by_symbol_by_exchange_[market.exchange][market.symbol] = market_id;
           auto &market_2 = market_by_id_[market_id];
-          market_2.symbol = symbol;
-          market_2.exchange = exchange;
+          market_2.symbol = market.symbol;
+          market_2.exchange = market.exchange;
           market_2.market = market_id;      
           return {market_2, true};
       }

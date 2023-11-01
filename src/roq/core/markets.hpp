@@ -18,19 +18,19 @@ namespace core {
 struct Markets : core::BasicDispatch<Markets> {
     using Base = core::BasicDispatch<Markets>;
 
-    void get_markets(std::invocable<core::Market const&> auto && fn) const {
+    void get_markets(std::invocable<core::MarketInfo const&> auto && fn) const {
         for(auto& [market_id, market] : market_by_id_) {
             fn(market);
         }
     }
 
-    std::pair<core::Market&, bool> emplace_market(core::MarketIdent market_id, std::string_view symbol, std::string_view exchange);
+    std::pair<core::MarketInfo&, bool> emplace_market(core::Market const&);
 
     // helper
     template<class T>
-    std::pair<core::Market&, bool> emplace_market(roq::Event<T> const& e) {
+    std::pair<core::MarketInfo&, bool> emplace_market(roq::Event<T> const& e) {
         auto & u = e.value;
-        auto [market, is_new] = emplace_market(0, u.symbol, u.exchange);
+        auto [market, is_new] = emplace_market({.symbol=u.symbol, .exchange=u.exchange});
         if(is_new) {
             market.mdata_gateway_id = market.trade_gateway_id = e.message_info.source;
             market.mdata_gateway_name = market.trade_gateway_name = e.message_info.source_name;
@@ -53,7 +53,7 @@ struct Markets : core::BasicDispatch<Markets> {
             auto trade_gateway_name = config.get_string_or(market_node, "trade_gateway", "");
             core::MarketIdent market = context.get_market_ident(market_str);
             log::info<1>("symbol {}, exchange {}, market {} {} mdata_gateway '{}' trade_gateway '{}'", symbol, exchange, market, "FIXME", mdata_gateway_name, trade_gateway_name);
-            core::Market& item = emplace(market, symbol, exchange);
+            core::MarketInfo& item = emplace_market({.market=market, .symbol=symbol, .exchange=exchange});
             // FIXME:
             //item.market = market_str;
             item.pub_price_source = config.get_value_or(market_node, "pub_price_source", core::BestPriceSource::UNDEFINED);
@@ -74,7 +74,7 @@ struct Markets : core::BasicDispatch<Markets> {
         return get_market_ident(event.value.symbol, event.value.exchange);
     }
     
-    bool get_market(core::MarketIdent market_id, std::invocable<core::Market const&> auto&& fn) const {
+    bool get_market(core::MarketIdent market_id, std::invocable<core::MarketInfo const&> auto&& fn) const {
         auto iter = market_by_id_.find(market_id);
         if(iter != std::end(market_by_id_)) {
             const auto& item = iter->second;
@@ -98,7 +98,7 @@ public:
     core::MarketIdent last_market_id = 0;
 private:
     absl::flat_hash_map<roq::Exchange, absl::flat_hash_map<roq::Symbol, core::MarketIdent> > market_by_symbol_by_exchange_;
-    absl::node_hash_map<core::MarketIdent, core::Market> market_by_id_;
+    absl::node_hash_map<core::MarketIdent, core::MarketInfo> market_by_id_;
 };
 
 } // namespace mmaker

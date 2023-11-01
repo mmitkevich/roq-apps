@@ -4,6 +4,7 @@
 #include "roq/core/basic_handler.hpp"
 #include "roq/core/best_quotes.hpp"
 #include "roq/core/exposure.hpp"
+#include "roq/core/market.hpp"
 #include "roq/core/quotes.hpp"
 #include <roq/market_status.hpp>
 #include <roq/timer.hpp>
@@ -29,14 +30,15 @@ namespace roq::pricer {
 
 struct Node;
 
+
 struct Manager : core::Handler {
     Manager(pricer::Handler &handler, core::Manager& core);
 
     pricer::Node *get_node(core::MarketIdent market);
     const pricer::Node *get_node(core::MarketIdent market) const { return const_cast<Manager*>(this)->get_node(market); }
 
-    std::pair<pricer::Node&, bool> emplace_node(core::MarketIdent market, std::string_view symbol, std::string_view exchange);
-    
+    std::pair<pricer::Node&, bool> emplace_node(core::Market args);
+
     void operator()(const roq::Event<roq::MarketStatus>&);
     void operator()(const roq::Event<roq::Timer> &);
 

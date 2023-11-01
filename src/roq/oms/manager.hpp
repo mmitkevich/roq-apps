@@ -66,7 +66,7 @@ public:
 
 //    double get_position(std::string_view account, std::string_view symbol, std::string_view exchange);
 
-    std::pair<oms::Market&, bool> emplace_market(core::Market const& market);
+    std::pair<oms::Market&, bool> emplace_market(core::MarketInfo const& market);
     
     template<class T>
     std::pair<oms::Market&, bool> emplace_market(roq::Event<T> const& e) {

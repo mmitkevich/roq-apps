@@ -9,7 +9,7 @@ roq::Mask<roq::SupportType> Manager::expected_md_support = {};
 
 bool Manager::is_ready(core::MarketIdent market_id) const {
     bool ready = true;
-    ready &= markets.get_market(market_id, [&](const core::Market &market) {
+    ready &= markets.get_market(market_id, [&](const core::MarketInfo &market) {
         ready &= gateways.get_gateway(market.mdata_gateway_id, [&](const core::Gateway& gateway) {
             ready &= gateways.is_ready(expected_md_support, gateway.gateway_id);
             if(!ready) {
