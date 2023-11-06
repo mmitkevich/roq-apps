@@ -33,11 +33,11 @@ struct Manager : client::Config {
     std::string url;
     bool is_downloading = false;
     roq::User user;
-    
-    using Handler = config::Handler;
 
     std::vector<roq::Parameter> parameters;
 
+    Manager() = default;
+    
     void operator()(Query const& query, std::invocable<roq::Parameter const&> auto&& fn) const {
         for(auto& item : parameters) {
           if(query(item))
@@ -56,7 +56,7 @@ struct Manager : client::Config {
     // cache only
     void load(std::string_view url);
 
-    void dispatch(Handler& handler);
+    void dispatch(config::Handler& handler);
 
     // from strategy to override
     void operator()(Event<ParametersUpdate> const& event);

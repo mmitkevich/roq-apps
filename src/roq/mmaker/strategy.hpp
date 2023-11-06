@@ -93,8 +93,8 @@ struct Strategy final
     Strategy&operator=(Strategy const&) = delete;
     Strategy&operator=(Strategy&&) = delete;
 
-    template<class Context>
-    Strategy(client::Dispatcher& dispatcher, Context& context)
+    template<class Application>
+    Strategy(client::Dispatcher& dispatcher, Application& context)
     : dispatcher_(dispatcher)
     , strategy_name(context.strategy_name)
     , config(context.config)
@@ -102,7 +102,6 @@ struct Strategy final
     , oms(*this, dispatcher, core)
     , pricer(oms, core)
      {
-      
       initialize();
     }
     

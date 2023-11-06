@@ -24,7 +24,7 @@ void Factory::erase(std::string_view name) {
     g_instance_->registry_.erase(name);
 }
 
-pricer::Compute* Factory::create(std::string_view name) {
+pricer::Compute* Factory::get(std::string_view name) {
     auto iter = g_instance_->registry_.find(name);
     if(iter!=std::end(g_instance_->registry_))
         return iter->second.get();

@@ -5,7 +5,7 @@
 namespace roq::pricer {
 
 struct Factory {
-    static pricer::Compute* create(std::string_view name);
+    static pricer::Compute* get(std::string_view name);
 
    // Factory (std::initializer_list<std::pair<std::string, std::unique_ptr<pricer::Compute>>>&& il) : registry_(std::move(il)) {}
 

@@ -19,50 +19,59 @@
     account                 = "A1"
     exchange                = "deribit"
 
-# set parameter multiplier=1 for 'mdata.deribit:BTC.P' node
+#  mdata for 'mdata.deribit:BTC.P' node is 'deribit:BTC-PERPETUAL', this defines subscription
+[[parameter]]
+    label           = "mdata"
+    symbol          = "BTC.P"         # symbol in namespace
+    exchange        = "mdata.deribit" # namespace
+    value           = "deribit:BTC-PERPETUAL"
+
+# use top_of_book stream as best_price source for 'pricer:deribit:BTC.P' node
+[[parameter]]
+    label           = "mdata.best_price"
+    symbol          = "BTC.P"
+    exchange        = "mdata.deribit"
+    value           = "top_of_book" # vwap
+
+# set parameter multiplier=1 for 'pricer:deribit:BTC.P' node
 [[parameter]]
     label           = "multiplier"
     symbol          = "BTC.P"
     exchange        = "mdata.deribit"
     value           = "1"
 
-# set spread.target=10bp for 'mdata.deribit:BTC.P' node 
+# set compute pipeline for 'quote.deribit:BTC.P' node (in order)
+[[parameter]]
+    label           = "pipeline"
+    symbol          = "BTC.P"
+    exchange        = "quote.deribit"
+    value           = "product ema shift spread"
+
+# set spread:target=10bp for 'quote:deribit:BTC.P' node (spread is a compute item defined above )
 [[parameter]]
     label           = "spread.target"
     symbol          = "BTC.P"
-    exchange        = "mdata.deribit"
-    value           = "bp 10"
+    exchange        = "quote.deribit"
+    value           = "bp:10"
 
-#  'mdata.deribit:BTC.P' node to consume 'deribit:BTC-PERPETUAL' market for market data
-[[parameter]]
-    label           = "mdata"
-    symbol          = "BTC.P"
-    exchange        = "mdata.deribit"
-    value           = "deribit:BTC-PERPETUAL"
 
-# set ref to src node 'mdata.deribit:BTC.P'  from dst node 'quote.deribit:BTC.P' with weight 0.5
+# add ref to the node 'mdata.deribit:BTC.P'  from node 'quote.deribit:BTC.P' with weight 0.5
 [[parameter]]
 label           = "ref.weight"
 symbol          = "BTC.P"
-exchange        = "quote.deribit"  # dst
-value           = "mdata.deribit:BTC.P 0.5" # src
-
-# list functions to apply to 'quote.deribit:BTC.P' node, in order
-[[parameter]]
-label           = "func"
-symbol          = "BTC.P"
 exchange        = "quote.deribit"
-value           = "product ema shift spread"
+value           = "0.5 mdata.deribit:BTC.P"
 
-# set parameter ema.omega=1 for 'quote.deribit:BTC.P' node
+
+# set parameter ema.omega=1 for 'quote:deribit:BTC.P' node
 [[parameter]]
-label           = "ema.omega" # name of struct and name of field
+label           = "ema.omega" # name of compute and name of field
 symbol          = "BTC.P"
 exchange        = "quote.deribit"
 value           = "0.001"
 
 
-# set execution for 'quote.deribit:BTC.P' node to 'deribit:BTC-PERPETUAL' instrument
+# set exec for 'quote:deribit:BTC.P' node to 'deribit:BTC-PERPETUAL' instrument
 [[parameter]]
 label           = "exec"
 symbol          = "BTC.P"

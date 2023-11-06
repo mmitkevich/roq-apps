@@ -33,22 +33,29 @@ struct Context {
 
 // context is both input and output 
 struct Compute {
+    uint32_t size {0};      // of state struct    
+    uint32_t offset {0};    // of state struct in the Node's storage
     virtual ~Compute()=default;
     virtual bool operator()(pricer::Context& context, pricer::Node const& node, pricer::Manager & manager) const= 0;
     virtual bool operator()(pricer::Context& context, roq::ParametersUpdate const& ) { return false; }
 };
 
+using NodeIdent = core::MarketIdent;
 
 struct Node {
     enum class Flags : uint64_t{
         UNDEFINED       = 0,
-        MDATA_IN        = 1,  // node is used as market data input
+        INPUT           = 1,  // node is used as market data input
     };
+    // node identification
+    pricer::NodeIdent node_id;
+    roq::Symbol symbol;
+    roq::Exchange exchange;
 
-    core::Market market;            // node has 1-1 mapping to associated (input/output) market
-    //core::Market publish_market;    // FIXME: node could publish to other market ?
+    core::Market market;        // mdata (real) market  -- for input node or execution (real) market  -- for output node
 
-    core::BestQuotes quotes;
+    core::BestQuotes quotes;   // output
+
     core::Double exposure;
 
     core::Double multiplier {1.0};

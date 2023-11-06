@@ -5,6 +5,8 @@
 #include <roq/message_info.hpp>
 #include <roq/parameters_update.hpp>
 #include <ranges>
+#include <roq/string_types.hpp>
+#include "roq/pricer/factory.hpp"
 //#include "roq/core/dispatcher.hpp"
 
 namespace roq::pricer {
@@ -33,56 +35,67 @@ void Manager::operator()(const roq::Event<roq::MarketStatus>&) {
 
 }
 
+std::pair<std::string_view, std::string_view> split_prefix(std::string_view input, char sep) {
+    using namespace std::literals;
+    auto pos = input.find(sep);
+    if(pos==std::string_view::npos) {
+        return {""sv, input};
+    }
+    return {std::string_view{input.data(), pos}, std::string_view{input.data()+pos+1, input.size()-pos-1}};
+}
+
+std::vector<std::string_view> split_sep(std::string_view str, char sep) {
+    std::vector<std::string_view> result;
+    for(const auto tok : std::views::split(std::string_view{str}, sep)) {
+        result.push_back(std::string_view { tok.data(), tok.size() } );
+    }
+    return result;
+}
+
+void Manager::set_pipeline(pricer::Node & node, const std::vector<std::string_view> & pipeline) {
+    node.pipeline_size = pipeline.size();
+    uint32_t offset = 0;
+    for(uint32_t i=0; i<pipeline.size(); i++) {
+        node.pipeline[i] = pricer::Factory::get(pipeline[i]);
+        node.pipeline[i]->offset = offset;
+        offset+=node.pipeline[i]->size;
+    }
+}
+
 void Manager::operator()(const roq::Event<roq::ParametersUpdate>& e) {
-    enum Flags {
-        MDATA = 1,
-        QUOTE = 2,
-        REF = 4,
-        SET = 5,
-        APPLY = 6,
-    };
+    using namespace std::literals;    
     
-    uint64_t flags = 0;
+    log::debug("pricer: parameters_update {}"sv, e);
+
+    static constexpr std::string_view MDATA="mdata"sv, EXEC="exec"sv, REF_WEIGHT="ref.weight"sv, PIPELINE="pipeline";
 
     get_nodes([&](auto& node) {
         for(const roq::Parameter& p: e.value.parameters) {
-            pricer::Node* node = nullptr;
-            using namespace std::literals;
-            for(const auto tok : std::views::split(std::string_view{p.label}, " "sv)) {
-                auto token = std::string_view{tok.data(), tok.size()};
-                if(token == "mdata"sv) {
-                    node = &emplace_node( {
+            auto [node, is_new] = emplace_node({
                         .symbol = p.symbol,
                         .exchange = p.exchange
-                    }).first;
-                    flags |= MDATA;
-                } else if (token == "quote"sv) {
-                    roq::Symbol symbol;
-                    fmt::format_to(std::back_inserter(symbol), "{}:{}", token, p.symbol);
-
-                    node = &emplace_node( {
-                        .symbol = symbol,       // quote:BTC-PERPETUAL instead of BTC-PERPETUAL
-                        .exchange = p.exchange
-                    }).first;
-                    flags |= QUOTE;
-                } else if (token == "to"sv) {
-                    if(flags!=MDATA) {
-                        log::info("unexpected token '{}'", token);
-                        goto fail;
+                    });
+            // label = ref.weight mdata exec compute.parameter
+            for(const auto tok : std::views::split(std::string_view{p.label}, '.')) {
+                auto token = std::string_view { tok.data(), tok.size() };
+                bool is_mdata = (token == MDATA);
+                if(is_mdata || token==EXEC) {
+                    auto [exchange, symbol] = split_prefix(p.value, ':');
+                    auto [market, is_new] = core.markets.emplace_market({
+                        .symbol = symbol,
+                        .exchange = exchange
+                    });
+                    node.market = market;
+                    if(is_mdata) {
+                        node.flags |= Node::Flags::INPUT;
                     }
-                    flags |= REF;
-                } else if(token == "set"sv) {
-                    if(!(flags==MDATA || flags==QUOTE)) {
-                        log::info("unexpected token '{}'", token);
-                        goto fail;
-                    }
-                    flags |= SET;
-                } else if(token == "apply"sv) {
-                    if(!(flags==QUOTE)) {
-                        log::info("unexpected token '{}'", token);
-                    }
-                    flags |= APPLY;
-                }
+                } else if(token == REF_WEIGHT) {
+                    // TOOD: add refs
+                } else if(token == PIPELINE) {
+                    set_pipeline(node, split_sep(token, ' '));
+                } else {
+                    // TODO: change parameters
+                }   
             }
             fail:;
         }
@@ -97,7 +110,7 @@ void Manager::operator()(const Event<core::Quotes> &event) {
 
     log::debug<2>("pricer::Quotes Node market={} symbol={} exchange={} bid={} ask={}",node.market, quotes.symbol, quotes.exchange, node.quotes.bid, node.quotes.ask);
     
-    target_quotes(node);
+//    target_quotes(node);
 /*
     /// compute dependents and publish
     get_path(quotes.market, [&](core::MarketIdent item) {
@@ -137,20 +150,28 @@ Node *Manager::get_node(core::MarketIdent market) {
 }
 
 std::pair<pricer::Node&, bool> Manager::emplace_node(core::Market args) {
-    auto market_id = args.market;
-    auto [market, is_new_market] = core.markets.emplace_market(args);
-    
-    if(0==market_id)
-        market_id = market.market;
-    
-    assert(market_id);
-    
-    auto [iter, is_new_node] = nodes.try_emplace(market_id);
+    auto node_id = args.market;
+    if(node_id==0) {
+        auto iter_1 = node_by_symbol_by_exchange_.find(args.exchange);
+        if(iter_1!=std::end(node_by_symbol_by_exchange_)) {
+            auto iter_2 = iter_1->second.find(args.symbol);
+            if(iter_2!=std::end(iter_1->second)) {
+                node_id = iter_2->second;
+            }
+        }
+    }
+    if(node_id==0) {
+        node_id = ++last_node_id;
+    }
+    auto [iter, is_new_node] = nodes.try_emplace(node_id);
     auto& node = iter->second;    
     if(is_new_node) {
-        node.market = market;
+        node.exchange = args.exchange;
+        node.symbol = args.symbol;
+        node.node_id = node_id;
+        node_by_symbol_by_exchange_[node.exchange][node.symbol] = node.node_id;
     }
-  return {node, is_new_node};
+    return {node, is_new_node};
 }
 
 } // namespace roq::pricer

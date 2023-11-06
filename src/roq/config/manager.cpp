@@ -1,3 +1,4 @@
+#include <roq/update_type.hpp>
 #include <string_view>
 
 #include "roq/config/manager.hpp"
@@ -24,9 +25,18 @@ bool Query::operator()(roq::Parameter const& item) const {
 void Manager::load(std::string_view url) {
     this->url = std::string {url};
     toml = TomlFile { this->url };
+
+    toml.get_nodes("parameter", [&](auto node) {
+        roq::Parameter p;
+        p.label = toml.get_string(node, "label"sv);
+        p.symbol = toml.get_string(node, "symbol"sv);
+        p.exchange = toml.get_string(node, "exchange"sv);
+        p.value = toml.get_string(node, "exchange"sv);
+        this->parameters.push_back(p);
+    });
 }
 
-void Manager::dispatch(Handler& handler) {
+void Manager::dispatch(config::Handler& handler) {
     is_downloading = true;
     roq::ParametersUpdate update {
         .parameters = parameters,
@@ -36,6 +46,7 @@ void Manager::dispatch(Handler& handler) {
     roq::MessageInfo info;
     roq::Event event {info, update};
     handler(event);
+    parameters.clear();
     is_downloading = false;
 }
 

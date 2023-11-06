@@ -48,6 +48,8 @@ struct Manager : core::Handler {
 
     void operator()(const roq::Event<roq::ParametersUpdate>& e) override;
 public:
+    void set_pipeline(pricer::Node&node, const std::vector<std::string_view> & pipeline);
+
     bool get_path(core::MarketIdent market,  std::invocable<core::MarketIdent> auto && fn) {
         auto iter = paths.find(market);
         if(iter == std::end(paths))
@@ -72,9 +74,11 @@ public:
     }
     void target_quotes(pricer::Node& node);
   public:
+    pricer::NodeIdent last_node_id = 0;
     core::Manager& core; 
     pricer::Handler* handler;
     core::Hash<core::MarketIdent, pricer::Node> nodes;
+    absl::flat_hash_map<std::string_view, absl::flat_hash_map<std::string_view, pricer::NodeIdent> > node_by_symbol_by_exchange_;
     core::Hash<core::MarketIdent, std::vector<core::MarketIdent> > paths;
 };
 
