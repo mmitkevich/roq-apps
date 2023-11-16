@@ -44,3 +44,16 @@ Indirectly this `compute` section defines ordering of parameter structures in th
 
 This requires processing of 'compute' label before processing any of parameter updates, and requires smart reordering of the parameter update message (TODO)
 
+
+19000 100 20000 200
+18000 150 18500 230
+
+                                                A1->M->N
+mdata.deribit:BTC.P                   exposure.deribit:BTC.P
+   market deribit:BTC-PERPETUAL         portfolio A1
+                                        market deribit:BTC-PERPETUAL
+                        \               / (bid,ask=(100@19000, 200@20000)) => exposure = -200+100 = -100 @ 20000
+      type=mdata          \            / type = exposure
+                    quote.deribit:BTC.P
+                        product.mdata shift.exposure
+                                        

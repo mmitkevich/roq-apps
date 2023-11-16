@@ -4,16 +4,27 @@
 
 namespace roq::pricer::ops {
 
-bool EMA::operator()(pricer::Context& context, pricer::Node const& node, pricer::Manager & manager) const {
+bool EMA::operator()(pricer::Context& context) const {
     core::BestQuotes& q = context.quotes;
-    core::Double const& omega = node.fetch_parameter<core::Double>(context.key);
+    auto& params = context.get_parameters<Parameters>();
     
-    core::Quote const& bid = node.quotes.bid;
-    core::Quote const& ask = node.quotes.ask;
+    core::Quote const& buy = context.node.quotes.buy;
+    core::Quote const& sell = context.node.quotes.sell;
 
-    q.bid.price =  q.bid.price * omega + bid.price * (1.-omega);
-    q.ask.price =  q.ask.price * omega + ask.price * (1.-omega);
+    q.buy.price =  q.buy.price * params.omega + buy.price * (1.-params.omega);
+    q.sell.price =  q.sell.price * params.omega + sell.price * (1.-params.omega);
     return true;
 }
 
-} // roq::pricer::ops
+bool EMA::operator()(pricer::Context &context, std::span<const roq::Parameter>  update)  {
+  using namespace std::literals;
+  auto& parameters = context.template get_parameters<Parameters>();
+  for(auto const& p: update) {
+    if(p.label == "ema"sv) {
+      parameters.omega = core::Double::parse(p.value);
+    }
+  }
+  return false;
+}
+
+} // namespace roq::pricer::ops

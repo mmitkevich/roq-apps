@@ -59,7 +59,7 @@ void Manager::operator()(roq::Event<core::TargetQuotes> const & event) {
         quote.target_quantity = 0;
         quote.exec_inst = {};
     }
-    for(auto& quote: target_quotes.bids) {
+    for(auto& quote: target_quotes.buy) {
         if(!is_empty_value(quote)) {
             auto [level,is_new] = market.emplace_level(Side::BUY, quote.price);
             level.target_quantity = quote.volume;
@@ -70,7 +70,7 @@ void Manager::operator()(roq::Event<core::TargetQuotes> const & event) {
         quote.target_quantity = 0;
         quote.exec_inst = {};
     }
-    for(auto& quote: target_quotes.asks) {
+    for(auto& quote: target_quotes.sell) {
         if(!is_empty_value(quote)) {
             auto [level,is_new] = market.emplace_level(Side::SELL, quote.price);
             level.target_quantity = quote.volume;

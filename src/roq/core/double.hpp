@@ -1,6 +1,8 @@
 // (c) copyright 2023 Mikhail Mitkevich
 #pragma once
+#include <charconv>
 #include <cmath>
+#include <roq/exceptions.hpp>
 
 #include "roq/core/fmt.hpp"
 
@@ -64,6 +66,19 @@ struct Double  {
     ROQ_CORE_COMPARE_OPS_DECL(>)
     ROQ_CORE_COMPARE_OPS_DECL(<=)
     ROQ_CORE_COMPARE_OPS_DECL(>=)
+
+    static core::Double parse(std::string_view s) {
+        double v = NAN;
+        auto [p, ec] = std::from_chars(s.data(), s.data() + s.size(), v);
+        if (ec == std::errc()) {
+            return v;
+        } else  {
+            //if(ec == std::errc::invalid_argument)
+            //if(ec == std::errc::result_out_of_range)
+            throw roq::RuntimeError("invalid floating point number {}", s);
+        }
+        return v;
+    }
 };
 
 } // roq::core

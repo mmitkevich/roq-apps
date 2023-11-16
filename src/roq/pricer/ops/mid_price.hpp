@@ -7,9 +7,9 @@ namespace roq::pricer::ops {
     
 template<class Quotes>
 core::Price MidPrice(Quotes const& quotes) {
-    if(core::is_empty_value(quotes.bid.price) || core::is_empty_value(quotes.ask.price))
+    if(core::is_empty_value(quotes.buy.price) || core::is_empty_value(quotes.sell.price))
         return {};
-    return 0.5*(quotes.bid.price + quotes.ask.price);
+    return 0.5*(quotes.buy.price + quotes.sell.price);
 }
 
 }

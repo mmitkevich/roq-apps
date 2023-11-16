@@ -4,12 +4,12 @@
 #include "roq/pricer/ops/ema.hpp"
 #include "roq/pricer/ops/product.hpp"
 #include "roq/pricer/ops/sum.hpp"
-#include "roq/pricer/ops/target_spread.hpp"
+#include "roq/pricer/ops/quote_spread.hpp"
 
 namespace roq::pricer {
 
 void Factory::initialize_all() {
-    initialize<ops::Sum, ops::Product, ops::EMA, ops::TargetSpread>();
+    initialize<ops::Sum, ops::Product, ops::EMA, ops::QuoteSpread>();
 }
 
 static Factory default_factory;

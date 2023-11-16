@@ -5,7 +5,7 @@ add_library( "${TARGET_NAME}" STATIC
   "sum.cpp"
   "product.cpp"
   "ema.cpp"
-  "target_spread.cpp"
+  "quote_spread.cpp"
 )
 
 target_compile_definitions(${TARGET_NAME} PRIVATE ROQ_PACKAGE_NAME="${PROJECT_NAME}")

@@ -6,23 +6,23 @@
 namespace roq::core {
 
 struct BestQuotes {
-    core::Quote bid;
-    core::Quote ask;
+    core::Quote buy;
+    core::Quote sell;
 
     void clear() {
-        bid.clear();
-        ask.clear();
+        buy.clear();
+        sell.clear();
     }
     bool update(core::Quotes const& rhs) {
-        if(rhs.bids.empty()) {
-            bid = {};            
+        if(rhs.buy.empty()) {
+            buy = {};            
         } else {
-            bid = rhs.bids[0];
+            buy = rhs.buy[0];
         }
-        if(rhs.asks.empty()) {
-            ask = {};
+        if(rhs.sell.empty()) {
+            sell = {};
         } else {
-            ask = rhs.asks[0];
+            sell = rhs.sell[0];
         }
         return true; // FIXME: return if changed
     }

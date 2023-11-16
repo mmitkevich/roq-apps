@@ -5,8 +5,10 @@
 #include "roq/core/best_quotes.hpp"
 #include "roq/core/exposure.hpp"
 #include "roq/core/market.hpp"
+#include "roq/core/portfolio.hpp"
 #include "roq/core/quotes.hpp"
 #include <roq/market_status.hpp>
+#include <roq/string_types.hpp>
 #include <roq/timer.hpp>
 #include <roq/top_of_book.hpp>
 #include <roq/market_by_price_update.hpp>
@@ -30,6 +32,10 @@ namespace roq::pricer {
 
 struct Node;
 
+struct NodeKey {
+    core::NodeIdent node;
+    std::string_view name;
+};
 
 struct Manager : core::Handler {
     Manager(pricer::Handler &handler, core::Manager& core);
@@ -37,7 +43,7 @@ struct Manager : core::Handler {
     pricer::Node *get_node(core::MarketIdent market);
     const pricer::Node *get_node(core::MarketIdent market) const { return const_cast<Manager*>(this)->get_node(market); }
 
-    std::pair<pricer::Node&, bool> emplace_node(core::Market args);
+    std::pair<pricer::Node&, bool> emplace_node(pricer::NodeKey key);
 
     void operator()(const roq::Event<roq::MarketStatus>&);
     void operator()(const roq::Event<roq::Timer> &);
@@ -49,6 +55,8 @@ struct Manager : core::Handler {
     void operator()(const roq::Event<roq::ParametersUpdate>& e) override;
 public:
     void set_pipeline(pricer::Node&node, const std::vector<std::string_view> & pipeline);
+    bool set_mdata(pricer::Node& node, core::Market const& market);
+    bool set_portfolio(pricer::Node& node, core::PortfolioKey const& portfolio);
 
     bool get_path(core::MarketIdent market,  std::invocable<core::MarketIdent> auto && fn) {
         auto iter = paths.find(market);
@@ -61,7 +69,7 @@ public:
     }
     void get_refs(pricer::Node const& node, auto&& fn) const {
         node.get_refs([&](pricer::NodeRef const& r) {
-            pricer::Node const* n = get_node(r.market);
+            pricer::Node const* n = get_node(r.node);
             if(!n)
                 throw roq::RuntimeError("UNEXPECTED");
             fn(r, *n);
@@ -74,12 +82,25 @@ public:
     }
     void target_quotes(pricer::Node& node);
   public:
-    pricer::NodeIdent last_node_id = 0;
+    core::NodeIdent last_node_id = 0;
     core::Manager& core; 
-    pricer::Handler* handler;
-    core::Hash<core::MarketIdent, pricer::Node> nodes;
-    absl::flat_hash_map<std::string_view, absl::flat_hash_map<std::string_view, pricer::NodeIdent> > node_by_symbol_by_exchange_;
-    core::Hash<core::MarketIdent, std::vector<core::MarketIdent> > paths;
+    pricer::Handler* handler {};
+    core::Hash<core::NodeIdent, pricer::Node> nodes;
+    core::Hash<core::PortfolioIdent, core::Hash<core::MarketIdent, core::NodeIdent>> node_by_portfolio;
+    core::Hash<core::MarketIdent, core::NodeIdent> node_by_market;
+    core::Hash<std::string, core::NodeIdent> node_by_name; // deribit:BTC-P:A1 -> node identifier
+    core::Hash<core::NodeIdent, std::vector<core::NodeIdent> > paths;
 };
+
+
+void Context::get_refs(auto&& fn) const {
+    node.get_refs([&](pricer::NodeRef const& r) {
+        pricer::Node const* n = manager.get_node(r.node);
+        if(!n)
+            throw roq::RuntimeError("UNEXPECTED");
+        fn(r, *n);
+    });
+}
+
 
 } // roq::pricer

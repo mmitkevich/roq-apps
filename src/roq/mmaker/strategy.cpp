@@ -38,11 +38,12 @@ void Strategy::operator()(const Event<TopOfBook> &event) {
       //best_price_event.header.receive_time_utc = event.message_info.receive_time_utc;
       //best_price_event->market = market;
       
-    core::Quote bid = {
+    core::Quote buy = {
         .price = u.layer.bid_price,
         .volume = u.layer.bid_quantity
     };
-    core::Quote ask = {
+
+    core::Quote sell = {
         .price = u.layer.ask_price,
         .volume = u.layer.ask_quantity
     };
@@ -51,9 +52,10 @@ void Strategy::operator()(const Event<TopOfBook> &event) {
         .market = market_id,
         .symbol = u.symbol,        
         .exchange = u.exchange,        
-        .bids = std::span { &bid, 1},
-        .asks = std::span { &ask, 1}
+        .buy = std::span { &buy, 1},
+        .sell = std::span { &sell, 1},
     };
+
     roq::Event event_2 {event.message_info, quotes};  // is it good to keep MessageInfo?
     pricer(event_2);
 
@@ -79,11 +81,11 @@ void Strategy::operator()(const Event<MarketByPriceUpdate>& event) {
 
     //log::info<2>("DepthUpdate: market {} Depth {}", self()->prn(market), prn(depth_event.value));        
     
-    core::Quote bid = {
+    core::Quote buy = {
       .price = !u.bids.empty() ? u.bids[0].price : NAN,
       .volume = !u.bids.empty() ? u.bids[0].quantity : NAN
     };
-    core::Quote ask = {
+    core::Quote sell = {
       .price = !u.asks.empty() ? u.asks[0].price : NAN,
       .volume = !u.asks.empty() ? u.asks[0].price : NAN,
     };
@@ -91,8 +93,8 @@ void Strategy::operator()(const Event<MarketByPriceUpdate>& event) {
       .market = market_id,
       .symbol = u.symbol,      
       .exchange = u.exchange,      
-      .bids = std::span { &bid, 1},
-      .asks = std::span { &ask, 1}
+      .buy = std::span { &buy, 1},
+      .sell = std::span { &sell, 1}
     };
     roq::Event event_2 {event.message_info, quotes};
     pricer(event_2);

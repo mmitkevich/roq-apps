@@ -10,8 +10,11 @@ namespace roq::core {
 
 using Price = Double;
 using Volume = Double;
-using MarketIdent = uint32_t;
-using PortfolioIdent = uint32_t;
+
+using Ident = uint32_t;
+using MarketIdent = core::Ident;
+using PortfolioIdent = core::Ident;
+
 using Integer = int64_t;
 using Bool = bool;
 using String = std::string;

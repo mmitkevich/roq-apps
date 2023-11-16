@@ -97,7 +97,7 @@ struct Markets : core::BasicDispatch<Markets> {
 public:
     core::MarketIdent last_market_id = 0;
 private:
-    absl::flat_hash_map<roq::Exchange, absl::flat_hash_map<roq::Symbol, core::MarketIdent> > market_by_symbol_by_exchange_;
+    absl::flat_hash_map<std::string_view/*roq::Exchange*/, absl::flat_hash_map<std::string_view/*roq::Symbol*/, core::MarketIdent> > market_by_symbol_by_exchange_;
     absl::node_hash_map<core::MarketIdent, core::MarketInfo> market_by_id_;
 };
 

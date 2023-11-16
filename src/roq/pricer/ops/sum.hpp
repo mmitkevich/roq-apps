@@ -5,7 +5,7 @@ namespace roq::pricer::ops {
 
 struct Sum : Compute {
     static constexpr std::string_view NAME = "sum";
-    bool operator()(pricer::Context& context, pricer::Node const& node, pricer::Manager & manager) const override;
+    bool operator()(pricer::Context& context) const override;
 };
 
 } // roq::pricer::ops

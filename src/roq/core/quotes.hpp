@@ -13,9 +13,11 @@ struct Quotes  {
     std::string_view exchange {};
     std::string_view account {};
     std::string_view portfolio {};
-    std::span<const Quote> bids = {};
-    std::span<const Quote> asks = {};
+    std::span<const Quote> buy = {};
+    std::span<const Quote> sell = {};
 };
+
+// bids = [ {19000, 100=50+50} , {19100,200} ], asks = [ {20100, 200}, {20200, 250}]
 
 using TargetQuotes = core::Quotes;
 
@@ -33,20 +35,20 @@ struct fmt::formatter<roq::core::Quotes> {
     auto format(const roq::core::Quotes &_, Context &context) const {
       using namespace std ::literals;
       using namespace roq::core;
-      Price bid_price, ask_price;
-      Volume bid_volume, ask_volume;
-      if(!std::empty(_.bids)) {
-        bid_price = _.bids[0].price;
-        bid_volume = _.bids[0].volume;
+      Price buy_price, sell_price;
+      Volume buy_volume, sell_volume;
+      if(!std::empty(_.buy)) {
+        buy_price = _.buy[0].price;
+        buy_volume = _.buy[0].volume;
       }
-      if(!std::empty(_.asks)) {
-        ask_price = _.asks[0].price;
-        ask_volume = _.asks[0].volume;
+      if(!std::empty(_.sell)) {
+        sell_price = _.sell[0].price;
+        sell_volume = _.sell[0].volume;
       }
       return fmt ::format_to(
           context.out(),
-          "market {} bid_price {} ask_price {} bid_volume {} ask_volume {}"sv,
+          "market {} buy_price {} sell_price {} buy_volume {} sell_volume {}"sv,
           _.market,
-          bid_price,ask_price,bid_volume,ask_volume);
+          buy_price,sell_price,buy_volume,sell_volume);
     }
 };

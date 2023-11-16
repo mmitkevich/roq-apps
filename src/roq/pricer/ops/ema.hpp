@@ -5,16 +5,15 @@
 namespace roq::pricer::ops {
 
 struct EMA : Compute {
-    struct State {
+    struct Parameters {
         core::Double omega {};
     };
 
-    EMA() {
-        this->size = sizeof(State);
-    }
-    
+    EMA() : Compute(sizeof(Parameters)) {}
     static constexpr std::string_view NAME = "ema";
-    bool operator()(pricer::Context& context, pricer::Node const& node, pricer::Manager & manager) const override;
+
+    bool operator()(pricer::Context& context) const override;
+    bool operator()(pricer::Context &context, std::span<const roq::Parameter> update )  override;
 };
 
 } // roq::pricer::ops

@@ -15,65 +15,99 @@
     mdata_gateway   = "deribit"
     trade_gateway   = "deribit"
 
-[[account]]
-    account                 = "A1"
-    exchange                = "deribit"
+[[portfolio]]
+    name            = "L"            # liquidation strategy portfolio 
+    strategy_id     = 100
 
-#  mdata for 'mdata.deribit:BTC.P' node is 'deribit:BTC-PERPETUAL', this defines subscription
+[[portfolio]]                          # account's portfolio
+    name            = "D1"
+    account         = "A1"
+    exchange        = "deribit"
+
+[[portfolio]]
+    name            = "D2"
+    account         = "A2"
+    exchange        = "deribit"
+
+# define pricing nodes....
+
 [[parameter]]
-    label           = "mdata"
-    symbol          = "BTC.P"         # symbol in namespace
-    exchange        = "mdata.deribit" # namespace
+    label           = "top_of_book"
+    symbol          = "D:BTC.P:p"
+    exchange        = "pricer"                              # used to route the parameter into pricer for now
     value           = "deribit:BTC-PERPETUAL"
 
-# use top_of_book stream as best_price source for 'pricer:deribit:BTC.P' node
-[[parameter]]
-    label           = "mdata.best_price"
-    symbol          = "BTC.P"
-    exchange        = "mdata.deribit"
-    value           = "top_of_book" # vwap
-
-# set parameter multiplier=1 for 'pricer:deribit:BTC.P' node
 [[parameter]]
     label           = "multiplier"
-    symbol          = "BTC.P"
-    exchange        = "mdata.deribit"
+    symbol          = "D:BTC.P:p"
+    exchange        = "pricer"
     value           = "1"
 
-# set compute pipeline for 'quote.deribit:BTC.P' node (in order)
+# define exposure nodes...
+
 [[parameter]]
-    label           = "pipeline"
-    symbol          = "BTC.P"
-    exchange        = "quote.deribit"
-    value           = "product ema shift spread"
+    label           = "exposure"                            # push exposure into nodes
+    exchange        = "pricer"
+    symbol          = ["D:BTC.P:e:D1,                       "D:BTC.P:e:D2",             "D:BTC.P:e:L"]    # exposure (positions) nodes
+    account         = ["D1",                                "D2"                        "L"]              # portfolio
+    value           = ["100",                                "-100",                    "20"]             # sets exposure manually
 
-# set spread:target=10bp for 'quote:deribit:BTC.P' node (spread is a compute item defined above )
+# define quoting nodes...
 [[parameter]]
-    label           = "spread.target"
-    symbol          = "BTC.P"
-    exchange        = "quote.deribit"
-    value           = "bp:10"
+    label           = "ref:price"
+    exchange        = "pricer"
+    symbol          = ["D:BTC.P:q:D1",                      "D:BTC.P:q:D2"]             # references from quoting nodes q:D1, q:D2
+    value           = ["D:BTC.P:p,                          "D:BTC.P:p"]                # ... to pricing node p
 
-
-# add ref to the node 'mdata.deribit:BTC.P'  from node 'quote.deribit:BTC.P' with weight 0.5
 [[parameter]]
-label           = "ref.weight"
-symbol          = "BTC.P"
-exchange        = "quote.deribit"
-value           = "0.5 mdata.deribit:BTC.P"
+    label           = "ref:exposure"                        # reference from quote nodes to exposure nodes
+    exchange        = "pricer"
+    symbol          = "D:BTC.P:q:D1"                        # quote node
+    value           = ["D:BTC.P:e:D1",                      "D:BTC.P:e:D2",             "D:BTC.P:e:L"]     # references from q:D1 to e:D1, e:D2, e:L nodes
 
-
-# set parameter ema.omega=1 for 'quote:deribit:BTC.P' node
 [[parameter]]
-label           = "ema.omega" # name of compute and name of field
-symbol          = "BTC.P"
-exchange        = "quote.deribit"
-value           = "0.001"
+    label           = "ref:exposure"                        # reference from quote nodes to exposure nodes
+    exchange        = "pricer"
+    symbol          = "D:BTC.P:q:D2"                        # quote node
+    value           = ["D:BTC.P:e:D1",                      "D:BTC.P:e:D2",             "D:BTC.P:e:L"]     # references from q:D2 to e:D1, e:D2, e:L nodes
 
-
-# set exec for 'quote:deribit:BTC.P' node to 'deribit:BTC-PERPETUAL' instrument
+# define execution for quoting nodes...
 [[parameter]]
-label           = "exec"
-symbol          = "BTC.P"
-exchange        = "quote.deribit"
-value           = "deribit:BTC-PERPETUAL"
+    label           = "execution"                           # connect quote nodes to oms
+    exchange        = "pricer"
+    symbol          = ["D:BTC.P:q:D1",                      "D:BTC.P:q:D2"]             # quoting nodes
+    value           = "deribit:BTC-PERPETUAL"                                           # real target instruments
+    account         = ["D1",                                "D2"]                       # portfolios
+
+# define pipeline for quoting nodes...
+[[parameter]]
+    label           = "pipeline"                            # set pipeline (list of computing algorithms) 
+    exchange        = "pricer"
+    symbol          = ["D:BTC.P:q:D1",                      "D:BTC.P:q:D2"]             # quoting nodes
+    value           = "quote_shift quote_spread"
+    account         = ["D1",                                "D2"]                       # portfolios
+
+[[parameter]]
+    label           = "quote_spread:min_spread"            # spread constraint
+    exchange        = "pricer"    
+    symbol          = ["D:BTC.P:q:D1",                      "D:BTC.P:q:D2"]             # quoting nodes
+    value           = "10 BP"                                                           # spread to maintain
+
+[[parameter]]
+    label           = "quote_spread:max_spread"            # spread constraint
+    exchange        = "pricer"    
+    symbol          = ["D:BTC.P:q:D1",                      "D:BTC.P:q:D2"]             # quoting nodes
+    value           = "10 BP"                                                           # spread to maintain
+
+[[parameter]]
+    label           = "quote_spread:max_spread"            # spread constraint
+    exchange        = "pricer"    
+    symbol          = ["D:BTC.P:q:D1",                      "D:BTC.P:q:D2"]             # quoting nodes
+    value           = "10 BP"                                                           # spread to maintain
+
+[[parameter]]
+    label           = "ema"                                                             # price smoothing
+    exchange        = "pricer"    
+    symbol          = ["D:BTC.P:q:D1",                       "D:BTC.P:q:D2"]            # quoting nodes
+    value           = "0.001"
+

@@ -19,11 +19,13 @@ struct Portfolios {
         return portfolios_[portfolio].get_position(market);
     }
 
-    core::Portfolio& emplace_portfolio(core::PortfolioIdent ident) { return portfolios_[ident]; }
+    std::pair<core::Portfolio &, bool> emplace_portfolio(core::PortfolioKey key);
 
     void clear() { portfolios_.clear(); }
 private:
+    core::PortfolioIdent last_portfolio_id {};
     core::Hash<core::PortfolioIdent, core::Portfolio> portfolios_;
+    core::Hash<roq::Account, core::PortfolioIdent> portfolio_index_;
 };
 
 } // roq::cache

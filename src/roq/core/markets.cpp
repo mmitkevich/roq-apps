@@ -12,11 +12,12 @@ std::pair<core::MarketInfo&, bool> Markets::emplace_market(core::Market const&ma
       if(0==market_id) {
         // not found in index => new market, insert
           market_id = ++last_market_id;
-          market_by_symbol_by_exchange_[market.exchange][market.symbol] = market_id;
           auto &market_2 = market_by_id_[market_id];
           market_2.symbol = market.symbol;
           market_2.exchange = market.exchange;
-          market_2.market = market_id;      
+          market_2.market = market_id; 
+          market_by_symbol_by_exchange_[market_2.exchange][market_2.symbol] = market_id;     
+          log::debug("emplace_market: market_id {} exchange {} symbol {}", market_id, market_2.exchange, market_2.symbol);
           return {market_2, true};
       }
     } 

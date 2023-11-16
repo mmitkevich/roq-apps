@@ -31,7 +31,7 @@ void Manager::load(std::string_view url) {
         p.label = toml.get_string(node, "label"sv);
         p.symbol = toml.get_string(node, "symbol"sv);
         p.exchange = toml.get_string(node, "exchange"sv);
-        p.value = toml.get_string(node, "exchange"sv);
+        p.value = toml.get_string(node, "value"sv);
         this->parameters.push_back(p);
     });
 }

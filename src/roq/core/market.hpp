@@ -17,12 +17,12 @@ struct MarketInfo {
     core::MarketIdent market;
     std::string_view symbol;
     std::string_view exchange;
-    
+
     operator core::Market() const {
         return core::Market {
             .market = market,
             .symbol = symbol,
-            .exchange = exchange
+            .exchange = exchange,
         };
     }
 
