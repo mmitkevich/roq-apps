@@ -21,11 +21,11 @@ target_link_libraries("${TARGET_NAME}" PRIVATE  ${PROJECT_NAME}-flags
   fmt::fmt 
   roq-flags::roq-flags
   roq-logging::roq-logging-flags
-  roq-mmaker-config  
   roq-mmaker-pricer
   roq-mmaker-pricer-ops
   roq-mmaker-oms
   roq-mmaker-core  
+  roq-mmaker-config    
   )
 
 target_link_libraries("${TARGET_NAME}" PRIVATE _lightgbm)

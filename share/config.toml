@@ -48,7 +48,7 @@
 [[parameter]]
     label           = "exposure"                            # push exposure into nodes
     exchange        = "pricer"
-    symbol          = ["D:BTC.P:e:D1,                       "D:BTC.P:e:D2",             "D:BTC.P:e:L"]    # exposure (positions) nodes
+    symbol          = ["D:BTC.P:e:D1",                      "D:BTC.P:e:D2",             "D:BTC.P:e:L"]    # exposure (positions) nodes
     account         = ["D1",                                "D2"                        "L"]              # portfolio
     value           = ["100",                                "-100",                    "20"]             # sets exposure manually
 
@@ -99,15 +99,9 @@
     symbol          = ["D:BTC.P:q:D1",                      "D:BTC.P:q:D2"]             # quoting nodes
     value           = "10 BP"                                                           # spread to maintain
 
-[[parameter]]
-    label           = "quote_spread:max_spread"            # spread constraint
-    exchange        = "pricer"    
-    symbol          = ["D:BTC.P:q:D1",                      "D:BTC.P:q:D2"]             # quoting nodes
-    value           = "10 BP"                                                           # spread to maintain
-
-[[parameter]]
-    label           = "ema"                                                             # price smoothing
-    exchange        = "pricer"    
-    symbol          = ["D:BTC.P:q:D1",                       "D:BTC.P:q:D2"]            # quoting nodes
-    value           = "0.001"
+#[[parameter]]
+#    label           = "ema"                                                             # price smoothing
+#    exchange        = "pricer"    
+#    symbol          = ["D:BTC.P:q:D1",                       "D:BTC.P:q:D2"]            # quoting nodes
+#    value           = "0.001"
 

@@ -13,6 +13,8 @@
 #include <sstream>
 #include <string_view>
 
+//#include <toml++/impl/forward_declarations.h>
+//#include <toml++/impl/parser.h>
 #include <toml++/toml.h>
 //#include <type_traits>
 //#include <magic_enum.hpp>
@@ -37,10 +39,11 @@ public:
     
     TomlFile() = default;
 
-    TomlFile(std::string_view path)
-    : root_(toml::parse_file(path))
-    , path_(std::move(path)) 
-    {}
+    void parse_file(std::string_view path);
+
+    TomlFile(std::string_view path) {
+        parse_file(path);
+    }
 
     TomlFile(toml::table&& root, std::string path) 
     : root_(std::move(root))
@@ -251,79 +254,5 @@ inline void TomlFile::get_values(type_c<V>, Node parent, std::string_view value,
         fn(0, get_value<V>(values_node));
     }
 }
-
-
-inline void TomlFile::get_nodes(TomlNode parent, std::string_view path, std::function<void(TomlNode)> fn) const {
-    auto node = parent.at_path(path);
-    return get_nodes(node, fn);
-}
-
-inline std::size_t  TomlFile::get_size(TomlNode node) const {
-    if(!node)
-        return 0;
-    if(!node.is_array())
-        return 0;
-    return node.as_array()->size();
-}
-
-inline void TomlFile::get_nodes(TomlNode node, std::function<void(TomlNode)> fn) const {
-    std::size_t i=0;
-    if(node) {
-        if(node.is_array()) {
-            for(auto const& subnode: *node.as_array())
-                fn(TomlNode{subnode});
-        } else {
-            fn(node);
-        }
-    }
-}
-
-inline void TomlFile::get_fields(TomlNode parent, std::function<void(std::string_view key, TomlNode val)> fn) const {
-    if(parent.is_table()) {
-        for(auto const& kv: *parent.as_table()) {
-            fn(kv.first.str(), TomlNode(kv.second));
-        }
-    }
-}
-
-inline  std::string TomlFile::get_string(TomlNode parent, std::string_view path) const  {
-    auto node = parent.at_path(path);
-    if(node) {
-        return get_value_helper<std::string>(node);
-    }
-    throw_bad_node(parent, path);
-}
-
-inline std::string TomlFile::get_string_or(Node node, std::string default_value) const {
-    if(node)
-        return get_value_helper<std::string>(node);
-    return default_value;
-}
-
-inline std::string TomlFile::get_string_or(Node parent, std::string_view path, std::string default_value) const {
-    auto node = parent.at_path(path);
-    if(node)
-        return get_value_helper<std::string>(node);
-    return default_value;
-}
-
-
-inline std::string TomlFile::node_path(TomlNode node) const {
-  if (!node)
-    return "";
-  const auto &src = node.node()->source();
-  // TODO: return fmt::format("{}:{}:{}"sv, src.path?*src.path:"",src.begin.line,src.begin.column)
-  std::stringstream ss;
-  if (src.path != nullptr) {
-    ss << *src.path;
-  }
-  ss << ":"<<src.begin.line << ":" << src.begin.column;
-  return ss.str();
-}
-
-inline void TomlFile::throw_bad_node(TomlNode node, std::string_view what) const {
-  throw roq::RuntimeError("{}:{}", node_path(node), what);
-}
-
 
 } // namespace umm
