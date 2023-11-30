@@ -57,6 +57,7 @@ public:
     void set_pipeline(pricer::Node&node, const std::vector<std::string_view> & pipeline);
     bool set_mdata(pricer::Node& node, core::Market const& market);
     bool set_portfolio(pricer::Node& node, core::PortfolioKey const& portfolio);
+    bool set_ref(pricer::Node& node, std::string_view ref_node, std::string_view flags);
 
     bool get_path(core::MarketIdent market,  std::invocable<core::MarketIdent> auto && fn) {
         auto iter = paths.find(market);
@@ -93,7 +94,9 @@ public:
 };
 
 
-void Context::get_refs(auto&& fn) const {
+
+template<class Fn>
+void Context::get_refs(Fn&& fn) const {
     node.get_refs([&](pricer::NodeRef const& r) {
         pricer::Node const* n = manager.get_node(r.node);
         if(!n)
@@ -101,6 +104,5 @@ void Context::get_refs(auto&& fn) const {
         fn(r, *n);
     });
 }
-
 
 } // roq::pricer

@@ -51,7 +51,7 @@ std::string TomlFile::get_string(TomlNode parent, std::string_view path) const  
     if(node) {
         return get_value_helper<std::string>(node);
     }
-    throw_bad_node(parent, path);
+    ROQ_CONFIG_THROW_BAD_NODE(parent, path);
 }
 
 std::string TomlFile::get_string_or(Node node, std::string default_value) const {
@@ -79,10 +79,6 @@ std::string TomlFile::node_path(TomlNode node) const {
   }
   ss << ":"<<src.begin.line << ":" << src.begin.column;
   return ss.str();
-}
-
-void TomlFile::throw_bad_node(TomlNode node, std::string_view what) const {
-  throw roq::RuntimeError("{}:{}", node_path(node), what);
 }
 
 } // roq::config

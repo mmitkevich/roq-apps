@@ -1,6 +1,7 @@
 #pragma once
 
 #include "roq/core/best_quotes.hpp"
+#include "roq/core/fmt.hpp"
 #include "roq/core/market.hpp"
 #include "roq/core/quote.hpp"
 #include "roq/core/types.hpp"
@@ -31,6 +32,31 @@ struct NodeRef {
     roq::Mask<pricer::NodeFlags> flags;
 };
 
+struct Context {
+    Manager& manager;
+    Node& node;
+
+    ptrdiff_t offset {0};    // of parameters in the node
+
+    // result (will be state of the virtual instrument after computation)
+    core::BestQuotes quotes;
+    core::Double exposure;
+
+    // fetch element of type T from the storage and increment key
+    template<class T>
+    T& get_parameters();
+
+    template<class Fn>
+    void get_refs(Fn&& fn) const;
+
+    void clear() {
+        quotes = {};
+    }
+
+    // key to parameter in the node
+    //ptrdiff_t key = 0;
+};
+
 
 struct Node {
     
@@ -55,7 +81,6 @@ struct Node {
 
     Context make_context() { return {.manager = manager, .node = *this}; }
 
-    void clear();
     // update from computed values, returns if changed
     bool update(pricer::Context const &rhs);
     bool update(core::Quotes const &rhs);
@@ -66,13 +91,24 @@ struct Node {
     // cache-friendly refs storage
     static constexpr uint32_t MAX_REFS_SIZE = 16;
     uint32_t refs_size {0};
-    std::array<NodeRef, MAX_REFS_SIZE> refs;
+    //std::array<NodeRef, MAX_REFS_SIZE> refs;
+    NodeRef refs[MAX_REFS_SIZE];
 
     // enumerate refs
     void get_refs(auto&& fn) const {
         for(std::size_t i = 0; i < refs_size; i++) {
             fn(refs[i]);
         }
+    }
+
+    pricer::NodeRef& add_ref(core::NodeIdent ref_node, roq::Mask<NodeFlags> flags = {}) {
+        auto& ref = refs[refs_size];
+        ref = NodeRef {
+            .node = ref_node,
+            .flags = roq::Mask{flags}
+        };
+        refs_size++;
+        return ref;
     }
 
     // cache-friendly pipeline pointers storage 
@@ -89,6 +125,8 @@ struct Node {
         }
     }
 
+    void clear();
+
     // cache friendly parameters storage
     std::byte parameters[256];
 };
@@ -103,5 +141,6 @@ Parameters& Context::get_parameters() {
     return *data;
 }
 
-
 } // roq::pricer
+
+ROQ_CORE_FMT_DECL(roq::pricer::NodeFlags, "", magic_enum::enum_name(_))

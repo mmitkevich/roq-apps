@@ -20,7 +20,7 @@ bool EMA::operator()(pricer::Context &context, std::span<const roq::Parameter>  
   using namespace std::literals;
   auto& parameters = context.template get_parameters<Parameters>();
   for(auto const& p: update) {
-    if(p.label == "ema"sv) {
+    if(p.label == "ema:omega"sv) {
       parameters.omega = core::Double::parse(p.value);
     }
   }

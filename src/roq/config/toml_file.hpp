@@ -23,6 +23,8 @@ namespace roq::config {
 
 using TomlNode = toml::node_view<const toml::node>;
 
+#define ROQ_CONFIG_THROW_BAD_NODE(node, what) throw roq::RuntimeError("{}:{}", node_path(node), what);
+
 class TomlFile {
 public:    
     using Node = TomlNode;
@@ -128,9 +130,6 @@ public:
     }*/
 private:
 
-    [[noreturn]]
-    void throw_bad_node(TomlNode node, std::string_view what) const;
-
     template<class T>
     auto get_value_helper(TomlNode node) const;
 
@@ -146,11 +145,16 @@ private:
 
 template<class T>
 auto TomlFile::get_value_helper(TomlNode node) const {
-    auto opt_value =  node.template value<T>();
-    if(opt_value.has_value()) {
-        return opt_value.value();
+    if(node.is_value()) {
+        auto opt_value =  node.template value<T>();
+        if(opt_value.has_value()) {
+            return opt_value.value();
+        } else {
+            ROQ_CONFIG_THROW_BAD_NODE(node, "<empty>");
+        }
+    } else {
+        ROQ_CONFIG_THROW_BAD_NODE(node, "string of number expected");
     }
-    throw_bad_node(node, "<empty>");
 }
 
 
@@ -171,7 +175,7 @@ auto TomlFile::get_value_or(TomlNode node, std::string_view path,  T&& default_v
 template<class T>
 auto TomlFile::get_value(TomlNode parent, std::string_view path) const {
     if(!parent[path]) {
-        throw_bad_node(parent, path);
+        ROQ_CONFIG_THROW_BAD_NODE(parent, path);
     } else {
         return get_value<T>(parent[path]);
     }

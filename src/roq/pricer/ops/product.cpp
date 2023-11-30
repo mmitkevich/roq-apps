@@ -10,7 +10,7 @@ bool Product::operator()(pricer::Context& context) const {
     q.buy = { .price = 1.0, .volume = 1.0 };
     q.sell = { .price = 1.0, .volume = 1.0 };
 
-    context.manager.get_refs(context.node, [&](pricer::NodeRef const& ref, pricer::Node const& ref_node) {
+    context.get_refs([&](pricer::NodeRef const& ref, pricer::Node const& ref_node) {
         const core::Double w = ref.weight;
         const auto& buy = ref_node.quotes.buy;
         const auto& sell = ref_node.quotes.sell;
@@ -27,6 +27,7 @@ bool Product::operator()(pricer::Context& context) const {
             q.buy.price *= std::pow(sell.price, w);
             q.sell.price *= std::pow(buy.price, w);
         }
+        log::debug("product: buy {} sell {} *= weight {} * {{ buy {} sell {} }}", q.buy.price, q.sell.price, w, buy.price, sell.price);
     });
     return true;
 }

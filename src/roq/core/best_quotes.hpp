@@ -13,6 +13,7 @@ struct BestQuotes {
         buy.clear();
         sell.clear();
     }
+
     bool update(core::Quotes const& rhs) {
         if(rhs.buy.empty()) {
             buy = {};            
@@ -27,5 +28,10 @@ struct BestQuotes {
         return true; // FIXME: return if changed
     }
 };
+
+inline core::Double ExposureFromQuotes(core::BestQuotes const& self) {
+    return self.buy.volume - self.sell.volume;
+}
+
 
 } // roq::ocre

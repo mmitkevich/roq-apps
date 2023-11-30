@@ -109,7 +109,7 @@ struct Strategy final
 
     template<class Config, class Node>
     void configure(Config& config, Node node) {
-      oms.configure(config, node); 
+      oms.configure(config, node["oms"]); 
     }
 
     ~Strategy();

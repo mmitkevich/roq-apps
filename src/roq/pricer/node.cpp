@@ -56,8 +56,8 @@ void Node::set_pipeline(const std::span<std::string_view>  vec) {
     for(uint32_t i=0; i<vec.size(); i++) {
         Compute* c= pricer::Factory::get(vec[i]);
         if(!c) {
-            log::error("Compute not found {}", vec[i]);
-            throw roq::RuntimeError("Compute not found {}", vec[i]);
+            log::error("pricer: compute not found {}", vec[i]);
+            throw roq::RuntimeError("pricer: compute not found {}", vec[i]);
         }
         pipeline[i] = c;
     }

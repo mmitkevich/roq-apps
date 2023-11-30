@@ -18,7 +18,7 @@ struct QuoteSpread : pricer::Compute {
     };
 
     QuoteSpread() : Compute(sizeof(Parameters)) {}
-    static constexpr std::string_view NAME = "target_spread";
+    static constexpr std::string_view NAME = "quote_spread";
 
     bool operator()(pricer::Context &context) const override;
     bool operator()(pricer::Context &context, std::span<const roq::Parameter>  update )  override;

@@ -7,6 +7,7 @@ add_library( "${TARGET_NAME}" STATIC
   "manager.cpp"
   "portfolios.cpp"
   "price.cpp"
+  "utils/string_utils.cpp"
 )
 
 target_compile_definitions(${TARGET_NAME} PRIVATE ROQ_PACKAGE_NAME="${PROJECT_NAME}")

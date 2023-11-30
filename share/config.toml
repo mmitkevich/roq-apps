@@ -15,6 +15,8 @@
     mdata_gateway   = "deribit"
     trade_gateway   = "deribit"
 
+[oms]
+    
 [[portfolio]]
     name            = "L"            # liquidation strategy portfolio 
     strategy_id     = 100
@@ -49,7 +51,7 @@
     label           = "exposure"                            # push exposure into nodes
     exchange        = "pricer"
     symbol          = ["D:BTC.P:e:D1",                      "D:BTC.P:e:D2",             "D:BTC.P:e:L"]    # exposure (positions) nodes
-    account         = ["D1",                                "D2"                        "L"]              # portfolio
+    account         = ["D1",                                "D2",                        "L"]              # portfolio
     value           = ["100",                                "-100",                    "20"]             # sets exposure manually
 
 # define quoting nodes...
@@ -57,18 +59,18 @@
     label           = "ref:price"
     exchange        = "pricer"
     symbol          = ["D:BTC.P:q:D1",                      "D:BTC.P:q:D2"]             # references from quoting nodes q:D1, q:D2
-    value           = ["D:BTC.P:p,                          "D:BTC.P:p"]                # ... to pricing node p
+    value           = ["D:BTC.P:p",                         "D:BTC.P:p"]                # ... to pricing node p
 
 [[parameter]]
     label           = "ref:exposure"                        # reference from quote nodes to exposure nodes
     exchange        = "pricer"
-    symbol          = "D:BTC.P:q:D1"                        # quote node
+    symbol          = ["D:BTC.P:q:D1",                      "D:BTC.P:q:D1",             "D:BTC.P:q:D1"]
     value           = ["D:BTC.P:e:D1",                      "D:BTC.P:e:D2",             "D:BTC.P:e:L"]     # references from q:D1 to e:D1, e:D2, e:L nodes
 
 [[parameter]]
     label           = "ref:exposure"                        # reference from quote nodes to exposure nodes
     exchange        = "pricer"
-    symbol          = "D:BTC.P:q:D2"                        # quote node
+    symbol          = ["D:BTC.P:q:D2",                      "D:BTC.P:q:D2",             "D:BTC.P:q:D2"]
     value           = ["D:BTC.P:e:D1",                      "D:BTC.P:e:D2",             "D:BTC.P:e:L"]     # references from q:D2 to e:D1, e:D2, e:L nodes
 
 # define execution for quoting nodes...
@@ -76,7 +78,7 @@
     label           = "execution"                           # connect quote nodes to oms
     exchange        = "pricer"
     symbol          = ["D:BTC.P:q:D1",                      "D:BTC.P:q:D2"]             # quoting nodes
-    value           = "deribit:BTC-PERPETUAL"                                           # real target instruments
+    value           = ["deribit:BTC-PERPETUAL",             "deribit:BTC-PERPETUAL"]    # real target instruments
     account         = ["D1",                                "D2"]                       # portfolios
 
 # define pipeline for quoting nodes...
@@ -100,7 +102,7 @@
     value           = "10 BP"                                                           # spread to maintain
 
 #[[parameter]]
-#    label           = "ema"                                                             # price smoothing
+#    label           = "ema:omega"                                                      # price smoothing
 #    exchange        = "pricer"    
 #    symbol          = ["D:BTC.P:q:D1",                       "D:BTC.P:q:D2"]            # quoting nodes
 #    value           = "0.001"

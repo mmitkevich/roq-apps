@@ -2,6 +2,7 @@
 
 #include "roq/core/empty_value.hpp"
 #include "roq/core/types.hpp"
+#include <magic_enum.hpp>
 
 namespace roq::core {
     
@@ -21,12 +22,16 @@ struct Shift : core::Price {
 };
 
 template<class Quotes>
-core::Price MidPrice(Quotes const& quotes) {
+core::Price mid_price(Quotes const& quotes) {
     if(core::is_empty_value(quotes.buy.price) || core::is_empty_value(quotes.sell.price))
         return {};
     return 0.5*(quotes.buy.price + quotes.sell.price);
 }
 
-std::pair<core::Price, core::Price> Spread(core::Shift spread, core::Price mid_price);
+std::pair<core::Price, core::Price> buy_and_sell_price_from_mid_price_and_spread(core::Price mid_price, core::Shift spread);
+core::Price shift_price(core::Price price, core::Shift shift);
 
 }
+
+ROQ_CORE_FMT_DECL(roq::core::ShiftUnits, "{}", magic_enum::enum_name(_))
+ROQ_CORE_FMT_DECL(roq::core::Shift, ROQ_CORE_FMT_DOUBLE "{}", _.value, _.units)

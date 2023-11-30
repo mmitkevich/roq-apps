@@ -29,10 +29,15 @@ void Manager::load(std::string_view url) {
     toml.get_nodes("parameter", [&](auto node) {
         roq::Parameter p;
         p.label = toml.get_string(node, "label"sv);
-        p.symbol = toml.get_string(node, "symbol"sv);
         p.exchange = toml.get_string(node, "exchange"sv);
-        p.value = toml.get_string(node, "value"sv);
-        this->parameters.push_back(p);
+        toml.get_pairs(type_c<std::string>{}, node, "symbol"sv, "value"sv, [&](auto key, auto val) {
+            p.symbol = key;
+            p.value = val;
+            this->parameters.push_back(p);
+            log::debug("config load {}", p);
+        });
+        //p.symbol = toml.get_string(node, "symbol"sv);
+        //p.value = toml.get_string(node, "value"sv);
     });
 }
 

@@ -10,28 +10,7 @@ struct Node;
 struct Manager;
 
 // computation context, used to exchange parameters and results with the Node
-
-struct Context {
-    Manager& manager;
-    Node& node;
-
-    ptrdiff_t offset {0};    // of parameters in the node
-
-    // result (will be state of the virtual instrument after computation)
-    core::BestQuotes quotes;
-    core::Double exposure;
-
-    // fetch element of type T from the storage and increment key
-    template<class T>
-    T& get_parameters();
-
-    void get_refs(auto&& fn) const;
-
-    void clear();
-
-    // key to parameter in the node
-    //ptrdiff_t key = 0;
-};
+struct Context;
 
 // algorithm 
 struct Compute {
