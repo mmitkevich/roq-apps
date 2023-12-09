@@ -1,7 +1,13 @@
 // (c) copyright 2023 Mikhail Mitkevich
 #include "roq/core/types.hpp"
+#include <roq/logging.hpp>
+
+#define ROQ_GRAPH_DEBUG(fmt,...)
+// log::debug(fmt, #__VA_ARGS__)
+
+#include "roq/pricer/graph.hpp"
+
 #include "roq/pricer/manager.hpp"
-#include <fmt/format.h>
 #include <roq/exceptions.hpp>
 #include <roq/message_info.hpp>
 #include <roq/parameters_update.hpp>
@@ -203,5 +209,22 @@ bool Manager::set_portfolio(core::NodeIdent node_id, core::PortfolioKey const& p
     return true;
 }
 
+void Manager::rebuild_paths() {
+    // vertex =  nodes
+    // edges = node.refs for node in nodes
+    // input vertex = node_by_market
+    using node_id_t = core::NodeIdent;
+    std::multimap<node_id_t, node_id_t> edges;
+    get_nodes([&](Node const& node) {
+        node.get_refs([&](NodeRef const & ref) {
+            edges.emplace(ref.node, node.node);
+        });
+    });
+    pricer::Graph<core::NodeIdent> graph { std::move(edges) };
+    for(auto& [market, node]: node_by_market) {
+        graph.build_path(node, paths[node]);
+    }
+    
+}
 
 } // namespace roq::pricer

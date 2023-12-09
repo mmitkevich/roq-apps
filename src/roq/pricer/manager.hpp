@@ -104,12 +104,13 @@ public:
             fn(r, *n);
         });
     }
-    void get_nodes(auto&& fn) {
+    void get_nodes(std::invocable<pricer::Node&> auto&& fn) {
         for(auto& [id, node] : nodes) {
             fn(node);
         }
     }
     void send_target_quotes(core::NodeIdent node);
+    void rebuild_paths();
   public:
     core::NodeIdent last_node_id = 0;
     core::Manager& core; 
