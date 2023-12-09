@@ -9,6 +9,7 @@
 #include "roq/core/exposure_update.hpp"
 #include "roq/oms/manager.hpp"
 //#include "umm/core/type/depth_array.ipp"
+#include <roq/cache/market_by_price.hpp>
 #include <roq/parameters_update.hpp>
 #include <roq/top_of_book.hpp>
 #include "roq/pricer/factory.hpp"
@@ -72,23 +73,26 @@ void Strategy::operator()(const Event<MarketByPriceUpdate>& event) {
 
     if(!core.is_ready(market_id))
       return;
-    //umm::Event<umm::DepthUpdate> depth_event;
-    //depth_event->market = market;
-//      depth_event->bids = context.depth[market].bids;
-//      depth_event->asks = context.depth[market].asks;
-    //depth_event.set_snapshot(true);
-    //depth_event.header.receive_time_utc = event.message_info.receive_time_utc;
 
-    //log::info<2>("DepthUpdate: market {} Depth {}", self()->prn(market), prn(depth_event.value));        
-    
+      // use roq internal caching to extract BBO from MBP
+    auto [market_cache, is_new] = core.cache.get_market_or_create(u.exchange, u.symbol);
+    bool done = market_cache(event);   
+    cache::MarketByPrice& mbp = *market_cache.market_by_price;
+    mbp.extract_2(layers_, 1);
     core::Quote buy = {
-      .price = !u.bids.empty() ? u.bids[0].price : NAN,
-      .volume = !u.bids.empty() ? u.bids[0].quantity : NAN
+      .price = NAN,
+      .volume = NAN,
     };
     core::Quote sell = {
-      .price = !u.asks.empty() ? u.asks[0].price : NAN,
-      .volume = !u.asks.empty() ? u.asks[0].price : NAN,
+      .price = NAN,
+      .volume = NAN,
     };
+    if(!layers_.empty()) {
+      buy.price = layers_[0].bid_price;
+      buy.volume = layers_[0].bid_quantity;
+      sell.price = layers_[0].ask_price;
+      sell.volume = layers_[0].ask_quantity;
+    }
     core::Quotes quotes {
       .market = market_id,
       .symbol = u.symbol,      

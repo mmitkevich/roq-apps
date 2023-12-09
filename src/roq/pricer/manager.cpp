@@ -74,39 +74,40 @@ void Manager::operator()(const roq::Event<roq::ParametersUpdate>& e) {
     }
 }
 
+
 void Manager::operator()(const Event<core::Quotes> &event) {
     auto & quotes = event.value;
-    //auto [node, is_new] = emplace_node({
-   //     .node=quotes.market, .symbol=quotes.symbol, .exchange=quotes.exchange
-    //});
-    //node.update(quotes);
+    log::debug<2>("pricer::Quotes quotes={}", quotes);
     
-    // TODO: for all nodes with mdata linked to event.market update quotes
-
-    //log::debug<2>("pricer::Quotes Node market={} symbol={} exchange={} bid={} ask={}",node.market, quotes.symbol, quotes.exchange, node.quotes.bid, node.quotes.ask);
-    
-//    target_quotes(node);
-/*
-    /// compute dependents and publish
-    get_path(quotes.market, [&](core::MarketIdent item) {
-        bool changed = false;
-        Context context{node, *this};
-        for(auto& compute: node.pipeline) {
-            if(compute(context))
-                changed = true;
-        }
-        if(node.market && changed) {
-            send_target_quotes(node.node);
-        }
+    // forward quotes to input node (FIXME: only single input node per market)
+    get_node_by_market(quotes.market, [&](Node& input_node) {
+        input_node.update(quotes);
+        // compute dependents and publish
+        get_path(input_node.node, [&](core::NodeIdent node_id) {
+            bool changed = false;
+            Node* node = get_node(node_id);
+            assert(node);
+            Context context {
+                .manager = *this,
+                .node = *node
+            };
+            for(auto& compute: (*node).pipeline) {
+                if((*compute)(context))
+                    changed = true;
+            }
+            if((*node).exec && changed) {
+                send_target_quotes((*node).node);
+            }
+        });
+//    send_target_quotes(node);
     });
-*/        
 }
 
 void Manager::send_target_quotes(core::NodeIdent node_id) {
     auto* node = get_node(node_id);
     assert(node);
-
     assert((*node).exec!=0);
+    log::debug<2>("pricer::TargetQuotes quotes={}", (*node).quotes);
     core.markets.get_market((*node).exec, [&](auto& market) {
         core::TargetQuotes quotes {
             .market = market.market,
@@ -158,7 +159,7 @@ bool Manager::set_mdata(core::NodeIdent node_id, core::Market const& market_key)
     }
 
     auto [market, is_new_market] = core.markets.emplace_market(market_key);
-    (*node).mdata = market_key.market;
+    (*node).mdata = market.market;
     node_by_market[(*node).mdata] = (*node).node;
     if((*node).portfolio) {
         node_by_portfolio[(*node).portfolio][(*node).mdata] = (*node).node;

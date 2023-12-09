@@ -35,3 +35,5 @@ inline core::Double ExposureFromQuotes(core::BestQuotes const& self) {
 
 
 } // roq::ocre
+
+ROQ_CORE_FMT_DECL(roq::core::BestQuotes, "buy_price {} buy_volume {} ask_price {} ask_volume {}", _.buy.price, _.buy.volume, _.sell.price, _.sell.volume)

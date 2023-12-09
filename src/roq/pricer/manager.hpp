@@ -44,13 +44,31 @@ struct Manager : core::Handler {
     pricer::Node *get_node(core::NodeIdent node_id);
     const pricer::Node *get_node(core::MarketIdent market) const { return const_cast<Manager*>(this)->get_node(market); }
 
-    bool get_node(core::NodeIdent node_id, std::invocable<const pricer::Node&> auto fn) const {
+    bool get_node(core::NodeIdent node_id, std::invocable<const pricer::Node&> auto && fn) const {
+        const Node* node = get_node(node_id);
+        if(node) {
+            fn(*node);
+            return true;
+        }
+        return false;
+    }
+    
+    bool get_node(core::NodeIdent node_id, std::invocable<pricer::Node&> auto && fn)  {
         Node* node = get_node(node_id);
         if(node) {
             fn(*node);
             return true;
         }
         return false;
+    }
+
+
+    bool get_node_by_market(core::MarketIdent market, std::invocable<pricer::Node&> auto && fn) {
+        auto iter = node_by_market.find(market);
+        if(iter == std::end(node_by_market)) {
+            return false;
+        }
+        return get_node(iter->second, fn);
     }
 
     std::pair<pricer::Node&, bool> emplace_node(pricer::NodeKey key);
@@ -69,7 +87,7 @@ public:
     bool set_portfolio(core::NodeIdent node_id, core::PortfolioKey const& portfolio);
     bool set_ref(core::NodeIdent node_id, std::string_view ref_node, std::string_view flags);
 
-    bool get_path(core::MarketIdent market,  std::invocable<core::MarketIdent> auto && fn) {
+    bool get_path(core::MarketIdent market,  std::invocable<core::NodeIdent> auto && fn) {
         auto iter = paths.find(market);
         if(iter == std::end(paths))
             return false;

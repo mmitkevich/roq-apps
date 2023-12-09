@@ -9,6 +9,7 @@
 #include <roq/cache/gateway.hpp>
 #include <roq/client/config.hpp>
 #include <roq/client/dispatcher.hpp>
+#include <roq/layer.hpp>
 #include <roq/top_of_book.hpp>
 #include <type_traits>
 
@@ -109,6 +110,7 @@ struct Strategy final
 
     template<class Config, class Node>
     void configure(Config& config, Node node) {
+      core.configure(config, node);
       oms.configure(config, node["oms"]); 
     }
 
@@ -144,6 +146,7 @@ private:
 private:
     client::Dispatcher& dispatcher_;
     std::string strategy_name;
+    std::vector<Layer> layers_;
     config::Manager& config;
     // components
     core::Manager core;

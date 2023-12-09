@@ -42,26 +42,26 @@ struct Markets : core::BasicDispatch<Markets> {
 
     void operator()(const Event<GatewayStatus> &event);
 
-    template<class Context, class Config>
-    void configure(Context& context, const Config& config) {
+    template<class Config, class Node>
+    void configure(const Config& config, Node root) {
         clear();
-        config.get_nodes("market",[&](auto market_node) {
-            auto symbol = config.get_string(market_node, "symbol");
-            auto exchange = config.get_string(market_node, "exchange");
-            auto market_str = config.get_string(market_node, "market");
-            auto mdata_gateway_name = config.get_string_or(market_node, "mdata_gateway", "");
-            auto trade_gateway_name = config.get_string_or(market_node, "trade_gateway", "");
-            core::MarketIdent market = context.get_market_ident(market_str);
-            log::info<1>("symbol {}, exchange {}, market {} {} mdata_gateway '{}' trade_gateway '{}'", symbol, exchange, market, "FIXME", mdata_gateway_name, trade_gateway_name);
-            core::MarketInfo& item = emplace_market({.market=market, .symbol=symbol, .exchange=exchange});
+        config.get_nodes(root, "market",[&](auto node) {
+            auto symbol = config.get_string(node, "symbol");
+            auto exchange = config.get_string(node, "exchange");
+            //auto market_str = config.get_string(node, "market");
+            auto mdata_gateway_name = config.get_string_or(node, "mdata_gateway", "");
+            auto trade_gateway_name = config.get_string_or(node, "trade_gateway", "");
+            core::MarketIdent market = this->get_market_ident(symbol, exchange);
+            log::info<1>("symbol {}, exchange {}, market {} mdata_gateway '{}' trade_gateway '{}'", symbol, exchange, market, mdata_gateway_name, trade_gateway_name);
+            auto [item, is_new] = emplace_market({.market=market, .symbol=symbol, .exchange=exchange});
             // FIXME:
             //item.market = market_str;
-            item.pub_price_source = config.get_value_or(market_node, "pub_price_source", core::BestPriceSource::UNDEFINED);
-            item.best_price_source = config.get_value_or(market_node, "best_price_source", core::BestPriceSource::MARKET_BY_PRICE);
-            item.lot_size = config.get_value_or(market_node, "lot_size", core::Volume{1.0});
+            item.pub_price_source = config.get_value_or(node, "pub_price_source", core::BestPriceSource::UNDEFINED);
+            item.best_price_source = config.get_value_or(node, "best_price_source", core::BestPriceSource::MARKET_BY_PRICE);
+            item.lot_size = config.get_value_or(node, "lot_size", core::Volume{1.0});
             item.mdata_gateway_name = mdata_gateway_name;
             item.trade_gateway_name = trade_gateway_name;
-            item.depth_num_levels = config.get_value_or(market_node, "depth_num_levels", core::Integer{0});
+            item.depth_num_levels = config.get_value_or(node, "depth_num_levels", core::Integer{0});
         });    
     }
 

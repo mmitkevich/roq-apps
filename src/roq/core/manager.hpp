@@ -23,6 +23,12 @@ struct Manager : core::BasicDispatch<Manager>
     operator Portfolios&() { return portfolios; }
     //operator Accounts&() { return accounts; }
 
+    template<class Config, class Node>
+    void configure(Config& config, Node root) {
+      markets.configure(config, root);
+      // TODO: gateways.configure(config, root);
+    }
+
     template<class T>
     bool dispatch(const roq::Event<T> &event) {
         Base::dispatch(event);

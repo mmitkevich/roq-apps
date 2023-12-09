@@ -34,7 +34,7 @@
 # define pricing nodes....
 
 [[parameter]]
-    label           = "top_of_book"
+    label           = "mdata"
     symbol          = "D:BTC.P:p"
     exchange        = "pricer"                              # used to route the parameter into pricer for now
     value           = "deribit:BTC-PERPETUAL"

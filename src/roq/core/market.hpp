@@ -15,8 +15,8 @@ struct Market {
 
 struct MarketInfo {
     core::MarketIdent market;
-    std::string_view symbol;
-    std::string_view exchange;
+    roq::Symbol symbol;
+    roq::Exchange exchange;
 
     operator core::Market() const {
         return core::Market {
