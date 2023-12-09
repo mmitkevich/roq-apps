@@ -79,14 +79,7 @@ void Strategy::operator()(const Event<MarketByPriceUpdate>& event) {
     bool done = market_cache(event);   
     cache::MarketByPrice& mbp = *market_cache.market_by_price;
     mbp.extract_2(layers_, 1);
-    core::Quote buy = {
-      .price = NAN,
-      .volume = NAN,
-    };
-    core::Quote sell = {
-      .price = NAN,
-      .volume = NAN,
-    };
+    core::Quote buy, sell;
     if(!layers_.empty()) {
       buy.price = layers_[0].bid_price;
       buy.volume = layers_[0].bid_quantity;
