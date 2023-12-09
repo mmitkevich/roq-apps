@@ -7,6 +7,7 @@
 #include "roq/core/market.hpp"
 #include "roq/core/portfolio.hpp"
 #include "roq/core/quotes.hpp"
+#include <concepts>
 #include <roq/market_status.hpp>
 #include <roq/string_types.hpp>
 #include <roq/timer.hpp>
@@ -40,8 +41,17 @@ struct NodeKey {
 struct Manager : core::Handler {
     Manager(pricer::Handler &handler, core::Manager& core);
 
-    pricer::Node *get_node(core::MarketIdent market);
+    pricer::Node *get_node(core::NodeIdent node_id);
     const pricer::Node *get_node(core::MarketIdent market) const { return const_cast<Manager*>(this)->get_node(market); }
+
+    bool get_node(core::NodeIdent node_id, std::invocable<const pricer::Node&> auto fn) const {
+        Node* node = get_node(node_id);
+        if(node) {
+            fn(*node);
+            return true;
+        }
+        return false;
+    }
 
     std::pair<pricer::Node&, bool> emplace_node(pricer::NodeKey key);
 
@@ -54,10 +64,10 @@ struct Manager : core::Handler {
 
     void operator()(const roq::Event<roq::ParametersUpdate>& e) override;
 public:
-    void set_pipeline(pricer::Node&node, const std::vector<std::string_view> & pipeline);
-    bool set_mdata(pricer::Node& node, core::Market const& market);
-    bool set_portfolio(pricer::Node& node, core::PortfolioKey const& portfolio);
-    bool set_ref(pricer::Node& node, std::string_view ref_node, std::string_view flags);
+    void set_pipeline(core::NodeIdent node_id, const std::vector<std::string_view> & pipeline);
+    bool set_mdata(core::NodeIdent node_id, core::Market const& market);
+    bool set_portfolio(core::NodeIdent node_id, core::PortfolioKey const& portfolio);
+    bool set_ref(core::NodeIdent node_id, std::string_view ref_node, std::string_view flags);
 
     bool get_path(core::MarketIdent market,  std::invocable<core::MarketIdent> auto && fn) {
         auto iter = paths.find(market);
@@ -81,7 +91,7 @@ public:
             fn(node);
         }
     }
-    void target_quotes(pricer::Node& node);
+    void send_target_quotes(core::NodeIdent node);
   public:
     core::NodeIdent last_node_id = 0;
     core::Manager& core; 

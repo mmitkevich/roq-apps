@@ -102,7 +102,7 @@ struct Node {
     }
 
     pricer::NodeRef& add_ref(core::NodeIdent ref_node, roq::Mask<NodeFlags> flags = {}) {
-        auto& ref = refs[refs_size];
+        NodeRef& ref = refs[refs_size];
         ref = NodeRef {
             .node = ref_node,
             .flags = roq::Mask{flags}

@@ -54,14 +54,14 @@ void Manager::operator()(const roq::Event<roq::ParametersUpdate>& e) {
         auto[label, suffix] = core::utils::split_suffix(p.label, ':');
         if(label == "mdata"sv) {
             auto [exchange, symbol] = core::utils::split_prefix(p.value, ':');
-            set_mdata(node, {
+            set_mdata(node.node, {
                 .symbol = symbol,
                 .exchange = exchange
             });
         } else if(label == "portfolio"sv) {
-            set_portfolio(node, {.name = p.value});
+            set_portfolio(node.node, {.name = p.value});
         } else if(label == "ref"sv) {
-            set_ref(node, p.value, suffix);
+            set_ref(node.node, p.value, suffix);
             // TOOD: add refs
         } else if(label == "pipeline"sv) {
             auto vec = core::utils::split_sep(p.value, ' ');
@@ -96,21 +96,24 @@ void Manager::operator()(const Event<core::Quotes> &event) {
                 changed = true;
         }
         if(node.market && changed) {
-            target_quotes(node);
+            send_target_quotes(node.node);
         }
     });
 */        
 }
 
-void Manager::target_quotes(Node& node) {
-    assert(node.exec!=0);
-    core.markets.get_market(node.exec, [&](auto& market) {
+void Manager::send_target_quotes(core::NodeIdent node_id) {
+    auto* node = get_node(node_id);
+    assert(node);
+
+    assert((*node).exec!=0);
+    core.markets.get_market((*node).exec, [&](auto& market) {
         core::TargetQuotes quotes {
             .market = market.market,
             .symbol = market.symbol,
             .exchange = market.exchange,
-            .buy = std::span {&node.quotes.buy, 1}, 
-            .sell = std::span {&node.quotes.sell, 1}
+            .buy = std::span {&(*node).quotes.buy, 1}, 
+            .sell = std::span {&(*node).quotes.sell, 1}
         };
         roq::MessageInfo info {};
         roq::Event event {info, quotes};
@@ -118,9 +121,9 @@ void Manager::target_quotes(Node& node) {
     });
 }
 
-Node *Manager::get_node(core::MarketIdent market) {
-  auto iter = nodes.find(market);
-  if (iter == std::end(nodes))
+Node *Manager::get_node(core::NodeIdent node) {
+  auto iter = nodes.find(node);
+  if (iter != std::end(nodes))
     return &iter->second;
   return nullptr;
 }
@@ -146,24 +149,27 @@ std::pair<pricer::Node&, bool> Manager::emplace_node(pricer::NodeKey key) {
     return {node, is_new_node};
 }
 
-bool Manager::set_mdata(pricer::Node& node, core::Market const& market_key) {
-    if(node.flags.has(NodeFlags::INPUT)) {
+bool Manager::set_mdata(core::NodeIdent node_id, core::Market const& market_key) {
+    auto* node = get_node(node_id);
+    assert(node);
+
+    if((*node).flags.has(NodeFlags::INPUT)) {
         throw roq::RuntimeError("pricer: input for node already specified");
     }
 
     auto [market, is_new_market] = core.markets.emplace_market(market_key);
-    node.mdata = market_key.market;
-    node_by_market[node.mdata] = node.node;
-    if(node.portfolio) {
-        node_by_portfolio[node.portfolio][node.mdata] = node.node;
+    (*node).mdata = market_key.market;
+    node_by_market[(*node).mdata] = (*node).node;
+    if((*node).portfolio) {
+        node_by_portfolio[(*node).portfolio][(*node).mdata] = (*node).node;
     }
-    node.flags |= NodeFlags::INPUT;
-    node.flags |= NodeFlags::PRICE;
+    (*node).flags |= NodeFlags::INPUT;
+    (*node).flags |= NodeFlags::PRICE;
     return true;
 }
 
 
-bool Manager::set_ref(pricer::Node& node, std::string_view ref_node_name, std::string_view flags_sv) {
+bool Manager::set_ref(core::NodeIdent node_id, std::string_view ref_node_name, std::string_view flags_sv) {
     auto [ref_node, is_new] = emplace_node({.name = ref_node_name});
     std::string flags_str = core::utils::to_upper(flags_sv);
     //TODO: parse FLAG1|FLAG2|FLAG3 mask
@@ -173,22 +179,26 @@ bool Manager::set_ref(pricer::Node& node, std::string_view ref_node_name, std::s
     } else if (!flags_sv.empty()){
         log::info("pricer: failed to parse node flags {}", flags_sv);
     }
-    node.add_ref(ref_node.node, ref_node.flags);
-    log::debug("pricer: add ref node.{} -> node.{} flags {}", node.node, ref_node.node, ref_node.flags);
+    auto* node = get_node(node_id);
+    assert(node);
+    log::debug("pricer: add ref node.{} -> node.{} flags {}", (*node).node, ref_node.node, ref_node.flags);    
+    (*node).add_ref(ref_node.node, ref_node.flags);
     return true;
 }
 
-bool Manager::set_portfolio(pricer::Node& node, core::PortfolioKey const& portfolio_key) {
-    if(node.flags.has(NodeFlags::INPUT)) {
+bool Manager::set_portfolio(core::NodeIdent node_id, core::PortfolioKey const& portfolio_key) {
+    auto* node = get_node(node_id);
+    assert(node);
+    if((*node).flags.has(NodeFlags::INPUT)) {
         throw roq::RuntimeError("input for node already specified");
     }
     auto [portfolio, is_new_portfolio] = core.portfolios.emplace_portfolio(portfolio_key);
-    node.portfolio = portfolio_key.portfolio;
-    if(node.mdata) {
-        node_by_portfolio[node.portfolio][node.mdata] = node.node;
+    (*node).portfolio = portfolio_key.portfolio;
+    if((*node).mdata) {
+        node_by_portfolio[(*node).portfolio][(*node).mdata] = (*node).node;
     }
-    node.flags |= NodeFlags::INPUT;    
-    node.flags |= NodeFlags::EXPOSURE;
+    (*node).flags |= NodeFlags::INPUT;    
+    (*node).flags |= NodeFlags::EXPOSURE;
     return true;
 }
 
