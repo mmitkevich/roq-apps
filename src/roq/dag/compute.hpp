@@ -4,7 +4,7 @@
 #include "roq/core/best_quotes.hpp"
 #include <roq/parameters_update.hpp>
 
-namespace roq::pricer {
+namespace roq::dag {
 
 struct Node;
 struct Manager;
@@ -22,10 +22,10 @@ struct Compute {
     virtual ~Compute() = default;
 
     /// node contains prices, manager contains all nodes, context is filled with result (and used to resolve parameters)
-    virtual bool operator()(pricer::Context& context) const = 0;
+    virtual bool operator()(dag::Context& context) const = 0;
 
     /// configure algorithm
-    virtual bool operator()(pricer::Context& context, std::span<const roq::Parameter> )  { return true; }
+    virtual bool operator()(dag::Context& context, std::span<const roq::Parameter> )  { return true; }
 };
 
-} // roq::pricer
+} // roq::dag

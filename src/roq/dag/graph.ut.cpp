@@ -6,7 +6,7 @@
 
 int main(int argc, char*argv[]) {
     using node_id_t = uint32_t;
-    namespace grf = roq::pricer;
+    namespace grf = roq::dag;
 
     std::multimap<node_id_t, node_id_t> args {
         {3, 1},  {3, 2}, 

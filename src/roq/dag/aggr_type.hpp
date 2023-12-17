@@ -1,6 +1,6 @@
 #pragma once
 
-namespace roq::pricer {
+namespace roq::dag {
 
 enum class AggrType {
     UNDEFINED = 0,

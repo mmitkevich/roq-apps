@@ -1,14 +1,14 @@
 #include "roq/core/best_quotes.hpp"
-#include "roq/pricer/compute.hpp"
-#include "roq/pricer/ops/quote_shift.hpp"
+#include "roq/dag/compute.hpp"
+#include "roq/dag/ops/quote_shift.hpp"
 #include "roq/core/price.hpp"
-#include "roq/pricer/node.hpp"
-#include "roq/pricer/manager.hpp"
+#include "roq/dag/node.hpp"
+#include "roq/dag/manager.hpp"
 #include "roq/logging.hpp"
 
-namespace roq::pricer::ops {
+namespace roq::dag::ops {
 
-bool QuoteShift::operator()(pricer::Context &context) const {
+bool QuoteShift::operator()(dag::Context &context) const {
   auto& params = context.get_parameters<Parameters>();
 
   core::BestQuotes& q = context.quotes;
@@ -16,7 +16,7 @@ bool QuoteShift::operator()(pricer::Context &context) const {
   core::Shift shift = 0;
 
     // use exposure refs to shift prices
-  context.get_refs([&](pricer::NodeRef const& ref, pricer::Node const& ref_node) {  
+  context.get_refs([&](dag::NodeRef const& ref, dag::Node const& ref_node) {  
     const core::BestQuotes& ref_quotes = ref_node.quotes;
     if(ref_node.flags.has(NodeFlags::EXPOSURE)) {
         auto exposure = core::ExposureFromQuotes(ref_quotes);
@@ -31,10 +31,10 @@ bool QuoteShift::operator()(pricer::Context &context) const {
   return true;
 }
 
-bool QuoteShift::operator()(pricer::Context &context, std::span<const roq::Parameter>  update)  {
+bool QuoteShift::operator()(dag::Context &context, std::span<const roq::Parameter>  update)  {
   using namespace std::literals;
   auto& parameters = context.template get_parameters<Parameters>();
   return false;
 }
 
-} // namespace roq::pricer::ops
+} // namespace roq::dag::ops

@@ -2,11 +2,11 @@
 #include "roq/core/price.hpp"
 #include "roq/core/shift.hpp"
 #include "roq/core/types.hpp"
-#include "roq/pricer/compute.hpp"
+#include "roq/dag/compute.hpp"
 
-namespace roq::pricer::ops  {
+namespace roq::dag::ops  {
 
-struct QuoteShift : pricer::Compute
+struct QuoteShift : dag::Compute
 {
     struct Parameters {
         //core::Shift         shift_per_unit {};
@@ -17,8 +17,8 @@ struct QuoteShift : pricer::Compute
     
     static constexpr std::string_view NAME = "quote_shift";
 
-    bool operator()(pricer::Context &context) const override;
-    bool operator()(pricer::Context &context, std::span<const roq::Parameter>  update )  override;
+    bool operator()(dag::Context &context) const override;
+    bool operator()(dag::Context &context, std::span<const roq::Parameter>  update )  override;
 };
 
 } // roq::mmaker

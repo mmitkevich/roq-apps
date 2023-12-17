@@ -5,16 +5,16 @@
 #include "roq/core/market.hpp"
 #include "roq/core/quote.hpp"
 #include "roq/core/types.hpp"
-#include "roq/pricer/aggr_type.hpp"
+#include "roq/dag/aggr_type.hpp"
 #include <roq/parameters_update.hpp>
 #include <roq/string_types.hpp>
-#include "roq/pricer/compute.hpp"
+#include "roq/dag/compute.hpp"
 
 namespace roq::core {
     using NodeIdent = core::Ident;
 }
 
-namespace roq::pricer {
+namespace roq::dag {
 
 struct Manager;
 
@@ -29,7 +29,7 @@ struct NodeRef {
     core::NodeIdent node;
     core::Double weight;
     core::Double denominator = {1.0};     // denominator
-    roq::Mask<pricer::NodeFlags> flags;
+    roq::Mask<dag::NodeFlags> flags;
 };
 
 struct Context {
@@ -60,7 +60,7 @@ struct Context {
 
 struct Node {
     
-    pricer::Manager& manager;
+    dag::Manager& manager;
 
     // node identification
     core::NodeIdent node;
@@ -82,7 +82,7 @@ struct Node {
     Context make_context() { return {.manager = manager, .node = *this}; }
 
     // update from computed values, returns if changed
-    bool update(pricer::Context const &rhs);
+    bool update(dag::Context const &rhs);
     bool update(core::Quotes const &rhs);
     bool update(std::span<const roq::Parameter> const update);
     // update using pipeline, return if changed
@@ -101,7 +101,7 @@ struct Node {
         }
     }
 
-    pricer::NodeRef& add_ref(core::NodeIdent ref_node, roq::Mask<NodeFlags> flags = {}) {
+    dag::NodeRef& add_ref(core::NodeIdent ref_node, roq::Mask<NodeFlags> flags = {}) {
         NodeRef& ref = refs[refs_size];
         ref = NodeRef {
             .node = ref_node,
@@ -132,7 +132,7 @@ struct Node {
 };
 
 
-//bool empty_compute(pricer::Context& context, pricer::Node const& node, pricer::Manager & manager);
+//bool empty_compute(dag::Context& context, dag::Node const& node, dag::Manager & manager);
 
 template<class Parameters>
 Parameters& Context::get_parameters() {
@@ -141,6 +141,6 @@ Parameters& Context::get_parameters() {
     return *data;
 }
 
-} // roq::pricer
+} // roq::dag
 
-ROQ_CORE_FMT_DECL(roq::pricer::NodeFlags, "", magic_enum::enum_name(_))
+ROQ_CORE_FMT_DECL(roq::dag::NodeFlags, "", magic_enum::enum_name(_))

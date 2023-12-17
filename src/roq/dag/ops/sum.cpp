@@ -1,15 +1,15 @@
-#include "roq/pricer/ops/sum.hpp"
-#include "roq/pricer/manager.hpp"
+#include "roq/dag/ops/sum.hpp"
+#include "roq/dag/manager.hpp"
 
-namespace roq::pricer::ops {
+namespace roq::dag::ops {
 
-bool Sum::operator()(pricer::Context& context) const {
+bool Sum::operator()(dag::Context& context) const {
     core::BestQuotes& q = context.quotes;
 
     q.buy = { .price = 0.0, .volume = 1.0 };
     q.sell = { .price = 0.0, .volume = 1.0 };
 
-    context.manager.get_refs(context.node, [&](pricer::NodeRef const& ref, pricer::Node const& ref_node) {
+    context.manager.get_refs(context.node, [&](dag::NodeRef const& ref, dag::Node const& ref_node) {
         const core::Double w = ref.weight;
         const auto& buy = ref_node.quotes.buy;
         const auto& sell = ref_node.quotes.sell;
@@ -25,4 +25,4 @@ bool Sum::operator()(pricer::Context& context) const {
     return true;
 }
 
-} // roq::pricer::ops
+} // roq::dag::ops

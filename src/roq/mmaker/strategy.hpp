@@ -2,6 +2,7 @@
 #pragma once
 
 #include "roq/config/manager.hpp"
+#include "roq/core/handler.hpp"
 #include "roq/core/manager.hpp"
 #include "roq/client.hpp"
 #include "roq/core/basic_handler.hpp"
@@ -25,52 +26,12 @@
 //#include "application.hpp"
 //#include "./context.hpp"
 #include "roq/core/markets.hpp"
-#include "roq/pricer/manager.hpp"
+#include "roq/dag/manager.hpp"
 
 namespace roq {
 namespace mmaker {
 
-/*
-struct DepthEventFactory {
-    std::vector<umm::DepthLevel> bids;
-    std::vector<umm::DepthLevel> asks;
-
-    template<class 
-    umm::Event<umm::DepthUpdate> operator()(core::MarketIdent market, std::span<roq::MBPUpdate> bids, std::span<roq::MBPUpdate> asks);
-};
-
-inline umm::Event<umm::DepthUpdate> DepthEventFactory::operator()(core::MarketIdent market, std::span<MBPUpdate> bids, std::span<MBPUpdate> asks) {
-    this->bids.resize(bids.size());
-    for(std::size_t i=0;i<bids.size();i++) {
-      double qty = bids[i].quantity;
-      if(qty==0)
-        qty = NAN;
-      this->bids[i] = umm::DepthLevel {
-        .price = bids[i].price,
-        .volume = qty
-      };
-      if(this->bids[i].volume.value==0) {
-          this->bids[i].volume = {};
-      }
-    }
-    this->asks.resize(asks.size());
-    for(std::size_t i=0;i<asks.size();i++) {
-      double qty = asks[i].quantity;
-      if(qty==0)
-        qty = NAN;
-
-      this->asks[i] = umm::DepthLevel {
-        .price = asks[i].price,
-        .volume = qty
-      };
-    }        
-    umm::Event<umm::DepthUpdate> event;
-    event->market = market;
-    event->bids = this->bids;
-    event->asks = this->asks;
-    return event;
-}
-*/
+struct Application;
 
 
 struct Strategy final
@@ -94,19 +55,9 @@ struct Strategy final
     Strategy&operator=(Strategy const&) = delete;
     Strategy&operator=(Strategy&&) = delete;
 
-    template<class Application>
-    Strategy(client::Dispatcher& dispatcher, Application& context)
-    : dispatcher_(dispatcher)
-    , strategy_name(context.strategy_name)
-    , config(context.config)
-    , core()
-    , oms(*this, dispatcher, core)
-    , pricer(oms, core)
-     {
-      initialize();
-    }
-    
-    void initialize();
+    Strategy(client::Dispatcher& dispatcher, Application& context);
+
+    virtual std::unique_ptr<core::Handler> make_pricer();
 
     template<class Config, class Node>
     void configure(Config& config, Node node) {
@@ -151,8 +102,11 @@ private:
     // components
     core::Manager core;
     oms::Manager oms;
-    pricer::Manager pricer;
-
+    
+    std::unique_ptr<core::Handler> pricer;
+    
+    // pricer::Manager pricer;
+    // liqs::Manager pricer;
 
 };
 

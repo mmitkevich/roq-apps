@@ -15,7 +15,12 @@ struct Quotes  {
     std::string_view portfolio {};
     std::span<const Quote> buy = {};
     std::span<const Quote> sell = {};
+
+    Quote get_best_buy() const { return buy.empty() ? Quote{} : buy[0]; }
+    Quote get_best_sell() const { return sell.empty() ? Quote{} : sell[0]; }
 };
+
+
 
 // bids = [ {19000, 100=50+50} , {19100,200} ], asks = [ {20100, 200}, {20200, 250}]
 

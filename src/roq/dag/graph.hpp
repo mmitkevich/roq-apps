@@ -5,7 +5,7 @@
 #include <unordered_set>
 #include <cstdint>
 #include <string_view>
-namespace roq::pricer {
+namespace roq::dag {
 
 #ifndef ROQ_GRAPH_DEBUG
 #define ROQ_GRAPH_DEBUG(fmt, ...) std::cout << std::format(fmt, __VA_ARGS__) << std::endl;
@@ -82,4 +82,4 @@ struct Graph {
     std::multimap<node_id_t, node_id_t> edges;
 };
 
-} // roq::pricer
+} // roq::dag

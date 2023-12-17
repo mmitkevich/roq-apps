@@ -30,7 +30,7 @@
 #include "roq/oms/order.hpp"
 #include "roq/core/exposure_update.hpp"
 
-#include "roq/pricer/handler.hpp"
+#include "roq/core/dispatcher.hpp"
 #include "roq/oms/handler.hpp"
 #include "roq/oms/market.hpp"
 #include "roq/core/basic_handler.hpp"
@@ -42,10 +42,11 @@ namespace roq::oms
 {
 
 struct Manager final 
-: core::BasicHandler<Manager, client::Handler, pricer::Handler>
+: core::BasicHandler<Manager, client::Handler>
+, core::Dispatcher
 {
     using Self = Manager;
-    using Base = BasicHandler<Manager, client::Handler, pricer::Handler>;
+    using Base = BasicHandler<Manager, client::Handler>;
     using Handler = oms::Handler;
 
     using Base::dispatch;

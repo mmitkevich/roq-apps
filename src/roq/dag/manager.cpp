@@ -5,25 +5,21 @@
 #define ROQ_GRAPH_DEBUG(fmt,...)
 // log::debug(fmt, #__VA_ARGS__)
 
-#include "roq/pricer/graph.hpp"
+#include "roq/dag/graph.hpp"
 
-#include "roq/pricer/manager.hpp"
+#include "roq/dag/manager.hpp"
 #include <roq/exceptions.hpp>
 #include <roq/message_info.hpp>
 #include <roq/parameters_update.hpp>
 #include <roq/string_types.hpp>
-#include "roq/pricer/factory.hpp"
-#include "roq/pricer/node.hpp"
+#include "roq/dag/factory.hpp"
+#include "roq/dag/node.hpp"
 //#include "roq/core/dispatcher.hpp"
 #include "roq/core/utils/string_utils.hpp"
 #include "roq/mask.hpp"
 
-namespace roq::pricer {
+namespace roq::dag {
 
-Manager::Manager(pricer::Handler& handler, core::Manager& core ) 
-: handler(&handler) 
-, core(core)
-{}
 
 void Manager::operator()(const Event<roq::Timer> &event) {
 
@@ -38,9 +34,6 @@ void Manager::operator()(const Event<core::ExposureUpdate> &event) {
 void Manager::operator()(const roq::Event<roq::MarketStatus>&) {
 
 }
-
-
-
 
 void Manager::operator()(const roq::Event<roq::ParametersUpdate>& e) {
     using namespace std::literals;    
@@ -83,7 +76,7 @@ void Manager::operator()(const roq::Event<roq::ParametersUpdate>& e) {
 
 void Manager::operator()(const Event<core::Quotes> &event) {
     auto & quotes = event.value;
-    log::debug<2>("pricer::Quotes quotes={}", quotes);
+    log::debug<2>("dag::Quotes quotes={}", quotes);
     
     // forward quotes to input node (FIXME: only single input node per market)
     get_node_by_market(quotes.market, [&](Node& input_node) {
@@ -113,7 +106,7 @@ void Manager::send_target_quotes(core::NodeIdent node_id) {
     auto* node = get_node(node_id);
     assert(node);
     assert((*node).exec!=0);
-    log::debug<2>("pricer::TargetQuotes quotes={}", (*node).quotes);
+    log::debug<2>("dag::TargetQuotes quotes={}", (*node).quotes);
     core.markets.get_market((*node).exec, [&](auto& market) {
         core::TargetQuotes quotes {
             .market = market.market,
@@ -124,7 +117,7 @@ void Manager::send_target_quotes(core::NodeIdent node_id) {
         };
         roq::MessageInfo info {};
         roq::Event event {info, quotes};
-        (*handler)(event);
+        dispatcher(event);
     });
 }
 
@@ -135,7 +128,7 @@ Node *Manager::get_node(core::NodeIdent node) {
   return nullptr;
 }
 
-std::pair<pricer::Node&, bool> Manager::emplace_node(pricer::NodeKey key) {
+std::pair<dag::Node&, bool> Manager::emplace_node(dag::NodeKey key) {
     auto node_id = key.node;
     if(node_id==0) {
         auto iter = node_by_name.find(key.name);
@@ -180,7 +173,7 @@ bool Manager::set_ref(core::NodeIdent node_id, std::string_view ref_node_name, s
     auto [ref_node, is_new] = emplace_node({.name = ref_node_name});
     std::string flags_str = core::utils::to_upper(flags_sv);
     //TODO: parse FLAG1|FLAG2|FLAG3 mask
-    std::optional<pricer::NodeFlags> flags_opt = magic_enum::enum_cast<pricer::NodeFlags>(flags_str);
+    std::optional<dag::NodeFlags> flags_opt = magic_enum::enum_cast<dag::NodeFlags>(flags_str);
     if(flags_opt.has_value()) {
         ref_node.flags.set(flags_opt.value());
     } else if (!flags_sv.empty()){
@@ -220,11 +213,11 @@ void Manager::rebuild_paths() {
             edges.emplace(ref.node, node.node);
         });
     });
-    pricer::Graph<core::NodeIdent> graph { std::move(edges) };
+    dag::Graph<core::NodeIdent> graph { std::move(edges) };
     for(auto& [market, node]: node_by_market) {
         graph.build_path(node, paths[node]);
     }
     
 }
 
-} // namespace roq::pricer
+} // namespace roq::dag

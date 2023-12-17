@@ -7,7 +7,7 @@ see [LICENSE](./LICENSE)
 Please see [./share/config.toml](./share/config.toml) for configuration example
 
 Configuration is done per virtual instrument e.g. `quote:deribit:BTC.P`
-It is modeled as `pricer::Node` in the pricer's code [src/roq/pricer/Node.hpp](src/roq/pricer/Node.hpp)
+It is modeled as `pricer::Node` in the pricer's code [src/roq/dag/Node.hpp](src/roq/dag/Node.hpp)
 
 the following snippet shows configuration of target spread parameter
 
@@ -57,3 +57,48 @@ mdata.deribit:BTC.P                   exposure.deribit:BTC.P
                     quote.deribit:BTC.P
                         product.mdata shift.exposure
                                         
+
+ tokyo                                            ld4
+ 
+binance                                          deribit
+ |                                                 |
+liq_binance                               CM:udp  liq_deribit
+  account_positions(binance, deribit)    <-->        account_position(binance, deribit)
+  |                                                   |
+                                                      |
+                                                      |
+                                                      |
+ roq-risk-manager_binance        ---------------------+             
+
+
+
+ upd delivery check
+
+ 1000  ->
+ [1s]
+ 1000
+
+ each-to-each
+UDP-sedner list udp sockets
+
+-1) drop "pricer" in favor of simplest example of quoting 
+0) test OMS with binance (place/cancel no modify)
+//1) test above with modify 
+2) design and implement websocket publication of positions from risk-manager to each liquidation strategy sitting in exchange (gateway) proxmimity  
+     -- STAR TOPOLOGY for positions exchange through risk-manager as central broker
+
+
+///
+0) simple working example of binance (just 1 exchange) 
+1) roq-risk-manage will connect to external websocket service and taht remote service will push liquidation sizes to RRM to distribute to all 
+liqstrat connected to that RRM
+
+
+TO DECIDE: exact API to push positions-to-liquidate from central entity to liquidation strategy
+
+ *  --   *  [HTTPS PUT/POST position, size-to-liquidate(client_1_999)]
+   \  /
+ES->>>    RRM  <---- trade        positions  ->     **  liq_strat - IPC -- deribit
+   /  
+       \
+  *     *

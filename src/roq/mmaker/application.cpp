@@ -18,6 +18,8 @@
 #include <roq/logging.hpp>
 #include "roq/config/toml_file.hpp"
 
+
+
 using namespace std::chrono_literals;
 using namespace std::literals;
 
@@ -46,7 +48,7 @@ int Application::main(args::Parser const &parser) {
   config.load(config_file);
 
   client::flags::Settings settings {parser};
-  
+
   client::Trader{settings, config, /* argv */parser.params()}.template dispatch<Strategy>(/*context*/*this);
   return EXIT_SUCCESS;
 }

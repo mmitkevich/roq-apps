@@ -1,12 +1,12 @@
 #include "roq/core/quote.hpp"
-#include "roq/pricer/compute.hpp"
-#include "roq/pricer/ops/quote_spread.hpp"
+#include "roq/dag/compute.hpp"
+#include "roq/dag/ops/quote_spread.hpp"
 #include "roq/core/price.hpp"
 
 
-namespace roq::pricer::ops {
+namespace roq::dag::ops {
 
-bool QuoteSpread::operator()(pricer::Context &context) const {
+bool QuoteSpread::operator()(dag::Context &context) const {
   auto& params = context.get_parameters<Parameters>();
 
   core::BestQuotes &q = context.quotes;
@@ -23,7 +23,7 @@ bool QuoteSpread::operator()(pricer::Context &context) const {
   return true;
 }
 
-bool QuoteSpread::operator()(pricer::Context &context, std::span<const roq::Parameter>  update)  {
+bool QuoteSpread::operator()(dag::Context &context, std::span<const roq::Parameter>  update)  {
   using namespace std::literals;
   auto& parameters = context.template get_parameters<Parameters>();
   for(auto const& p: update) {
@@ -36,4 +36,4 @@ bool QuoteSpread::operator()(pricer::Context &context, std::span<const roq::Para
   return false;
 }
 
-} // namespace roq::pricer::ops
+} // namespace roq::dag::ops

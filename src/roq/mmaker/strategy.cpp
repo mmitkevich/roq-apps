@@ -12,15 +12,48 @@
 #include <roq/cache/market_by_price.hpp>
 #include <roq/parameters_update.hpp>
 #include <roq/top_of_book.hpp>
-#include "roq/pricer/factory.hpp"
+#include "roq/dag/factory.hpp"
+
+#include "roq/mmaker/application.hpp"
+
+#define USE_LIQS
+#define USE_PRICER
+
+#ifdef USE_LQS
+#include "roq/lqs/manager.hpp"
+#endif
+
+#ifdef USE_DAG
+#include "roq/dag/manager.hpp"
+#endif
 
 namespace roq::mmaker {
-//using namespace umm::literals;
+using namespace std::literals;
+  
+std::unique_ptr<core::Handler> Strategy::make_pricer() {
+  #ifdef USE_LQS
+  if(strategy_name == "lqs"sv) {
+    return std::make_unique<lqs::Manager>(dispatcher_, core);
+  } 
+  #endif
+  #ifdef USE_DAG
+  if(strategy_name == "dag"sv) {
+    dag::Factory::initialize_all();
+    return std::make_unique<dag::Manager>(dispatcher_, core);
+  }
+  #endif
+  throw roq::RuntimeError("pricer '{}' was not found"sv, strategy_name);
+  return {};
+}
 
-void Strategy::initialize() {
-
-  pricer::Factory::initialize_all();
-
+Strategy::Strategy(client::Dispatcher& dispatcher, Application& context)
+: dispatcher_(dispatcher)
+, strategy_name(context.strategy_name)
+, config(context.config)
+, core()
+, oms(*this, dispatcher, core)
+{
+  pricer = make_pricer();
   config.configure(*this);
 }
 
@@ -58,7 +91,7 @@ void Strategy::operator()(const Event<TopOfBook> &event) {
     };
 
     roq::Event event_2 {event.message_info, quotes};  // is it good to keep MessageInfo?
-    pricer(event_2);
+    (*pricer)(event_2);
 
       // publish to udp
       //if(publisher_)
@@ -79,13 +112,16 @@ void Strategy::operator()(const Event<MarketByPriceUpdate>& event) {
     bool done = market_cache(event);   
     cache::MarketByPrice& mbp = *market_cache.market_by_price;
     mbp.extract_2(layers_, 1);
+    
     core::Quote buy, sell;
+    
     if(!layers_.empty()) {
       buy.price = layers_[0].bid_price;
       buy.volume = layers_[0].bid_quantity;
       sell.price = layers_[0].ask_price;
       sell.volume = layers_[0].ask_quantity;
     }
+
     core::Quotes quotes {
       .market = market_id,
       .symbol = u.symbol,      
@@ -93,15 +129,18 @@ void Strategy::operator()(const Event<MarketByPriceUpdate>& event) {
       .buy = std::span { &buy, 1},
       .sell = std::span { &sell, 1}
     };
+
     roq::Event event_2 {event.message_info, quotes};
-    pricer(event_2);
+    (*pricer)(event_2);
 
     // publish to udp
     //if(publisher_)
     //    publisher_->dispatch(best_price_event);
-
 }
 
+// provide REST interface to push volume to liquidate ? 
+
+// CustomMetrics [client_strategy_id=999 = {BTC-PER=1000, BTC_FUT=-1000}] message from roq-risk-manager
 void Strategy::operator()(const Event<core::ExposureUpdate>& event) {
     // cache position
     auto& u = event.value;
@@ -112,7 +151,7 @@ void Strategy::operator()(const Event<core::ExposureUpdate>& event) {
     //position_event.header.receive_time_utc = event.message_info.receive_time_utc;
     //position_event->market = u.market;
 
-    pricer(event);
+    (*pricer)(event);
 }
 
 

@@ -4,9 +4,9 @@
 #include "roq/event.hpp"
 #include "roq/core/quotes.hpp"
 
-namespace roq::pricer {
+namespace roq::core {
 
-struct Handler {
+struct Dispatcher {
     virtual void operator()(Event<core::TargetQuotes> const&) = 0;
 };
 

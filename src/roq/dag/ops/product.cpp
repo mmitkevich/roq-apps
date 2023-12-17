@@ -1,16 +1,16 @@
-#include "roq/pricer/ops/product.hpp"
-#include "roq/pricer/manager.hpp"
+#include "roq/dag/ops/product.hpp"
+#include "roq/dag/manager.hpp"
 
-namespace roq::pricer::ops {
+namespace roq::dag::ops {
 
 
-bool Product::operator()(pricer::Context& context) const {
+bool Product::operator()(dag::Context& context) const {
     core::BestQuotes& q = context.quotes;
 
     q.buy = { .price = 1.0, .volume = 1.0 };
     q.sell = { .price = 1.0, .volume = 1.0 };
 
-    context.get_refs([&](pricer::NodeRef const& ref, pricer::Node const& ref_node) {
+    context.get_refs([&](dag::NodeRef const& ref, dag::Node const& ref_node) {
         const core::Double w = ref.weight;
         const auto& buy = ref_node.quotes.buy;
         const auto& sell = ref_node.quotes.sell;
@@ -33,4 +33,4 @@ bool Product::operator()(pricer::Context& context) const {
 }
 
 
-} // roq::pricer::ops
+} // roq::dag::ops
