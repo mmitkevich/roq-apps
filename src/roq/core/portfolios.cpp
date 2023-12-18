@@ -2,6 +2,7 @@
 #include "roq/core/portfolios.hpp"
 #include "roq/core/manager.hpp"
 #include "roq/logging.hpp"
+#include <roq/string_types.hpp>
 
 namespace roq::core {
 
@@ -14,9 +15,11 @@ void Portfolios::operator()(const roq::Event<core::ExposureUpdate>& event) {
 void Portfolios::operator()(const roq::Event<roq::PositionUpdate>& event) {
     auto& u = event.value;
     auto exposure = u.long_quantity-u.short_quantity;
-    auto [portfolio,is_new] = emplace_portfolio({.name = u.account});
+    std::array<char, roq::detail::MAX_LENGTH_ACCOUNT+roq::detail::MAX_LENGTH_EXCHANGE+16> portfolio_name;
+    auto result = fmt::format_to_n(portfolio_name.data(), portfolio_name.size(), "{}:{}", u.exchange, u.account);
+    auto [portfolio,is_new] = emplace_portfolio(core::PortfolioKey{.name = std::string_view{portfolio_name.data(), result.size}});
     auto market = core.markets.get_market_ident(u.symbol, u.exchange);
-    log::info<2>("Portfolios:: PositionUpdate exposure {} portfolio {} market {} symbol {} exchange {}", exposure, portfolio.portfolio, market, u.symbol, u.exchange);
+    log::info<2>("Portfolios:: PositionUpdate exposure {} portfolio {} {} market {} symbol {} exchange {}", exposure, portfolio.portfolio, portfolio.name, market, u.symbol, u.exchange);
     portfolio.set_position(market, exposure);
 }
 
@@ -36,6 +39,8 @@ std::pair<core::Portfolio &, bool> Portfolios::emplace_portfolio(core::Portfolio
     auto [iter_2, is_new] = portfolios_.try_emplace(++last_portfolio_id);
     iter_2->second.portfolio = last_portfolio_id;
     portfolio_index_.try_emplace(key.name, last_portfolio_id);
+    auto& portfolio = iter_2->second;
+    portfolio.name = key.name;
     return {iter_2->second, is_new};
 }
 core::PortfolioIdent Portfolios::get_portfolio_ident(std::string_view name) {

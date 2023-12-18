@@ -28,7 +28,7 @@ struct Portfolio {
 
 public:
     core::PortfolioIdent portfolio;
-    roq::Account account;   // associated account if any
+    roq::Account name;   // associated account if any
 private:
     core::Hash<core::MarketIdent, core::Volume> positions_;
 };
