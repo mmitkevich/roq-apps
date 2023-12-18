@@ -26,7 +26,7 @@
 //#include "application.hpp"
 //#include "./context.hpp"
 #include "roq/core/markets.hpp"
-#include "roq/dag/manager.hpp"
+#include "roq/dag/pricer.hpp"
 
 namespace roq {
 namespace mmaker {

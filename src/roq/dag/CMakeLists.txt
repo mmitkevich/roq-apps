@@ -5,7 +5,7 @@ set(TARGET_NAME "${PROJECT_NAME}-dag")
 add_library( "${TARGET_NAME}" STATIC
   "node.cpp"
   "compute.cpp"
-  "manager.cpp"
+  "pricer.cpp"
   "factory.cpp"
 
 )

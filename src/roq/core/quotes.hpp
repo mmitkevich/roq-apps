@@ -3,7 +3,7 @@
 
 #include "roq/core/types.hpp"
 #include "roq/core/quote.hpp"
-
+#include "roq/core/best_quotes.hpp"
 namespace roq::core {
 
 
@@ -18,8 +18,22 @@ struct Quotes  {
 
     Quote get_best_buy() const { return buy.empty() ? Quote{} : buy[0]; }
     Quote get_best_sell() const { return sell.empty() ? Quote{} : sell[0]; }
+
+    operator core::BestQuotes() const {
+      return {
+        .buy = get_best_buy(), 
+        .sell = get_best_sell()
+      };
+    }
 };
 
+inline core::Quotes to_quotes(core::BestQuotes const& best_quotes, core::MarketIdent market) {
+  return {
+    .market = market,
+    .buy = {&best_quotes.buy, 1},
+    .sell = {&best_quotes.sell, 1}
+  };
+}
 
 
 // bids = [ {19000, 100=50+50} , {19100,200} ], asks = [ {20100, 200}, {20200, 250}]

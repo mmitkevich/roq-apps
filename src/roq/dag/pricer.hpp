@@ -18,9 +18,9 @@
 #include <cassert>
 
 // to oms
-//#include "roq/core/dispatcher.hpp"
+#include "roq/core/dispatcher.hpp"
 
-#include "roq/core/basic_pricer.hpp"
+//#include "roq/core/basic_pricer.hpp"
 
 // from cache
 #include "roq/core/handler.hpp"
@@ -38,12 +38,14 @@ struct NodeKey {
     std::string_view name;
 };
 
-struct Manager : core::BasicPricer<Manager> {
-    using Base = core::BasicPricer<Manager>;
-    using Base::Base;
+struct Pricer : core::Handler {
+    Pricer(core::Dispatcher &dispatcher, core::Manager& core)
+    : dispatcher(dispatcher) 
+    , core(core)
+    {}
 
     dag::Node *get_node(core::NodeIdent node_id);
-    const dag::Node *get_node(core::MarketIdent market) const { return const_cast<Manager*>(this)->get_node(market); }
+    const dag::Node *get_node(core::MarketIdent market) const { return const_cast<dag::Pricer*>(this)->get_node(market); }
 
     bool get_node(core::NodeIdent node_id, std::invocable<const dag::Node&> auto && fn) const {
         const Node* node = get_node(node_id);
@@ -113,6 +115,8 @@ public:
     void send_target_quotes(core::NodeIdent node);
     void rebuild_paths();
   public:
+    core::Dispatcher& dispatcher;
+    core::Manager& core; 
     core::NodeIdent last_node_id = 0;
     core::Hash<core::NodeIdent, dag::Node> nodes;
     core::Hash<core::PortfolioIdent, core::Hash<core::MarketIdent, core::NodeIdent>> node_by_portfolio;

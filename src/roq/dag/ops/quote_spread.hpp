@@ -3,7 +3,7 @@
 #include "roq/core/price.hpp"
 #include "roq/core/quotes.hpp"
 #include "roq/core/types.hpp"
-#include "roq/dag/manager.hpp"
+#include "roq/dag/pricer.hpp"
 #include "roq/dag/node.hpp"
 #include <roq/exceptions.hpp>
 #include <roq/parameters_update.hpp>

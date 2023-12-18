@@ -3,7 +3,7 @@
 #include "roq/dag/ops/quote_shift.hpp"
 #include "roq/core/price.hpp"
 #include "roq/dag/node.hpp"
-#include "roq/dag/manager.hpp"
+#include "roq/dag/pricer.hpp"
 #include "roq/logging.hpp"
 
 namespace roq::dag::ops {

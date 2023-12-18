@@ -24,7 +24,7 @@
 #endif
 
 #ifdef USE_DAG
-#include "roq/dag/manager.hpp"
+#include "roq/dag/pricer.hpp"
 #endif
 
 namespace roq::mmaker {

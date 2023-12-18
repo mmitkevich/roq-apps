@@ -1,6 +1,6 @@
 #include "roq/core/best_quotes.hpp"
 #include "roq/dag/node.hpp"
-#include "roq/dag/manager.hpp"
+#include "roq/dag/pricer.hpp"
 #include <roq/exceptions.hpp>
 #include <roq/logging.hpp>
 #include "roq/dag/factory.hpp"

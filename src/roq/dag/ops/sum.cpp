@@ -1,5 +1,5 @@
 #include "roq/dag/ops/sum.hpp"
-#include "roq/dag/manager.hpp"
+#include "roq/dag/pricer.hpp"
 
 namespace roq::dag::ops {
 

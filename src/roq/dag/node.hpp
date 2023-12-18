@@ -16,7 +16,7 @@ namespace roq::core {
 
 namespace roq::dag {
 
-struct Manager;
+struct Pricer;
 
 enum class NodeFlags : uint64_t{
     UNDEFINED       = 0,
@@ -33,7 +33,7 @@ struct NodeRef {
 };
 
 struct Context {
-    Manager& manager;
+    Pricer & manager;
     Node& node;
 
     ptrdiff_t offset {0};    // of parameters in the node
@@ -60,7 +60,7 @@ struct Context {
 
 struct Node {
     
-    dag::Manager& manager;
+    dag::Pricer& manager;
 
     // node identification
     core::NodeIdent node;

@@ -24,7 +24,7 @@ struct BasicPricer : Iface {
         auto const& market_quotes = e.value;
         core::Quote buy = market_quotes.get_best_buy();
         core::Quote sell = market_quotes.get_best_sell();
-        static_cast<D*>(this)->compute_quotes(buy, sell);
+        static_cast<D*>(this)->compute_quotes(buy, sell, market_quotes);
         core::Quotes exec_quotes { 
             .buy = {&buy, 1},
             .sell = {&sell, 1}
@@ -33,7 +33,7 @@ struct BasicPricer : Iface {
         dispatcher(event);  // send to OMS
     }
 
-    void compute_quotes(core::Quote& buy, core::Quote& sell) { throw roq::RuntimeError("NOT IMPLEMENTD"); }
+    void compute_quotes(core::Quote& buy, core::Quote& sell, core::Quotes const& market_quotes) { throw roq::RuntimeError("NOT IMPLEMENTD"); }
 
     core::Dispatcher& dispatcher;
     core::Manager& core; 

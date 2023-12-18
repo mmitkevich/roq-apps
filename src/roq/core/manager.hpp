@@ -10,6 +10,7 @@
 #include "roq/support_type.hpp"
 #include <roq/cache/manager.hpp>
 #include <roq/core/basic_handler.hpp>
+#include "roq/core/best_quotes_cache.hpp"
 
 namespace roq::core {
 
@@ -46,6 +47,9 @@ struct Manager : core::BasicDispatch<Manager>
         if constexpr(std::is_invocable_v<decltype(portfolios), decltype(event)>) {
           portfolios(event);        
         }
+        if constexpr(std::is_invocable_v<decltype(best_quotes), decltype(event)>) {
+          best_quotes(event);
+        }
         return result;
     }
 
@@ -70,7 +74,8 @@ struct Manager : core::BasicDispatch<Manager>
 public:
     static roq::Mask<roq::SupportType> expected_md_support;
 public:
-    cache::Manager cache {client::MarketByPriceFactory::create};
+    cache::Manager cache {client::MarketByPriceFactory::create}; // mbp, tob
+    core::BestQuotesCache best_quotes; // core::BestQuote
     core::Gateways gateways;
     core::Markets markets;
     core::Portfolios portfolios; // all the positions sitting here

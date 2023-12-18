@@ -7,7 +7,7 @@
 
 #include "roq/dag/graph.hpp"
 
-#include "roq/dag/manager.hpp"
+#include "roq/dag/pricer.hpp"
 #include <roq/exceptions.hpp>
 #include <roq/message_info.hpp>
 #include <roq/parameters_update.hpp>
@@ -21,21 +21,21 @@
 namespace roq::dag {
 
 
-void Manager::operator()(const Event<roq::Timer> &event) {
+void Pricer::operator()(const Event<roq::Timer> &event) {
 
 }
 
-void Manager::operator()(const Event<core::ExposureUpdate> &event) {
+void Pricer::operator()(const Event<core::ExposureUpdate> &event) {
     for(auto& e : event.value.exposure) {
         // TODO: find all nodes subscribed to e.portfolio and update their exposure
     }
 }
 
-void Manager::operator()(const roq::Event<roq::MarketStatus>&) {
+void Pricer::operator()(const roq::Event<roq::MarketStatus>&) {
 
 }
 
-void Manager::operator()(const roq::Event<roq::ParametersUpdate>& e) {
+void Pricer::operator()(const roq::Event<roq::ParametersUpdate>& e) {
     using namespace std::literals;    
     
     log::debug("pricer: parameters_update {}"sv, e);
@@ -74,7 +74,7 @@ void Manager::operator()(const roq::Event<roq::ParametersUpdate>& e) {
 }
 
 
-void Manager::operator()(const Event<core::Quotes> &event) {
+void Pricer::operator()(const Event<core::Quotes> &event) {
     auto & quotes = event.value;
     log::debug<2>("dag::Quotes quotes={}", quotes);
     
@@ -102,7 +102,7 @@ void Manager::operator()(const Event<core::Quotes> &event) {
     });
 }
 
-void Manager::send_target_quotes(core::NodeIdent node_id) {
+void Pricer::send_target_quotes(core::NodeIdent node_id) {
     auto* node = get_node(node_id);
     assert(node);
     assert((*node).exec!=0);
@@ -121,14 +121,14 @@ void Manager::send_target_quotes(core::NodeIdent node_id) {
     });
 }
 
-Node *Manager::get_node(core::NodeIdent node) {
+Node *Pricer::get_node(core::NodeIdent node) {
   auto iter = nodes.find(node);
   if (iter != std::end(nodes))
     return &iter->second;
   return nullptr;
 }
 
-std::pair<dag::Node&, bool> Manager::emplace_node(dag::NodeKey key) {
+std::pair<dag::Node&, bool> Pricer::emplace_node(dag::NodeKey key) {
     auto node_id = key.node;
     if(node_id==0) {
         auto iter = node_by_name.find(key.name);
@@ -149,7 +149,7 @@ std::pair<dag::Node&, bool> Manager::emplace_node(dag::NodeKey key) {
     return {node, is_new_node};
 }
 
-bool Manager::set_mdata(core::NodeIdent node_id, core::Market const& market_key) {
+bool Pricer::set_mdata(core::NodeIdent node_id, core::Market const& market_key) {
     auto* node = get_node(node_id);
     assert(node);
 
@@ -169,7 +169,7 @@ bool Manager::set_mdata(core::NodeIdent node_id, core::Market const& market_key)
 }
 
 
-bool Manager::set_ref(core::NodeIdent node_id, std::string_view ref_node_name, std::string_view flags_sv) {
+bool Pricer::set_ref(core::NodeIdent node_id, std::string_view ref_node_name, std::string_view flags_sv) {
     auto [ref_node, is_new] = emplace_node({.name = ref_node_name});
     std::string flags_str = core::utils::to_upper(flags_sv);
     //TODO: parse FLAG1|FLAG2|FLAG3 mask
@@ -186,7 +186,7 @@ bool Manager::set_ref(core::NodeIdent node_id, std::string_view ref_node_name, s
     return true;
 }
 
-bool Manager::set_portfolio(core::NodeIdent node_id, core::PortfolioKey const& portfolio_key) {
+bool Pricer::set_portfolio(core::NodeIdent node_id, core::PortfolioKey const& portfolio_key) {
     auto* node = get_node(node_id);
     assert(node);
     if((*node).flags.has(NodeFlags::INPUT)) {
@@ -202,7 +202,7 @@ bool Manager::set_portfolio(core::NodeIdent node_id, core::PortfolioKey const& p
     return true;
 }
 
-void Manager::rebuild_paths() {
+void Pricer::rebuild_paths() {
     // vertex =  nodes
     // edges = node.refs for node in nodes
     // input vertex = node_by_market
