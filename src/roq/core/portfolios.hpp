@@ -4,25 +4,35 @@
 #include "roq/event.hpp"
 #include "roq/core/portfolio.hpp"
 #include "roq/core/exposure_update.hpp"
+#include <roq/position_update.hpp>
 
 namespace roq::core {
+struct Manager;
 
 struct Portfolios {
 
-    void operator()(const roq::Event<core::ExposureUpdate>& event);
-
-    void set_position(core::PortfolioIdent portfolio, core::MarketIdent market, core::Volume position) {
-        portfolios_[portfolio].set_position(market, position);
-    }
+    Portfolios(core::Manager& core) 
+    : core(core) {}
     
-    core::Volume get_position(core::PortfolioIdent portfolio, core::MarketIdent market, core::Volume position) {
-        return portfolios_[portfolio].get_position(market);
-    }
+    void operator()(const roq::Event<core::ExposureUpdate>& event);
+    
+    void operator()(const roq::Event<roq::PositionUpdate>& event);
+
+    void set_position(core::PortfolioIdent portfolio, core::MarketIdent market,
+                      core::Volume position);
+
+    core::Volume get_position(core::PortfolioIdent portfolio, core::MarketIdent market, core::Volume position);
 
     std::pair<core::Portfolio &, bool> emplace_portfolio(core::PortfolioKey key);
 
     void clear() { portfolios_.clear(); }
-private:
+
+    core::PortfolioIdent get_portfolio_ident(std::string_view name);
+
+    
+
+  private:
+    core::Manager& core;
     core::PortfolioIdent last_portfolio_id {};
     core::Hash<core::PortfolioIdent, core::Portfolio> portfolios_;
     core::Hash<roq::Account, core::PortfolioIdent> portfolio_index_;

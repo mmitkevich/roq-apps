@@ -18,6 +18,10 @@ struct Manager : core::BasicDispatch<Manager>
 {
     using Base = core::BasicDispatch<Manager>;
 
+    Manager(Manager const&) = delete;
+    Manager(Manager&&) = delete;
+    Manager() = default;
+    
     operator cache::Manager&() { return cache; }
     operator Gateways&() { return gateways; }
     operator Markets&() { return markets; }
@@ -78,7 +82,7 @@ public:
     core::BestQuotesCache best_quotes; // core::BestQuote
     core::Gateways gateways;
     core::Markets markets;
-    core::Portfolios portfolios; // all the positions sitting here
+    core::Portfolios portfolios {*this}; // all the positions sitting here
     //core::Accounts accounts;
     
 };
