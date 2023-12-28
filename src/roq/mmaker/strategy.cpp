@@ -16,11 +16,11 @@
 
 #include "roq/mmaker/application.hpp"
 
-#define USE_LIQS
+#define USE_LQS
 #define USE_PRICER
 
 #ifdef USE_LQS
-#include "roq/lqs/manager.hpp"
+#include "roq/lqs/pricer.hpp"
 #endif
 
 #ifdef USE_DAG
@@ -33,13 +33,13 @@ using namespace std::literals;
 std::unique_ptr<core::Handler> Strategy::make_pricer() {
   #ifdef USE_LQS
   if(strategy_name == "lqs"sv) {
-    return std::make_unique<lqs::Manager>(dispatcher_, core);
+    return std::make_unique<lqs::Pricer>(oms, core);
   } 
   #endif
   #ifdef USE_DAG
   if(strategy_name == "dag"sv) {
     dag::Factory::initialize_all();
-    return std::make_unique<dag::Manager>(dispatcher_, core);
+    return std::make_unique<dag::Pricer>(oms, core);
   }
   #endif
   throw roq::RuntimeError("pricer '{}' was not found"sv, strategy_name);

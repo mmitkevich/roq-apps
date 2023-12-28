@@ -102,3 +102,17 @@ ES->>>    RRM  <---- trade        positions  ->     **  liq_strat - IPC -- derib
    /  
        \
   *     *
+
+
+
+1) moving subaccounts positions from one host (deribit) to other host (binance) through roq-risk-manager central agent?
+
+
+
+
+
+                          
+100                     -90 
+   
+  sell 10
+                        buy 10

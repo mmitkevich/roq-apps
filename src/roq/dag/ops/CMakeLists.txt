@@ -1,5 +1,5 @@
 # (c) copyright 2023 Mikhail Mitkevich
-set(TARGET_NAME "${PROJECT_NAME}-pricer-ops")
+set(TARGET_NAME "${PROJECT_NAME}-dag-ops")
 
 add_library( "${TARGET_NAME}" STATIC
   "sum.cpp"

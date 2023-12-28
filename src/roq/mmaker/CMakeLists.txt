@@ -21,8 +21,12 @@ target_link_libraries("${TARGET_NAME}" PRIVATE  ${PROJECT_NAME}-flags
   fmt::fmt 
   roq-flags::roq-flags
   roq-logging::roq-logging-flags
-  roq-mmaker-pricer
-  roq-mmaker-pricer-ops
+
+  roq-mmaker-lqs
+  
+  roq-mmaker-dag
+  roq-mmaker-dag-ops
+
   roq-mmaker-oms
   roq-mmaker-core  
   roq-mmaker-config    

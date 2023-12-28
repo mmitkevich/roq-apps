@@ -29,7 +29,36 @@ struct Portfolios {
 
     core::PortfolioIdent get_portfolio_ident(std::string_view name);
 
-    
+    // enumerate portfolios
+    void get_portfolios(std::invocable<core::Portfolio const&> auto callback) {
+      for(auto& [portfolio_id, portfolio]:portfolios_) {
+        callback(portfolio);
+      }
+    }
+
+    // enumerate exposure for specific portfolio
+    void get_exposures(core::PortfolioIdent portfolio_id, std::invocable<core::Exposure const&> auto callback) {
+      auto iter = portfolios_.find(portfolio_id);
+      core::Portfolio& portfolio = iter->second;
+      portfolio.get_positions([&](core::MarketIdent market, core::Volume position) {
+          core::Exposure exposure {
+            .exposure = position,
+            .market = market,
+            .portfolio = portfolio.portfolio,
+            //.exchange = 
+            //.symbol = 
+          };
+          callback(exposure);
+      });
+    }
+
+    // enumerate exposure in all portfolios
+    void get_exposures(std::invocable<core::Exposure const&> auto callback) {
+      for(auto& [portfolio_id, portfolio] : portfolios_) {
+        get_exposures(portfolio_id, callback);
+      }
+    }
+
 
   private:
     core::Manager& core;

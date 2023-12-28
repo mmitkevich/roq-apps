@@ -26,6 +26,11 @@ struct Portfolio {
         return positions_(ident, {});
     }
 
+    void get_positions(std::invocable<core::MarketIdent, core::Volume> auto callback) {
+        for(auto& [market_id, position] : positions_) {
+            callback(market_id, position);
+        }
+    }
 public:
     core::PortfolioIdent portfolio;
     roq::Account name;   // associated account if any
