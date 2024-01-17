@@ -1,8 +1,8 @@
-#include "roq/lqs/baiter.hpp"
+#include "roq/lqs/bait.hpp"
 
 namespace roq::lqs {
 
-bool Baiter::operator()(lqs::Spread& spread, std::invocable<lqs::Leg const&> auto fn) {
+bool Bait::operator()(lqs::Spread& spread, std::invocable<lqs::Leg const&> auto fn) {
     bool result = true;
 
     const core::Double delta = spread.delta;
@@ -28,7 +28,8 @@ bool Baiter::operator()(lqs::Spread& spread, std::invocable<lqs::Leg const&> aut
         const core::Double delta_B = std::min(std::max(-N, core::Double{0.}), spread.delta_range.max-delta); // anyway if filled this order my delta will not exceed delta.max
         const core::Double delta_S = std::min(std::max(N, core::Double{0.}), delta-spread.delta_range.min);
 
-        if(bait_leg.side==Side::BUY) { // d_l == leg.side
+        // d_l == bait_leg.side
+        if(bait_leg.side==Side::BUY) { 
             q.buy.price  = M_B * L_B;
             q.sell.price =  M_B * L_S;
         } else if (bait_leg.side==Side::SELL) {         

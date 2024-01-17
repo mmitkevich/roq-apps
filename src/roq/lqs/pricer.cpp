@@ -4,8 +4,8 @@
 #include "roq/lqs/pricer.hpp"
 #include "roq/logging.hpp"
 
-#include "roq/lqs/baiter.cpp"
-#include "roq/lqs/hedger.cpp"
+#include "roq/lqs/hedge.cpp"
+#include "roq/lqs/bait.cpp"
 
 namespace roq::lqs {
 
@@ -28,7 +28,12 @@ void Pricer::build_spreads() {
     });
 }
 
-
+void Pricer::operator()(const roq::Event<roq::ParameterUpdate> & e) override {
+    const auto& u = e.value;
+    for(roq::Parameter const & p: u.parameters) {
+        
+    }
+}
 
 
 bool Pricer::get_leg(core::MarketIdent market, std::invocable<lqs::Spread &, LegIdent> auto fn) {

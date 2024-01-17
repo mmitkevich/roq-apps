@@ -1,10 +1,11 @@
-#include "roq/lqs/hedger.hpp"
+#pragma once
+#include "roq/lqs/hedge_limit.hpp"
 #include "roq/core/best_quotes.hpp"
 
 namespace roq::lqs {
 
 
-bool Hedger::operator()(lqs::Spread& spread, std::invocable<lqs::Leg const&> auto fn) {
+bool HedgeLimit::operator()(lqs::Spread& spread, std::invocable<lqs::Leg const&> auto fn) {
     bool result = true;
 
     const core::Double L_B = spread.exec_quotes.buy.price;

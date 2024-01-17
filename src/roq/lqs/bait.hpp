@@ -4,9 +4,8 @@
 
 namespace roq::lqs {
 
-struct Hedger {
+struct Bait {
   bool operator()(lqs::Spread& spread, std::invocable<lqs::Leg const&> auto fn);
 };
 
-
-} // roq::lqs
+} // lqs

@@ -6,8 +6,8 @@
 #include "roq/core/handler.hpp"
 #include "roq/lqs/spread.hpp"
 //#include "roq/core/basic_pricer.hpp"
-#include "roq/lqs/baiter.hpp"
-#include "roq/lqs/hedger.hpp"
+#include "roq/lqs/bait.hpp"
+#include "roq/lqs/hedge.hpp"
 
 namespace roq::lqs {
 
@@ -19,6 +19,7 @@ namespace roq::lqs {
 struct Pricer : core::Handler {
   Pricer(core::Dispatcher &dispatcher, core::Manager &core);
 
+  void operator()(const roq::Event<roq::ParameterUpdate> & e) override;
   void operator()(const roq::Event<roq::core::Quotes> &e) override;
 
   void build_spreads();
@@ -31,8 +32,8 @@ private:
   core::Dispatcher &dispatcher;
   core::Manager &core;
   
-  lqs::Baiter baiter;
-  lqs::Hedger hedger;
+  lqs::Bait baiter;
+  lqs::HedgeLimit hedger;
 
   std::vector<Spread> spreads;
   core::Hash<core::MarketIdent, std::pair<lqs::SpreadIdent,lqs::LegIdent>> leg_by_market; 
