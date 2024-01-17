@@ -16,6 +16,9 @@ struct Double  {
     constexpr Double() = default;
     template<class T>
     constexpr Double(T val) : value(val) {}
+
+    constexpr Double(double val) : value(val) {}
+    
     void clear() { value = NAN; }
     constexpr operator double() const { /*assert(!empty());*/ return value; }
     constexpr operator double&() { return value; }

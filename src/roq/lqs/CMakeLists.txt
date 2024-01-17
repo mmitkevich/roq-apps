@@ -4,7 +4,12 @@ set(TARGET_NAME "${PROJECT_NAME}-lqs")
 
 add_library( "${TARGET_NAME}" STATIC
   "pricer.cpp"
+  "spread.cpp"
+  "leg.cpp"
 )
+# "baiter.cpp"
+# "hedger.cpp"
+ 
 target_compile_definitions(${TARGET_NAME} PRIVATE ROQ_PACKAGE_NAME="${PROJECT_NAME}")
 target_compile_features("${TARGET_NAME}" PUBLIC cxx_std_20)
 

@@ -116,3 +116,30 @@ ES->>>    RRM  <---- trade        positions  ->     **  liq_strat - IPC -- derib
    
   sell 10
                         buy 10
+                                         http  configuration-service
+
+ clickhouse-database
+ TABLE trades
+
+   buy_position,sell_position, avg_buy_price, avg_sell_price, symbol, exchange, liquidation-group aka portfolio-name aka subaccount    
+    "publisher"
+
+                                          roq-risk-manager
+
+
+                             okx                                       bitmex
+                            worker( okx-ip )                               worker { binance-multicast-ip, deribit-ip, }
+
+
+
+                          worker @ binance-multicast-ip
+                        binance                                        deribit
+^
+|
+liq-worker aka roq-mmaker
+ PUT /position?symbol=BTCUSD&exchange=deribit
+
+
+
+1) I could add websocket publisher for roq-risk-manager
+2) central position repository publishing protocol specification PositionUpdate{buy_pos=100, sell_pos=200, buy_avg_price=222, sell_avg_price=111, symbol=BTCUSD-PERPETUAL, exchange=deribit, portfolio=SUBACC1}

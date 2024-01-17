@@ -5,7 +5,7 @@
 #include "roq/core/fmt.hpp"
 #include "roq/core/empty_value.hpp"
 #include "roq/core/double.hpp"
-
+#include "roq/clock.hpp"
 namespace roq::core {
 
 using Price = Double;
@@ -21,5 +21,15 @@ using String = std::string;
 
 using OrderIdent = uint64_t;
 using OrderVersionIdent = uint32_t;
+
+
+template<class T>
+struct Range {
+  T min;
+  T max;
+};
+
+using TimePoint = std::chrono::nanoseconds;
+using Duration = std::chrono::nanoseconds;
 
 } // roq::core
