@@ -28,61 +28,61 @@
 
 # define parameters
 [[parameter]]
-    label           = "leg:1"
-    symbol          = "BTC.1/BTC.P"
-    exchange        = "lqs"
-    value           = "deribit:BTC-PERPETUAL"
+    label           = "underlying"
+    symbol          = "BTC-PERPETUAL"
+    exchange        = "deribit"
+    value           = "BTC/USD"
 
 [[parameter]]
-    label           = "leg:2"
-    symbol          = "BTC.1/BTC.P"         # spread symbol
-    exchange        = "lqs"
-    value           = "deribit:BTC-SEP24"
+    label           = "underlying"
+    symbol          = "BTC-SEP24"
+    exchange        = "deribit"
+    value           = "BTC/USD"
 
 [[parameter]]
-    label           = "beta:1"              # first leg
-    symbol          = "BTC.1/BTC.P"
-    exchange        = "lqs"
+    label           = "delta"           # delta with respect to the underlying
+    symbol          = "BTC-PERPETUAL"
+    exchange        = "deribit"
     value           = "1"
 
 [[parameter]]
-    label           = "beta:2"              # second leg
-    symbol          = "BTC.1/BTC.P"
-    exchange        = "lqs"
-    value           = "-1"
-
-[[parameter]]
-    label           = "delta_by_volume:1"
-    symbol          = "BTC.1/BTC.P"
-    exchange        = "lqs"
+    label           = "delta"
+    symbol          = "BTC-SEP24"
+    exchange        = "deribit"
     value           = "1"
 
 [[parameter]]
-    label           = "delta_by_volume:2"
-    symbol          = "BTC.1/BTC.P"
-    exchange        = "lqs"
+    label           = "volume_multiplier"
+    symbol          = "BTC-PERPETUAL"
+    exchange        = "deribit"
     value           = "1"
 
 [[parameter]]
-    label           = "buy_price"
-    symbol          = "BTC.1/BTC.P"
-    exchange        = "lqs"
-    value           = "-50" # BP
-
-[[parameter]]
-    label           = "sell_price"
-    symbol          = "BTC.1/BTC.P"
-    exchange        = "lqs"
-    value           = "50"  # BP
+    label           = "volume_multiplier"
+    symbol          = "BTC-SEP24"
+    exchange        = "deribit"
+    value           = "1"
 
 [[parameter]]
     label           = "buy_volume"
-    symbol          = "BTC.1/BTC.P"
-    exchange        = "lqs"
-    value           = "100"  # USD exposure
+    symbol          = "BTC-PERPETUAL"
+    exchange        = "deribit"
+    value           = "100"
 
 [[parameter]]
     label           = "sell_volume"
-    symbol          = "BTC.1/BTC.P"
-    exchange        = "lqs"
-    value           = "100"  # USD exposure
+    symbol          = "BTC-PERPETUAL"
+    exchange        = "deribit"
+    value           = "100"
+
+[[parameter]]
+    label           = "buy_volume"
+    symbol          = "BTC-SEP24"
+    exchange        = "deribit"
+    value           = "100"
+
+[[parameter]]
+    label           = "sell_volume"
+    symbol          = "BTC-SEP24"
+    exchange        = "deribit"
+    value           = "100"

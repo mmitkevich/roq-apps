@@ -4,40 +4,32 @@
 #include "roq/core/dispatcher.hpp"
 #include "roq/core/manager.hpp"
 #include "roq/core/handler.hpp"
-#include "roq/lqs/spread.hpp"
-//#include "roq/core/basic_pricer.hpp"
-#include "roq/lqs/bait.hpp"
-#include "roq/lqs/hedge.hpp"
+
+#include "roq/lqs/leg.hpp"
+#include "roq/lqs/underlying.hpp"
 
 namespace roq::lqs {
-
-
-//constexpr auto ZERO = core::Double{0.};
-
-
 
 struct Pricer : core::Handler {
   Pricer(core::Dispatcher &dispatcher, core::Manager &core);
 
-  void operator()(const roq::Event<roq::ParameterUpdate> & e) override;
+  void operator()(const roq::Event<roq::ParametersUpdate> & e) override;
   void operator()(const roq::Event<roq::core::Quotes> &e) override;
 
-  void build_spreads();
-
-  bool get_leg(core::MarketIdent market, std::invocable<lqs::Spread &, LegIdent> auto fn);
-
-private:
-  void dispatch(lqs::Leg const& leg);
+  std::pair<lqs::Underlying&, bool> emplace_underlying(std::string_view symbol);
+  std::pair<lqs::Leg&, bool> emplace_leg(std::string_view symbol, std::string_view exchange);
+  
+  bool get_underlying(lqs::Leg& leg, std::invocable<lqs::Underlying &> auto fn);
+  bool get_leg(core::MarketIdent market, std::invocable<lqs::Leg &> auto fn);
 
   core::Dispatcher &dispatcher;
   core::Manager &core;
-  
-  lqs::Bait baiter;
-  lqs::HedgeLimit hedger;
-
-  std::vector<Spread> spreads;
-  core::Hash<core::MarketIdent, std::pair<lqs::SpreadIdent,lqs::LegIdent>> leg_by_market; 
-  core::Hash<core::PortfolioIdent, lqs::SpreadIdent> spread_by_portfolio;
+private:
+  void dispatch(lqs::Leg const& leg);
+private:  
+  core::Hash<roq::Symbol, core::MarketIdent> underlying_by_symbol;
+  std::vector<lqs::Underlying> underlyings;
+  core::Hash<core::MarketIdent, lqs::Leg> leg_by_market;
 };
 
 

@@ -3,6 +3,7 @@
 #include <string_view>
 #include <vector>
 #include <string>
+#include <cstdint>
 
 namespace roq::core::utils {
 
@@ -16,12 +17,12 @@ std::string_view trim_left( T&& data, std::string_view trimChars )
 
 std::string to_upper(std::string_view s);
 
-std::pair<std::string_view, std::string_view>
-split_prefix(std::string_view input, char sep);
+std::pair<std::string_view, std::string_view> split_prefix(std::string_view input, char sep);
 
-std::pair<std::string_view, std::string_view>
-split_suffix(std::string_view input, char sep);
-
+std::pair<std::string_view, std::string_view> split_suffix(std::string_view input, char sep);
+std::pair<std::string_view, std::uint32_t> split_suffix_uint32(std::string_view input, char sep);
 std::vector<std::string_view> split_sep(std::string_view str, char sep);
+
+inline std::uint32_t parse_uint32(std::string_view s);
 
 } // roq::core::utils

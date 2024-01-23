@@ -1,7 +1,9 @@
 #include "string_utils.hpp" 
 #include <algorithm>
 #include <cctype>
+#include <charconv>
 #include <ranges>
+#include <roq/exceptions.hpp>
 
 namespace roq::core::utils {
 
@@ -38,6 +40,26 @@ std::string to_upper(std::string_view s) {
   std::transform(r.begin(), r.end(), r.begin(),
                  [](unsigned char c) { return std::toupper(c); });
   return r;
+}
+
+
+inline std::uint32_t parse_uint32(std::string_view s) {
+    uint32_t v;
+    auto [p, ec] = std::from_chars(s.data(), s.data() + s.size(), v);
+    if (ec == std::errc()) {
+        return v;
+    } else  {
+        //if(ec == std::errc::invalid_argument)
+        //if(ec == std::errc::result_out_of_range)
+        throw roq::RuntimeError("invalid integer {}", s);
+    }
+    return v;
+}
+
+std::pair<std::string_view, std::uint32_t> split_suffix_uint32(std::string_view input, char sep) {
+  auto [value, suffix] = split_suffix(input, sep);
+  uint32_t index = suffix.size() > 0 ?  utils::parse_uint32(suffix) : 0;
+  return {value, index};
 }
 
 } // roq::core::utils

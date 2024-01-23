@@ -1,19 +1,23 @@
-#include "roq/lqs/bait.hpp"
+#include "roq/spreader/bait.hpp"
 
-namespace roq::lqs {
+namespace roq::spreader {
 
-bool Bait::operator()(lqs::Spread& spread, std::invocable<lqs::Leg const&> auto fn) {
+void Bait::operator()(roq::Event<roq::ParametersUpdate> const& e) {
+    
+}
+
+bool Bait::operator()(spreader::Spread& spread, std::invocable<spreader::Leg const&> auto fn) {
     bool result = true;
 
     const core::Double delta = spread.delta;
     const core::Double L_B = spread.exec_quotes.buy.price;
     const core::Double L_S = spread.exec_quotes.sell.price;
     
-    spread.get_legs([&](lqs::LegIdent bait_leg_id, lqs::Leg& bait_leg) {
+    spread.get_legs([&](spreader::LegIdent bait_leg_id, spreader::Leg& bait_leg) {
         if(!bait_leg.is_local_leg()) {
             return;
         }
-        lqs::Leg& hedge_leg = spread.get_other_leg(bait_leg_id);
+        spreader::Leg& hedge_leg = spread.get_other_leg(bait_leg_id);
 
         core::BestQuotes& q = bait_leg.exec_quotes;
 
@@ -39,8 +43,8 @@ bool Bait::operator()(lqs::Spread& spread, std::invocable<lqs::Leg const&> auto 
             assert(false);
         }
 
-        q.buy.volume =  delta_B / bait_leg.delta_by_volume;
-        q.sell.volume = delta_S / bait_leg.delta_by_volume;
+        q.buy.volume =  delta_B / bait_leg.volume_multiplier;
+        q.sell.volume = delta_S / bait_leg.volume_multiplier;
 
         // send out TargetQuotes
         fn(bait_leg);
@@ -50,4 +54,4 @@ bool Bait::operator()(lqs::Spread& spread, std::invocable<lqs::Leg const&> auto 
 }
 
 
-} // roq::lqs
+} // roq::spreader

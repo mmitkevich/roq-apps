@@ -1,0 +1,88 @@
+################ M A R K E T S #################
+[[market]]
+    label           = "~FUT ~Q1 ~BIT" # set of labels (groups) for the symbol
+    symbol          = "BTC-27OCT23"
+    exchange        = "deribit"
+    tick_size       = 0.01
+    mdata_gateway   = "deribit"
+    trade_gateway   = "deribit"
+
+[[market]]
+    label           = "~PERP"
+    symbol          = "BTC-PERPETUAL"
+    exchange        = "deribit"
+    tick_size       = 0.01
+    mdata_gateway   = "deribit"
+    trade_gateway   = "deribit"
+
+# define liquidation group
+[[portfolio]]                          
+    name            = "D1"
+    account         = "A1"
+    exchange        = "deribit"
+
+[[portfolio]]
+    name            = "D2"
+    account         = "A2"
+    exchange        = "deribit"
+
+# define parameters
+[[parameter]]
+    label           = "leg:1"
+    symbol          = "BTC.1/BTC.P"
+    exchange        = "lqs"
+    value           = "deribit:BTC-PERPETUAL"
+
+[[parameter]]
+    label           = "leg:2"
+    symbol          = "BTC.1/BTC.P"         # spread symbol
+    exchange        = "lqs"
+    value           = "deribit:BTC-SEP24"
+
+[[parameter]]
+    label           = "beta:1"              # first leg
+    symbol          = "BTC.1/BTC.P"
+    exchange        = "lqs"
+    value           = "1"
+
+[[parameter]]
+    label           = "beta:2"              # second leg
+    symbol          = "BTC.1/BTC.P"
+    exchange        = "lqs"
+    value           = "-1"
+
+[[parameter]]
+    label           = "volume_multiplier:1"
+    symbol          = "BTC.1/BTC.P"
+    exchange        = "lqs"
+    value           = "1"
+
+[[parameter]]
+    label           = "volume_multiplier:2"
+    symbol          = "BTC.1/BTC.P"
+    exchange        = "lqs"
+    value           = "1"
+
+[[parameter]]
+    label           = "buy_price"
+    symbol          = "BTC.1/BTC.P"
+    exchange        = "lqs"
+    value           = "-50" # BP
+
+[[parameter]]
+    label           = "sell_price"
+    symbol          = "BTC.1/BTC.P"
+    exchange        = "lqs"
+    value           = "50"  # BP
+
+[[parameter]]
+    label           = "buy_volume"
+    symbol          = "BTC.1/BTC.P"
+    exchange        = "lqs"
+    value           = "100"  # USD exposure
+
+[[parameter]]
+    label           = "sell_volume"
+    symbol          = "BTC.1/BTC.P"
+    exchange        = "lqs"
+    value           = "100"  # USD exposure

@@ -22,6 +22,8 @@ target_link_libraries("${TARGET_NAME}" PRIVATE  ${PROJECT_NAME}-flags
   roq-flags::roq-flags
   roq-logging::roq-logging-flags
 
+  roq-mmaker-spreader
+  
   roq-mmaker-lqs
   
   roq-mmaker-dag

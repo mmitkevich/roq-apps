@@ -3,48 +3,67 @@
 #include "roq/core/quotes.hpp"
 #include "roq/lqs/pricer.hpp"
 #include "roq/logging.hpp"
-
-#include "roq/lqs/hedge.cpp"
-#include "roq/lqs/bait.cpp"
+#include "roq/core/markets.hpp"
+#include "roq/lqs/underlying.hpp"
 
 namespace roq::lqs {
+
+using namespace std::literals;
 
 Pricer::Pricer(core::Dispatcher &dispatcher, core::Manager &core)
 : dispatcher(dispatcher)
 , core(core)
 {}
 
-
-void Pricer::build_spreads() {
-    core.portfolios.get_portfolios([&](core::Portfolio const& portfolio) {
-        lqs::Spread& spread = spreads.emplace_back();
-        core.portfolios.get_exposures(portfolio.portfolio, [&](core::Exposure const& exposure) {
-            uint32_t leg_id = (exposure.side == Side::BUY) ? 0 : 1;
-            spread.legs[leg_id] = lqs::Leg { 
-                .market = exposure.market,
-                .side = exposure.side,
-            };
+std::pair<lqs::Underlying&,bool> Pricer::emplace_underlying(std::string_view symbol) {
+    auto iter = this->underlying_by_symbol.find(symbol);
+    if(iter==std::end(underlying_by_symbol)) {
+        lqs::Underlying& u = this->underlyings.emplace_back( lqs::Underlying {
+            .market = static_cast<core::MarketIdent>(underlyings.size()),
+            .symbol = symbol,
+            .delta = 0
         });
+        return {u, true};
+    }
+    return {this->underlyings[iter->second], false};
+}
+  
+std::pair<lqs::Leg&, bool> Pricer::emplace_leg(std::string_view symbol, std::string_view exchange) {
+    auto [market, is_new_market] = core.markets.emplace_market(core::Market {.symbol=symbol, .exchange=exchange});
+    auto [iter, is_new_leg] = leg_by_market.try_emplace(market.market, lqs::Leg {
+        .market = {
+            .market = market.market,
+            .symbol = market.symbol,
+            .exchange = market.exchange
+        },
+        .underlying = static_cast<core::MarketIdent>(-1),
     });
+    return {iter->second, is_new_leg};
 }
 
-void Pricer::operator()(const roq::Event<roq::ParameterUpdate> & e) override {
-    const auto& u = e.value;
-    for(roq::Parameter const & p: u.parameters) {
-        
+void Pricer::operator()(const roq::Event<roq::ParametersUpdate> & e) {
+    for(const auto& p: e.value.parameters) {
+        if(p.label == "underlying"sv) {
+            auto [leg, is_new_leg] = emplace_leg(p.symbol, p.exchange);
+            auto [underlying, is_new_underlying] = emplace_underlying(p.value);
+            leg.underlying = underlying.market.market;
+        } else if(p.label == "delta"sv) {
+            auto [leg, is_new_leg] = emplace_leg(p.symbol, p.exchange);
+            leg.delta = core::Double::parse(p.value);
+        }
     }
 }
 
-
-bool Pricer::get_leg(core::MarketIdent market, std::invocable<lqs::Spread &, LegIdent> auto fn) {
+bool Pricer::get_leg(core::MarketIdent market, std::invocable<lqs::Leg &> auto fn) {
     auto iter = leg_by_market.find(market);
     if(iter == std::end(leg_by_market))
         return false;
-    lqs::SpreadIdent spread_id = iter->second.first;
-    lqs::LegIdent leg_id = iter->second.second;
-    assert(spread_id<spreads.size());
-    assert(leg_id<2);
-    fn(spreads[spread_id], leg_id);
+    fn(iter->second);
+    return true;
+}
+
+bool Pricer::get_underlying(lqs::Leg& leg, std::invocable<lqs::Underlying &> auto fn) {
+    fn(underlyings[leg.underlying]);
     return true;
 }
 
@@ -52,21 +71,18 @@ void Pricer::operator()(const roq::Event<core::Quotes> &e) {
     core::Quotes const& u = e.value;
     // update leg cache
     bool result = true;
-    result &= get_leg(u.market, [&](lqs::Spread & spread, lqs::LegIdent leg_id) { 
-        lqs::Leg& leg = spread.get_leg(leg_id);
-
-         result &= core.best_quotes.get_quotes(u.market, [&] (core::BestQuotes const& market_quotes) {
+    result &= get_leg(u.market, [&](lqs::Leg & leg) { 
+        
+        result &= core.best_quotes.get_quotes(u.market, [&] (core::BestQuotes const& market_quotes) {
             leg.market_quotes = market_quotes;
         });
-
-        result &= baiter(spread, [&](lqs::Leg const& bait_leg) {
-            log::debug<2>("bait_leg.exec_quotes {}", bait_leg.exec_quotes);
-            dispatch(bait_leg);
-        });
-
-        result &= hedger(spread, [&](lqs::Leg const& hedge_leg) {
-            log::debug<2>("hedge_leg.exec_quotes {}", hedge_leg.exec_quotes);
-            dispatch(hedge_leg);
+        
+        result &= get_underlying(leg, [&] (lqs::Underlying const& underlying ) {
+            core::BestQuotes& q = leg.exec_quotes;
+            core::BestQuotes& m = leg.market_quotes;
+            q.buy.price = m.buy.price;
+            q.buy.volume = leg.buy_volume;
+            dispatch(leg);
         });
     });
     
@@ -74,9 +90,9 @@ void Pricer::operator()(const roq::Event<core::Quotes> &e) {
 
 void Pricer::dispatch(lqs::Leg const& leg) {
     roq::MessageInfo info{};
-    roq::Event event{info, core::to_quotes(leg.exec_quotes, leg.market)};
+    roq::Event event{info, core::to_quotes(leg.exec_quotes, leg.market.market)};
     dispatcher(event); // to OMS
 }
 
 
-} // namespace roq::lqs
+} // namespace roq::spreader
