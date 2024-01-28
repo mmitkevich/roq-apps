@@ -34,9 +34,6 @@ target_link_libraries("${TARGET_NAME}" PRIVATE  ${PROJECT_NAME}-flags
   roq-mmaker-config    
   )
 
-target_link_libraries("${TARGET_NAME}" PRIVATE _lightgbm)
-target_link_libraries("${TARGET_NAME}" PRIVATE umm)
-
 target_compile_features("${TARGET_NAME}" PUBLIC cxx_std_20)
 
 install(TARGETS ${TARGET_NAME})

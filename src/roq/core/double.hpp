@@ -82,6 +82,14 @@ struct Double  {
         }
         return v;
     }
+
+    core::Double max(core::Double const& rhs) {
+        return std::max(*this, rhs);
+    }
+
+    core::Double min(core::Double const& rhs) {
+        return std::min(*this, rhs);
+    }
 };
 
 } // roq::core

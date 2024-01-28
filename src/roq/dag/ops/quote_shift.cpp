@@ -19,7 +19,7 @@ bool QuoteShift::operator()(dag::Context &context) const {
   context.get_refs([&](dag::NodeRef const& ref, dag::Node const& ref_node) {  
     const core::BestQuotes& ref_quotes = ref_node.quotes;
     if(ref_node.flags.has(NodeFlags::EXPOSURE)) {
-        auto exposure = core::ExposureFromQuotes(ref_quotes);
+        auto exposure = core::exposure_by_quotes(ref_quotes);
         shift += ref.weight / ref.denominator * exposure;
         log::debug("quote_shift: shift {}  = weight {} / denominator {} * exposure {}", shift, ref.weight, ref.denominator, exposure);
     }

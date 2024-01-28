@@ -1,6 +1,7 @@
 #pragma once
 
 #include "roq/core/quote.hpp"
+#include <roq/execution_instruction.hpp>
 #include <roq/utils/common.hpp>
 
 namespace roq::core {
@@ -8,10 +9,9 @@ namespace roq::core {
 struct Quotes;
 
 struct BestQuotes {
-    core::Quote buy;
-    core::Quote sell;
-
-    core::Quote& get_quote(roq::Side side)  {
+    core::ExecQuote buy;
+    core::ExecQuote sell;
+    core::ExecQuote& get_quote(roq::Side side)  {
         switch(side) {
             case roq::Side::BUY: return buy;
             case roq::Side::SELL: return sell;
@@ -19,7 +19,7 @@ struct BestQuotes {
         }
     }
 
-    const core::Quote& get_quote(roq::Side side) const {
+    const core::ExecQuote& get_quote(roq::Side side) const {
         switch(side) {
             case roq::Side::BUY: return buy;
             case roq::Side::SELL: return sell;
@@ -57,7 +57,7 @@ constexpr inline int32_t direction(roq::Side side) {
     }
 }
 
-core::Double ExposureFromQuotes(core::BestQuotes const &self);
+core::Double exposure_by_quotes(core::BestQuotes const &self);
 
 } // roq::ocre
 

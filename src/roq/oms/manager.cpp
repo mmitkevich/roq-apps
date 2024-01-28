@@ -465,10 +465,11 @@ void Manager::exposure_update(oms::Market& market) {
     //            .side = u.side,
     //            .price = u.last_traded_price,
     //            .quantity = fill_size,
-        .exposure = market.position_by_orders,
+        .position_buy = std::max(market.position_by_orders, 0.),
+        .position_sell = std::max(-market.position_by_orders, 0.),
+        .market = market.market,        
         .exchange = market.exchange,
         .symbol = market.symbol,
-        .market = market.market,
         .portfolio = this->portfolio,             
         .account = market.account,           
     };    

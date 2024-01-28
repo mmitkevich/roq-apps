@@ -47,11 +47,15 @@ void Pricer::operator()(const roq::Event<roq::ParametersUpdate> & e) {
             auto [leg, is_new_leg] = emplace_leg(p.symbol, p.exchange);
             auto [underlying, is_new_underlying] = emplace_underlying(p.value);
             leg.underlying = underlying.market.market;
-        } else if(p.label == "delta"sv) {
+        } else if(p.label == "delta_greek"sv) {
             auto [leg, is_new_leg] = emplace_leg(p.symbol, p.exchange);
-            leg.delta = core::Double::parse(p.value);
+            leg.delta_greek = core::Double::parse(p.value);
         }
     }
+}
+
+void Pricer::operator()(const roq::Event<core::ExposureUpdate> &e) {
+
 }
 
 bool Pricer::get_leg(core::MarketIdent market, std::invocable<lqs::Leg &> auto fn) {
@@ -72,21 +76,17 @@ void Pricer::operator()(const roq::Event<core::Quotes> &e) {
     // update leg cache
     bool result = true;
     result &= get_leg(u.market, [&](lqs::Leg & leg) { 
-        
         result &= core.best_quotes.get_quotes(u.market, [&] (core::BestQuotes const& market_quotes) {
             leg.market_quotes = market_quotes;
         });
-        
-        result &= get_underlying(leg, [&] (lqs::Underlying const& underlying ) {
-            core::BestQuotes& q = leg.exec_quotes;
-            core::BestQuotes& m = leg.market_quotes;
-            q.buy.price = m.buy.price;
-            q.buy.volume = leg.buy_volume;
+        result &= get_underlying(leg, [&] (lqs::Underlying & underlying ) {
+            underlying.compute(*this);
+            leg.compute(underlying, *this);
             dispatch(leg);
         });
     });
-    
 }
+
 
 void Pricer::dispatch(lqs::Leg const& leg) {
     roq::MessageInfo info{};

@@ -7,20 +7,27 @@
 namespace roq::core {
 
 void Portfolios::operator()(const roq::Event<core::ExposureUpdate>& event) {
-    for(auto&u : event.value.exposure) {
-        log::info<2>("Portfolios::ExposureUpdate exposure {} portfolio {} market {}", u.exposure, u.portfolio, u.market);
+    for(auto const& exposure : event.value.exposure) {
+        log::info<2>("Portfolios::ExposureUpdate exposure {}", exposure);
     }
 }
 
 void Portfolios::operator()(const roq::Event<roq::PositionUpdate>& event) {
     auto& u = event.value;
-    auto exposure = u.long_quantity-u.short_quantity;
+    auto [market, is_new_market] = core.markets.emplace_market(event);
+    
+    core::Exposure exposure {
+        .position_buy = u.long_quantity,
+        .position_sell = u.short_quantity,
+        .market = market.market,
+        .exchange = market.exchange,        
+        .symbol = market.symbol,
+    };
     std::array<char, roq::detail::MAX_LENGTH_ACCOUNT+roq::detail::MAX_LENGTH_EXCHANGE+16> portfolio_name;
     auto result = fmt::format_to_n(portfolio_name.data(), portfolio_name.size(), "{}:{}", u.exchange, u.account);
     auto [portfolio,is_new] = emplace_portfolio(core::PortfolioKey{.name = std::string_view{portfolio_name.data(), result.size}});
-    auto market = core.markets.get_market_ident(u.symbol, u.exchange);
-    log::info<2>("Portfolios:: PositionUpdate exposure {} portfolio {} {} market {} symbol {} exchange {}", exposure, portfolio.portfolio, portfolio.name, market, u.symbol, u.exchange);
-    portfolio.set_position(market, exposure);
+    log::info<2>("Portfolios:: PositionUpdate exposure {} portfolio {} {} market {} symbol {} exchange {}", exposure, portfolio.portfolio, portfolio.name, market.market, u.symbol, u.exchange);
+    portfolio.set_position(market.market, exposure);
 }
 
 std::pair<core::Portfolio &, bool> Portfolios::emplace_portfolio(core::PortfolioKey key) {
@@ -43,6 +50,7 @@ std::pair<core::Portfolio &, bool> Portfolios::emplace_portfolio(core::Portfolio
     portfolio.name = key.name;
     return {iter_2->second, is_new};
 }
+
 core::PortfolioIdent Portfolios::get_portfolio_ident(std::string_view name) {
     auto iter = portfolio_index_.find(name);
     if (iter == std::end(portfolio_index_)) {
@@ -50,13 +58,12 @@ core::PortfolioIdent Portfolios::get_portfolio_ident(std::string_view name) {
     }
     return iter->second;
 }
-core::Volume Portfolios::get_position(core::PortfolioIdent portfolio,
-                                      core::MarketIdent market,
-                                      core::Volume position) {
-    return portfolios_[portfolio].get_position(market);
+
+core::Volume Portfolios::get_net_exposure(core::PortfolioIdent portfolio, core::MarketIdent market, core::Volume exposure) {
+    portfolios_[portfolio].get_position(market, [&] (core::Exposure const& p) {
+        exposure =  p.position_buy -  p.position_sell;
+    });
+    return exposure;
 }
-void Portfolios::set_position(core::PortfolioIdent portfolio,
-                              core::MarketIdent market, core::Volume position) {
-    portfolios_[portfolio].set_position(market, position);
-}
+
 } // namespace roq::core

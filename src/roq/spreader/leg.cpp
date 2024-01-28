@@ -4,7 +4,12 @@ namespace roq::spreader {
 
 
 void Leg::operator()(core::Exposure const& u) {
-    exposure = u.exposure;
+    position.buy.volume = u.position_buy;
+    position.sell.volume = u.position_sell;
+
+    position.buy.price = u.avg_price_buy;
+    position.sell.price = u.avg_price_sell;
+
     compute();
 }
 

@@ -6,6 +6,7 @@
 
 #include "roq/spreader/hedge.cpp"
 #include "roq/spreader/bait.cpp"
+#include <roq/string_types.hpp>
 
 namespace roq::spreader {
 
@@ -19,11 +20,26 @@ void Pricer::build_spreads() {
     core.portfolios.get_portfolios([&](core::Portfolio const& portfolio) {
         spreader::Spread& spread = spreads.emplace_back();
         core.portfolios.get_exposures(portfolio.portfolio, [&](core::Exposure const& exposure) {
-            uint32_t leg_id = (exposure.side == Side::BUY) ? 0 : 1;
-            spread.legs[leg_id] = spreader::Leg { 
-                .market = {.market=exposure.market},
-                .side = exposure.side,
-            };
+            spread.get_legs([&](LegIdent leg_id, spreader::Leg & leg) {
+                leg = {
+                    .market = { 
+                        .market = exposure.market, 
+                        .symbol = exposure.symbol,
+                        .exchange = exposure.exchange,
+                    },
+                    .side = leg_id == 0 ? roq::Side::BUY : roq::Side::SELL,    
+                    .position = {
+                        .buy = {
+                            .price = exposure.avg_price_buy,                            
+                            .volume = exposure.position_buy,
+                        },
+                        .sell = {
+                            .price = exposure.avg_price_sell,                            
+                            .volume = exposure.position_sell,
+                        }
+                    }
+                };
+            });
         });
     });
 }

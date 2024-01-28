@@ -22,7 +22,7 @@ void BestQuotes::clear() {
   sell.clear();
 }
 
-core::Double ExposureFromQuotes(core::BestQuotes const &self) {
+core::Double exposure_by_quotes(core::BestQuotes const &self) {
   return self.buy.volume - self.sell.volume;
 }
 

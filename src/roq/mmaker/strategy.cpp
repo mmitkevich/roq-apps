@@ -72,12 +72,12 @@ void Strategy::operator()(const Event<TopOfBook> &event) {
       //best_price_event.header.receive_time_utc = event.message_info.receive_time_utc;
       //best_price_event->market = market;
       
-    core::Quote buy = {
+    core::ExecQuote buy = {
         .price = u.layer.bid_price,
         .volume = u.layer.bid_quantity
     };
 
-    core::Quote sell = {
+    core::ExecQuote sell = {
         .price = u.layer.ask_price,
         .volume = u.layer.ask_quantity
     };
@@ -113,7 +113,7 @@ void Strategy::operator()(const Event<MarketByPriceUpdate>& event) {
     cache::MarketByPrice& mbp = *market_cache.market_by_price;
     mbp.extract_2(layers_, 1);
     
-    core::Quote buy, sell;
+    core::ExecQuote buy, sell;
     
     if(!layers_.empty()) {
       buy.price = layers_[0].bid_price;

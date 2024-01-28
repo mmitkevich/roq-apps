@@ -15,74 +15,67 @@
     mdata_gateway   = "deribit"
     trade_gateway   = "deribit"
 
-# define liquidation group
+# define liquidation group by merging some subaccounts possibly different exchanges
 [[portfolio]]                          
     name            = "D1"
     account         = "A1"
     exchange        = "deribit"
 
 [[portfolio]]
-    name            = "D2"
+    name            = "D1"
     account         = "A2"
     exchange        = "deribit"
 
-# define parameters
+# underlying symbol for each contract
 [[parameter]]
     label           = "underlying"
-    symbol          = "BTC-PERPETUAL"
     exchange        = "deribit"
-    value           = "BTC/USD"
+    symbol          = ["BTC-PERPETUAL",             "BTC-SEP24"]
+    value           = ["lqs:BTC/USD",               "lqs:BTC/USD"]  # exchange:symbol
 
+# delta greek
 [[parameter]]
-    label           = "underlying"
-    symbol          = "BTC-SEP24"
+    label           = "delta_greek"
     exchange        = "deribit"
-    value           = "BTC/USD"
+    symbol          = ["BTC-PERPETUAL",         "BTC-SEP24"]
+    value           = ["1",                     "1"]
 
+# min delta (in USD) for the portfolio
 [[parameter]]
-    label           = "delta"           # delta with respect to the underlying
-    symbol          = "BTC-PERPETUAL"
-    exchange        = "deribit"
-    value           = "1"
+    label           = "delta_min"
+    exchange        = "lqs"
+    symbol          = "BTC/USD"
+    value           = "-1000"
 
+# max delta (in USD) for the portfolio
 [[parameter]]
-    label           = "delta"
-    symbol          = "BTC-SEP24"
-    exchange        = "deribit"
-    value           = "1"
+    label           = "delta_max"
+    symbol          = "BTC/USD"
+    exchange        = "lqs"
+    value           = "1000"
 
+# multiplier contract volume -> delta in USD
 [[parameter]]
-    label           = "volume_multiplier"
-    symbol          = "BTC-PERPETUAL"
+    label           = "delta_by_volume"
     exchange        = "deribit"
-    value           = "1"
-
-[[parameter]]
-    label           = "volume_multiplier"
-    symbol          = "BTC-SEP24"
-    exchange        = "deribit"
-    value           = "1"
+    symbol          = ["BTC-PERPETUAL",         "BTC-SEP24"]
+    value           = ["1",                     "1"]
 
 [[parameter]]
     label           = "buy_volume"
-    symbol          = "BTC-PERPETUAL"
     exchange        = "deribit"
-    value           = "100"
+    symbol          = ["BTC-PERPETUAL",         "BTC-SEP24"]
+    value           = ["100",                   "100"]
 
 [[parameter]]
     label           = "sell_volume"
-    symbol          = "BTC-PERPETUAL"
-    exchange        = "deribit"
-    value           = "100"
+    exchange        = "deribit"    
+    symbol          = ["BTC-PERPETUAL",         "BTC-SEP24"]
+    value           = ["100",                   "100"]
 
+# ban future order placements after order has been fully filled (separately each side of the book)
 [[parameter]]
-    label           = "buy_volume"
-    symbol          = "BTC-SEP24"
+    label           = "ban_post_fill"
+    symbol          = ["BTC-PERPETUAL",         "BTC-SEP24"]
     exchange        = "deribit"
-    value           = "100"
-
-[[parameter]]
-    label           = "sell_volume"
-    symbol          = "BTC-SEP24"
-    exchange        = "deribit"
-    value           = "100"
+    value           = ["1000",                  "1000"]

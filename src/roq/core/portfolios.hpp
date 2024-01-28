@@ -18,10 +18,7 @@ struct Portfolios {
     
     void operator()(const roq::Event<roq::PositionUpdate>& event);
 
-    void set_position(core::PortfolioIdent portfolio, core::MarketIdent market,
-                      core::Volume position);
-
-    core::Volume get_position(core::PortfolioIdent portfolio, core::MarketIdent market, core::Volume position);
+    core::Volume get_net_exposure(core::PortfolioIdent portfolio, core::MarketIdent market, core::Volume exposure = {});
 
     std::pair<core::Portfolio &, bool> emplace_portfolio(core::PortfolioKey key);
 
@@ -40,16 +37,7 @@ struct Portfolios {
     void get_exposures(core::PortfolioIdent portfolio_id, std::invocable<core::Exposure const&> auto callback) {
       auto iter = portfolios_.find(portfolio_id);
       core::Portfolio& portfolio = iter->second;
-      portfolio.get_positions([&](core::MarketIdent market, core::Volume position) {
-          core::Exposure exposure {
-            .exposure = position,
-            .market = market,
-            .portfolio = portfolio.portfolio,
-            //.exchange = 
-            //.symbol = 
-          };
-          callback(exposure);
-      });
+      portfolio.get_positions(callback);
     }
 
     // enumerate exposure in all portfolios

@@ -11,19 +11,16 @@ namespace roq::core {
 struct Quote {
     Price price {};
     Volume volume {};     
-       
-    roq::Mask<roq::ExecutionInstruction> exec_inst {}; // TAKER/MAKER
 
     bool empty() const { return core::is_empty_value(price); }
     
     void clear() {
         price = {};
         volume = {};
-        exec_inst = {};
     }
 
     bool operator==(const Quote& that) const {
-        return price == that.price && volume == that.volume && exec_inst == that.exec_inst;
+        return price == that.price && volume == that.volume;
     }
 
     bool operator!=(const Quote& that) const {
@@ -42,6 +39,39 @@ inline bool is_empty_value(const core::Quote& quote) {
     return false;
 }
 
+struct ExecQuote  {
+    core::Price price {};
+    core::Volume volume {};
+    core::Volume volume_min {};
+    roq::Mask<roq::ExecutionInstruction> exec_inst;
+
+    bool empty() const { return core::is_empty_value(price); }
+    
+    void clear() {
+        price = {};
+        volume = {};
+        volume_min = {};
+        exec_inst = {};
+    }
+
+    operator core::Quote() const {
+        return core::Quote {
+            .price = price,
+            .volume = volume
+        };
+    }
+
+    bool operator==(const Quote& that) const {
+        return price == that.price && volume == that.volume;
+    }
+
+    bool operator!=(const Quote& that) const {
+        return !operator==(that);
+    }
+};
+
+
 } // roq::core
 
-ROQ_CORE_FMT_DECL(roq::core::Quote, "{{ price {} volume {} exec_inst {} }}", _.price, _.volume, _.exec_inst)
+ROQ_CORE_FMT_DECL(roq::core::Quote, "{{ price {} volume {} }}", _.price, _.volume)
+ROQ_CORE_FMT_DECL(roq::core::ExecQuote, "{{ price {} volume {} min {} exec_inst {} }}", _.price, _.volume, _.volume_min, _.exec_inst)

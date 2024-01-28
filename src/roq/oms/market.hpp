@@ -25,12 +25,13 @@ struct Market {
     roq::Account account;
     double tick_size = NAN;
     double min_trade_vol = NAN;
+    core::Duration ban_post_fill = {};
     MarketIdent market {};
-    std::chrono::nanoseconds ban_until {};
-    std::array<uint16_t,2> pending={0,0};
+    core::TimePoint ban_until {};
+    std::array<uint16_t,2> pending = {0,0};
     double position_by_orders = 0;
     double position_by_account = 0;
-    std::chrono::nanoseconds last_position_modify_time;
+    core::TimePoint last_position_modify_time;
 public:
   std::pair<oms::Level &, bool> emplace_level(Side side, double price);
 

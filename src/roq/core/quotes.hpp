@@ -13,11 +13,11 @@ struct Quotes  {
     std::string_view exchange {};
     std::string_view account {};
     std::string_view portfolio {};
-    std::span<const Quote> buy = {};
-    std::span<const Quote> sell = {};
+    std::span<const ExecQuote> buy = {};
+    std::span<const ExecQuote> sell = {};
 
-    Quote get_best_buy() const { return buy.empty() ? Quote{} : buy[0]; }
-    Quote get_best_sell() const { return sell.empty() ? Quote{} : sell[0]; }
+    ExecQuote get_best_buy() const { return buy.empty() ? ExecQuote{} : buy[0]; }
+    ExecQuote get_best_sell() const { return sell.empty() ? ExecQuote{} : sell[0]; }
 
     operator core::BestQuotes() const {
       return {
