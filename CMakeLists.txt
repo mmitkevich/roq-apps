@@ -1,7 +1,7 @@
 # (c) copyright 2023 Mikhail Mitkevich
 cmake_minimum_required(VERSION 3.12)
 
-project(roq-mmaker)
+project(roqa)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -67,17 +67,17 @@ include_directories("${CMAKE_SOURCE_DIR}/src")
 # sub-projects
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/core")
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/config")
+
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/dag")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/dag/ops")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/spreader")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/lqs")
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/oms")
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/mmaker")
+
+#add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/app")
 
 
 install(
-  TARGETS roq-mmaker-app
+  TARGETS roqa
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

@@ -1,9 +1,9 @@
 // (c) copyright 2023 Mikhail Mitkevich
 #pragma once
 
-#include "roq/core/gateways.hpp"
-#include "roq/core/markets.hpp"
-#include "roq/core/portfolios.hpp"
+#include "roq/core/gateway/manager.hpp"
+#include "roq/core/market/manager.hpp"
+#include "roq/core/portfolio/manager.hpp"
 //#include "roq/core/account_cache.hpp"
 #include "roq/core/types.hpp"
 #include "roq/mask.hpp"
@@ -11,7 +11,7 @@
 #include <roq/cache/manager.hpp>
 #include <roq/core/basic_handler.hpp>
 #include <roq/market_by_price_update.hpp>
-#include "roq/core/best_quotes_cache.hpp"
+#include "roq/core/best_quotes/manager.hpp"
 
 namespace roq::core {
 
@@ -24,14 +24,15 @@ struct Manager : core::BasicDispatch<Manager>
     Manager() = default;
     
     operator cache::Manager&() { return cache; }
-    operator Gateways&() { return gateways; }
-    operator Markets&() { return markets; }
-    operator Portfolios&() { return portfolios; }
+    operator gateway::Manager&() { return gateways; }
+    operator market::Manager&() { return markets; }
+    operator portfolio::Manager&() { return portfolios; }
     //operator Accounts&() { return accounts; }
 
     template<class Config, class Node>
     void configure(Config& config, Node root) {
       markets.configure(config, root);
+      portfolios.configure(config, root);
       // TODO: gateways.configure(config, root);
     }
 
@@ -81,11 +82,11 @@ public:
     static roq::Mask<roq::SupportType> expected_md_support;
 public:
     cache::Manager cache {client::MarketByPriceFactory::create}; // mbp, tob
-    core::BestQuotesCache best_quotes; // core::BestQuote
-    core::Gateways gateways;
-    core::Markets markets;
-    core::Portfolios portfolios {*this}; // all the positions sitting here
+    core::best_quotes::Manager best_quotes;
+    core::gateway::Manager gateways;
+    core::market::Manager markets;
+    portfolio::Manager portfolios {*this}; // all the positions sitting here
     //core::Accounts accounts;
 };
 
-} // roq::cache
+} // roq::core

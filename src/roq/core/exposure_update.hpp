@@ -7,9 +7,10 @@
 
 namespace roq::core {
 
-enum ExposureType {
+enum class ExposureType {
     UNDEFINED
 };
+
 struct ExposureUpdate {
     ExposureType type;
     std::span<core::Exposure> exposure;

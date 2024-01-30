@@ -18,12 +18,17 @@ void Leg::operator()(const roq::Parameter & p, lqs::Pricer& pricer) {
         sell_volume = core::Double::parse(p.value);
     } else if(p.label=="passive_mode"sv) {
         passive_mode = magic_enum::enum_cast<lqs::PassiveMode>(p.value).value_or(lqs::PassiveMode::UNDEFINED);
+    } else if(p.label=="account"sv) {
+        account = std::string_view {p.value};
     }
 }
 
 void Leg::operator()(const core::Exposure& e, lqs::Pricer& pricer) {
     this->position.buy.volume = e.position_buy;   
     this->position.sell.volume = e.position_sell;
+    log::info("lqs market.{} {}@{} position {} buy {} sell {}", market.market, market.symbol, market.exchange, 
+        position.buy.volume-position.sell.volume,
+        position.buy.volume, position.sell.volume);
 }
 
 bool Leg::check_market_quotes(core::BestQuotes& m) {

@@ -13,14 +13,12 @@
 
 # define liquidation group by merging some subaccounts possibly different exchanges
 [[portfolio]]                          
-    name            = "D1"
-    account         = "A1"
-    exchange        = "deribit"
+    portfolio_name  = "deribit:A1"
+    portfolio_type  = "ACCOUNT"
 
 [[portfolio]]
-    name            = "D1"
-    account         = "A2"
-    exchange        = "deribit"
+    portfolio_name  = "deribit:A2"
+    portfolio_type  = "ACCOUNT"
 
 # underlying symbol for each contract
 [[parameter]]
@@ -56,6 +54,13 @@
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["1",                     "1"]
+
+[[parameter]]
+    label           = "account"
+    exchange        = "deribit"
+    symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
+    value           = ["A1",                    "A1"]
+
 
 [[parameter]]
     label           = "buy_volume"

@@ -37,5 +37,6 @@ struct Range {
 using TimePoint = std::chrono::nanoseconds;
 using Duration = std::chrono::nanoseconds;
 
+struct Manager;
 
 } // roq::core

@@ -7,7 +7,6 @@
 #include <absl/container/flat_hash_map.h>
 #include <roq/string_types.hpp>
 
-#include <roq/cache/gateway.hpp>
 
 namespace roq::core {
 

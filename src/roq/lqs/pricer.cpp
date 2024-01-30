@@ -4,7 +4,7 @@
 #include "roq/core/utils/string_utils.hpp"
 #include "roq/lqs/pricer.hpp"
 #include "roq/logging.hpp"
-#include "roq/core/markets.hpp"
+#include "roq/core/market/manager.hpp"
 #include "roq/lqs/underlying.hpp"
 
 namespace roq::lqs {
@@ -111,6 +111,7 @@ void Pricer::dispatch(lqs::Leg const& leg) {
         .market = leg.market.market,
         .symbol = leg.market.symbol,        
         .exchange = leg.market.exchange,        
+        .account = leg.account,
         .buy = std::span { &leg.exec_quotes.buy, 1},
         .sell = std::span { &leg.exec_quotes.sell, 1},
     };
