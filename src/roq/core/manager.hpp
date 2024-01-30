@@ -10,6 +10,7 @@
 #include "roq/support_type.hpp"
 #include <roq/cache/manager.hpp>
 #include <roq/core/basic_handler.hpp>
+#include <roq/market_by_price_update.hpp>
 #include "roq/core/best_quotes_cache.hpp"
 
 namespace roq::core {
@@ -57,6 +58,7 @@ struct Manager : core::BasicDispatch<Manager>
         return result;
     }
 
+
     template<class T>
     core::MarketIdent get_market_ident (const Event<T>& event) { return markets.get_market_ident(event); }
 
@@ -84,7 +86,6 @@ public:
     core::Markets markets;
     core::Portfolios portfolios {*this}; // all the positions sitting here
     //core::Accounts accounts;
-    
 };
 
 } // roq::cache

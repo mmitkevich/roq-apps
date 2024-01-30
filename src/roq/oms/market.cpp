@@ -13,15 +13,15 @@ std::pair<oms::Level&, bool> Market::emplace_level(Side side, double price) {
     auto &levels = this->get_levels(side);
     auto iter = levels.find(index);
     if (iter != std::end(levels)) {
-    assert(utils::compare(iter->second.price, price) ==
-            std::strong_ordering::equal);
-    return {iter->second, false};
+      assert(utils::compare(iter->second.price, price) ==
+              std::strong_ordering::equal);
+      return {iter->second, false};
     } else {
-    auto &level = levels[index];
-    log::info<2>("OMS new_level {} price={} count={}", side, price,
-                levels.size());
-    level.price = price;
-    return {level, true};
+      auto &level = levels[index];
+      log::info<2>("OMS new_level {} price={} count={}", side, price,
+                  levels.size());
+      level.price = price;
+      return {level, true};
     }
 }
 

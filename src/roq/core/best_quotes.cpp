@@ -26,4 +26,14 @@ core::Double exposure_by_quotes(core::BestQuotes const &self) {
   return self.buy.volume - self.sell.volume;
 }
 
+core::ExecQuote &BestQuotes::get_quote(roq::Side side) {
+  switch (side) {
+  case roq::Side::BUY:
+    return buy;
+  case roq::Side::SELL:
+    return sell;
+  default:
+    throw roq::RuntimeError("Invalid side");
+  }
+}
 } // namespace roq::core

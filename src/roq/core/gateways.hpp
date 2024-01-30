@@ -36,10 +36,12 @@ struct Gateways {
     template<class T>
     bool operator()(const Event<T>& event) {
         bool result = false;
-        auto [gateway, is_new] = emplace_gateway(event.message_info);
         if constexpr(std::is_invocable_v<cache::Gateway, const Event<T>&>) {
-            cache::Gateway& gateway_2 = gateway;
-            result = gateway_2(event);
+            if(event.message_info.source_name.size()) { // ignore empty source name -- means locally-generated message without any gateway
+                auto [gateway, is_new] = emplace_gateway(event.message_info);
+                cache::Gateway& gateway_2 = gateway;
+                result = gateway_2(event);
+            }
         }
         return result;
     }

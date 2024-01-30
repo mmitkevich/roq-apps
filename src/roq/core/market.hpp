@@ -2,7 +2,7 @@
 #pragma once
 #include <roq/core/types.hpp>
 #include <roq/event.hpp>
-#include <roq/core/best_price_source.hpp>
+#include <roq/core/best_quotes_source.hpp>
 #include <roq/string_types.hpp>
 
 namespace roq::core {
@@ -34,10 +34,12 @@ struct MarketInfo {
     uint32_t trade_gateway_id = -1;
     roq::Source trade_gateway_name;
 
-    core::BestPriceSource pub_price_source;
-    core::BestPriceSource best_price_source = core::BestPriceSource::MARKET_BY_PRICE;
+    core::BestQuotesSource pub_price_source;
+    core::BestQuotesSource best_quotes_source = core::BestQuotesSource::MARKET_BY_PRICE;
     
     core::Volume lot_size = 1;
+    
+    core::Double tick_size;
 
     uint32_t depth_num_levels = 0;
 };

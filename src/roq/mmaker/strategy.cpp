@@ -1,50 +1,26 @@
 // (c) copyright 2023 Mikhail Mitkevich
 #include "roq/mmaker/strategy.hpp"
-#include "roq/core/best_price_source.hpp"
+#include "roq/core/best_quotes_source.hpp"
+#include "roq/core/best_quotes.hpp"
 #include "roq/core/gateways.hpp"
 //#include "roq/mmaker/publisher.hpp"
 //#include "umm/core/type.hpp"
 //#include "umm/core/event.hpp"
 #include "roq/client.hpp"
 #include "roq/core/exposure_update.hpp"
+#include "roq/core/market.hpp"
+#include "roq/core/types.hpp"
 #include "roq/oms/manager.hpp"
 //#include "umm/core/type/depth_array.ipp"
 #include <roq/cache/market_by_price.hpp>
+#include <roq/market_by_price_update.hpp>
 #include <roq/parameters_update.hpp>
 #include <roq/top_of_book.hpp>
-#include "roq/dag/factory.hpp"
+
 
 #include "roq/mmaker/application.hpp"
 
-#define USE_LQS
-#define USE_PRICER
-
-#ifdef USE_LQS
-#include "roq/lqs/pricer.hpp"
-#endif
-
-#ifdef USE_DAG
-#include "roq/dag/pricer.hpp"
-#endif
-
 namespace roq::mmaker {
-using namespace std::literals;
-  
-std::unique_ptr<core::Handler> Strategy::make_pricer() {
-  #ifdef USE_LQS
-  if(strategy_name == "lqs"sv) {
-    return std::make_unique<lqs::Pricer>(oms, core);
-  } 
-  #endif
-  #ifdef USE_DAG
-  if(strategy_name == "dag"sv) {
-    dag::Factory::initialize_all();
-    return std::make_unique<dag::Pricer>(oms, core);
-  }
-  #endif
-  throw roq::RuntimeError("pricer '{}' was not found"sv, strategy_name);
-  return {};
-}
 
 Strategy::Strategy(client::Dispatcher& dispatcher, Application& context)
 : dispatcher_(dispatcher)
@@ -63,79 +39,89 @@ void Strategy::operator()(const Event<TopOfBook> &event) {
     Base::operator()(event);  // calls dispatch
 
     const auto& u = event.value;
-    core::MarketIdent market_id = core.get_market_ident(u.symbol, u.exchange);
-    if(!core.is_ready(market_id))
+    core::MarketIdent market = core.get_market_ident(u.symbol, u.exchange);
+    
+    if(!core.is_ready(market))
       return;
+
     //log::info<2>("TopOfBook:  market {} BestPrice {} (from ToB)", context.prn(market), context.prn(context.best_price(market)));
     
-      //umm::Event<umm::BestPriceUpdate> best_price_event;
-      //best_price_event.header.receive_time_utc = event.message_info.receive_time_utc;
-      //best_price_event->market = market;
-      
-    core::ExecQuote buy = {
-        .price = u.layer.bid_price,
-        .volume = u.layer.bid_quantity
-    };
+    core.markets.get_market(market, [&](const core::MarketInfo& minfo) {
+      if(minfo.best_quotes_source==core::BestQuotesSource::TOP_OF_BOOK) {
+          auto [best_quotes,is_new] = core.best_quotes.emplace_quotes(market); 
+          
+          best_quotes.buy.price = u.layer.bid_price;
+          best_quotes.buy.volume = u.layer.bid_quantity;
+          best_quotes.sell.price = u.layer.ask_price;
+          best_quotes.buy.volume = u.layer.ask_quantity;
 
-    core::ExecQuote sell = {
-        .price = u.layer.ask_price,
-        .volume = u.layer.ask_quantity
-    };
+          core::Quotes quotes {
+              .market = market,
+              .symbol = u.symbol,        
+              .exchange = u.exchange,        
+              .buy = std::span { &best_quotes.buy, 1},
+              .sell = std::span { &best_quotes.sell, 1},
+          };
+          roq::Event event_2 {event.message_info, quotes};  // is it good to keep MessageInfo?
+          this->operator()(event_2);          
+      }
+    });
+    
 
-    core::Quotes quotes {
-        .market = market_id,
-        .symbol = u.symbol,        
-        .exchange = u.exchange,        
-        .buy = std::span { &buy, 1},
-        .sell = std::span { &sell, 1},
-    };
-
-    roq::Event event_2 {event.message_info, quotes};  // is it good to keep MessageInfo?
-    (*pricer)(event_2);
-
-      // publish to udp
-      //if(publisher_)
-      //      publisher_->dispatch(best_price_event);
+    // publish to udp
+    //if(publisher_)
+    //      publisher_->dispatch(best_price_event);
 }
 
 void Strategy::operator()(const Event<MarketByPriceUpdate>& event) {
     Base::operator()(event);
 
     const auto& u = event.value;
-    core::MarketIdent market_id = core.get_market_ident(u.symbol, u.exchange);
+    core::MarketIdent market = core.get_market_ident(u.symbol, u.exchange);
 
-    if(!core.is_ready(market_id))
+    if(!core.is_ready(market))
       return;
 
-      // use roq internal caching to extract BBO from MBP
-    auto [market_cache, is_new] = core.cache.get_market_or_create(u.exchange, u.symbol);
-    bool done = market_cache(event);   
-    cache::MarketByPrice& mbp = *market_cache.market_by_price;
-    mbp.extract_2(layers_, 1);
-    
-    core::ExecQuote buy, sell;
-    
-    if(!layers_.empty()) {
-      buy.price = layers_[0].bid_price;
-      buy.volume = layers_[0].bid_quantity;
-      sell.price = layers_[0].ask_price;
-      sell.volume = layers_[0].ask_quantity;
-    }
+    core.markets.get_market(market, [&](core::MarketInfo const &minfo) {
+      if(minfo.best_quotes_source == core::BestQuotesSource::MARKET_BY_PRICE) {
+          // use roq internal caching to extract BBO from MBP
+          auto [market_cache, is_new] = core.cache.get_market_or_create(u.exchange, u.symbol);
+          bool done = market_cache(event);   
+          cache::MarketByPrice& mbp = *market_cache.market_by_price;
+          mbp.extract_2(layers_, 1);
 
-    core::Quotes quotes {
-      .market = market_id,
-      .symbol = u.symbol,      
-      .exchange = u.exchange,      
-      .buy = std::span { &buy, 1},
-      .sell = std::span { &sell, 1}
-    };
+          // cache best_quotes (FIXME)
+          auto [best_quotes, is_new_quotes] = core.best_quotes.emplace_quotes(market); 
+          
+          if(!layers_.empty()) {
+            best_quotes.buy.price = layers_[0].bid_price;
+            best_quotes.buy.volume = layers_[0].bid_quantity;
+            best_quotes.sell.price = layers_[0].ask_price;
+            best_quotes.sell.volume = layers_[0].ask_quantity;
+          } else {
+            best_quotes.clear();
+          }
 
-    roq::Event event_2 {event.message_info, quotes};
-    (*pricer)(event_2);
+          core::Quotes quotes {
+              .market = market,
+              .symbol = u.symbol,        
+              .exchange = u.exchange,        
+              .buy = std::span { &best_quotes.buy, 1},
+              .sell = std::span { &best_quotes.sell, 1},
+          };
+          
+          roq::Event event_2 {event.message_info, quotes};
+          this->operator()(event_2);
+      }
+    });
 
     // publish to udp
     //if(publisher_)
     //    publisher_->dispatch(best_price_event);
+}
+
+void Strategy::operator()(const Event<core::Quotes>& event) {
+    (*pricer)(event);
 }
 
 // provide REST interface to push volume to liquidate ? 

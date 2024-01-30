@@ -68,12 +68,8 @@ public:
 //    double get_position(std::string_view account, std::string_view symbol, std::string_view exchange);
 
     std::pair<oms::Market&, bool> emplace_market(core::MarketInfo const& market);
-    
-    template<class T>
-    std::pair<oms::Market&, bool> emplace_market(roq::Event<T> const& e) {
-        auto [market, is_new] = core_.markets.emplace_market(e);
-        return this->emplace_market(market);
-    }
+
+    std::pair<oms::Market &, bool> emplace_market(std::string_view symbol, std::string_view exchange);
 
     // roq::client::Handler
     void operator()(roq::Event<Timer> const& event) override;
@@ -91,7 +87,7 @@ public:
     void operator()(Event<RateLimitTrigger> const& event) override;
     
     // roq::pricer::Handler
-    void operator()(Event<core::TargetQuotes> const& target_quotes) override;    
+    void operator()(core::TargetQuotes const& target_quotes) override;    
 public:
     core::PositionSource position_source {core::PositionSource::ORDERS};
     core::PositionSnapshot position_snapshot {core::PositionSnapshot::PORTFOLIO};

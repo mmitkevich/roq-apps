@@ -87,12 +87,12 @@ void Manager::dispatch(client::Config::Handler& handler) const {
 
     toml.get_nodes("market", [&](auto node) {
         std::string exchange = toml.get_string(node, "exchange"sv);
-        std::string symbol = toml.get_string(node, "symbol"sv);
-        
-        log::info<1>("config::Manager::dispatch symbol={}, exchange={}"sv, symbol, exchange);
-        handler(client::Symbol {
-            .regex = symbol,
-            .exchange = exchange
+        toml.get_values(type_c<std::string>{}, node, "symbol"sv, [&](auto i, auto symbol) {
+            log::info<1>("config::Manager::dispatch symbol={}, exchange={}"sv, symbol, exchange);
+            handler(client::Symbol {
+                .regex = symbol,
+                .exchange = exchange
+            });
         });
     });
     toml.get_nodes("account", [&](auto node) {

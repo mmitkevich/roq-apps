@@ -58,7 +58,7 @@ void Pricer::operator()(const roq::Event<roq::ParametersUpdate>& e) {
                 .exchange = exchange
             });
         } else if(label == "portfolio"sv) {
-            set_portfolio(node.node, {.name = p.value});
+            set_portfolio(node.node, {.portfolio_name = p.value});
         } else if(label == "ref"sv) {
             set_ref(node.node, p.value, suffix);
             // TOOD: add refs

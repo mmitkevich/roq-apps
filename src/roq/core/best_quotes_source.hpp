@@ -3,7 +3,7 @@
 
 namespace roq::core {
 
-enum class BestPriceSource {
+enum class BestQuotesSource {
     UNDEFINED,
     TOP_OF_BOOK,
     MARKET_BY_PRICE,

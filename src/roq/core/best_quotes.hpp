@@ -11,13 +11,8 @@ struct Quotes;
 struct BestQuotes {
     core::ExecQuote buy;
     core::ExecQuote sell;
-    core::ExecQuote& get_quote(roq::Side side)  {
-        switch(side) {
-            case roq::Side::BUY: return buy;
-            case roq::Side::SELL: return sell;
-            default: throw roq::RuntimeError("Invalid side");
-        }
-    }
+    
+    core::ExecQuote &get_quote(roq::Side side);
 
     const core::ExecQuote& get_quote(roq::Side side) const {
         switch(side) {

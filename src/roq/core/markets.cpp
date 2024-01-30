@@ -45,6 +45,12 @@ void Markets::operator()(const Event<GatewayStatus> &event) {
   }
 }
 
+void Markets::operator()(const Event<ReferenceData> &event) {
+  auto [market, is_new] = emplace_market(event);
+  market.tick_size = event.value.tick_size;
+}
+
+
 void Markets::clear() {
   market_by_symbol_by_exchange_.clear();
   market_by_id_.clear();

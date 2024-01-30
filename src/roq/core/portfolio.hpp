@@ -11,11 +11,6 @@
 
 namespace roq::core {
 
-struct PortfolioKey {
-    core::PortfolioIdent portfolio;
-    std::string_view name;
-};
-
 struct Portfolio {
     template<class...Args>
     Portfolio(Args&&...args) : positions_ {std::forward<Args>(args)...} {}
@@ -41,7 +36,7 @@ struct Portfolio {
 
 public:
     core::PortfolioIdent portfolio;
-    roq::Account name;   // associated account if any
+    roq::Account portfolio_name;      // arbitrary name (could be account name)
 private:
     core::Hash<core::MarketIdent, core::Exposure> positions_;
 };

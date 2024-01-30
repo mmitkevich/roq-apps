@@ -81,13 +81,15 @@ struct Strategy final
         if constexpr(std::is_invocable_v<decltype(core), decltype(event)>) {
           core(event);
         }
-        if constexpr(std::is_invocable_v<decltype(pricer), decltype(event)>) {
-          pricer(event);        
+        if constexpr(std::is_invocable_v<decltype(*pricer), decltype(event)>) {
+          (*pricer)(event);        
         }
     }
 
     void operator()(const Event<TopOfBook> &event);
     void operator()(const Event<MarketByPriceUpdate>& event);
+
+    void operator()(const Event<core::Quotes>& event);
 
     /// IQuoter::Handler
     //void dispatch(const umm::Event<umm::QuotesUpdate> &) override;
@@ -97,7 +99,6 @@ private:
 private:
     client::Dispatcher& dispatcher_;
     std::string strategy_name;
-    std::vector<Layer> layers_;
     config::Manager& config;
     // components
     core::Manager core;
@@ -105,9 +106,7 @@ private:
     
     std::unique_ptr<core::Handler> pricer;
     
-    // pricer::Manager pricer;
-    // liqs::Manager pricer;
-
+    std::vector<Layer> layers_;
 };
 
 

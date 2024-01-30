@@ -8,6 +8,7 @@ add_library( "${TARGET_NAME}" STATIC
   "portfolios.cpp"
   "price.cpp"
   "best_quotes.cpp"
+  "best_quotes_cache.cpp"
   "utils/string_utils.cpp"
 )
 

@@ -1,9 +1,29 @@
 #include "roq/lqs/underlying.hpp"
+#include "roq/lqs/pricer.hpp"
+#include <algorithm>
 
 namespace roq::lqs {
 
-void Underlying::compute(lqs::Pricer& pricer) {
+using namespace std::literals;
 
+void Underlying::operator()(const roq::Parameter & p, lqs::Pricer& pricer) {
+    if(p.label=="delta_min"sv) {
+        delta_min = core::Double::parse(p.value);
+    } else if(p.label=="delta_max"sv) {
+        delta_max = core::Double::parse(p.value);
+    }
 }
 
-} // roq::lqs
+
+void Underlying::compute(lqs::Pricer& pricer) {
+    delta = 0;
+    pricer.get_legs(*this, [&](lqs::Leg const& leg) {
+        delta += (leg.position.buy.volume - leg.position.sell.volume) * leg.delta_by_volume;
+    });
+}
+
+void Underlying::remove_leg(core::MarketIdent leg) {
+    std::remove_if(legs.begin(), legs.end(), [&](auto l) { return l == leg; });
+}
+
+} // namespace roq::lqs

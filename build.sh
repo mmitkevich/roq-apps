@@ -3,7 +3,7 @@ build=${build:-debug}
 VERBOSE=${VERBOSE:-0}
 
 cd $(dirname $0)
-
+CLEAN=0
 echo "$(pwd)/build.sh"
 while [[ $@ > 0 ]]; do
 case $1 in
@@ -25,7 +25,7 @@ fi
 CXX=${CXX:-$(which g++)}
 CC=${CC:-$(which gcc)}
 
-rm -rf build/$build
+#rm -rf build/$build
 echo "running cmake... CXX=$CXX"
 cmake -H. -Bbuild/$build -DCMAKE_INSTALL_PREFIX=$ROQ_CONDA\
 	-DCMAKE_CXX_COMPILER=$CXX -DCMAKE_C_COMPILER=$CC -DCMAKE_BUILD_TYPE=$build\

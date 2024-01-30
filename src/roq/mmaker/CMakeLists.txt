@@ -6,6 +6,7 @@ add_executable(
   "${TARGET_NAME}"
   "application.cpp"
   "strategy.cpp"
+  "factory.cpp"
   "flags/flags.cpp"
 )
 

@@ -7,7 +7,7 @@
 namespace roq::core {
 
 struct Dispatcher {
-    virtual void operator()(Event<core::TargetQuotes> const&) = 0;
+    virtual void operator()(core::TargetQuotes const&) = 0;
 };
 
 } // roq::oms

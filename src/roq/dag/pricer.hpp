@@ -20,7 +20,6 @@
 // to oms
 #include "roq/core/dispatcher.hpp"
 
-//#include "roq/core/basic_pricer.hpp"
 
 // from cache
 #include "roq/core/handler.hpp"

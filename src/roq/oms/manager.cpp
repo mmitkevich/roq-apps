@@ -6,6 +6,7 @@
 #include "roq/core/position_source.hpp"
 //#include "umm/prologue.hpp"
 //#include "umm/core/type.hpp"
+#include "roq/core/types.hpp"
 #include "roq/oms/manager.hpp"
 #include <chrono>
 #include <roq/buffer_capacity.hpp>
@@ -27,6 +28,8 @@
 
 namespace roq::oms {
 
+using namespace std::literals;
+
 Manager::Manager(oms::Handler& handler, client::Dispatcher& dispatcher, core::Manager& core) 
 : handler_(handler)
 , dispatcher(dispatcher)
@@ -36,10 +39,9 @@ Manager::Manager(oms::Handler& handler, client::Dispatcher& dispatcher, core::Ma
 }
 
 
-void Manager::operator()(roq::Event<core::TargetQuotes> const & event) {
-    auto& target_quotes = event.value;
+void Manager::operator()(core::TargetQuotes const & target_quotes) {
     log::info<2>("TargetQuotes {}", target_quotes);    
-    auto [market,is_new] = emplace_market(event);
+    auto [market,is_new] = emplace_market(target_quotes.symbol, target_quotes.exchange);
     //assert(!is_new);
     
     // FIXME
@@ -377,7 +379,7 @@ void Manager::cancel_order(oms::Market& market, oms::Order& order) {
 
 void Manager::order_create_reject(oms::Market& market, oms::Order& order, const OrderAck& u) {
     assert(order.order_id == u.order_id);
-    assert(u.type == RequestType::CREATE_ORDER);
+    assert(u.request_type == RequestType::CREATE_ORDER);
     order.reject_version = u.version;
     order.reject_error = u.error;
     order.reject_reason = u.text;
@@ -397,7 +399,7 @@ void Manager::order_create_reject(oms::Market& market, oms::Order& order, const 
 
 void Manager::order_modify_reject(oms::Market& market, oms::Order& order, const OrderAck& u) {
     assert(order.order_id == u.order_id);
-    assert(u.type == RequestType::MODIFY_ORDER);
+    assert(u.request_type == RequestType::MODIFY_ORDER);
     order.reject_version = u.version;
     order.reject_error = u.error;
     order.reject_reason = u.text;
@@ -407,7 +409,7 @@ void Manager::order_modify_reject(oms::Market& market, oms::Order& order, const 
 
 void Manager::order_cancel_reject(oms::Market& market, oms::Order& order, const OrderAck& u) {
     assert(order.order_id == u.order_id);
-    assert(u.type == RequestType::CANCEL_ORDER);
+    assert(u.request_type == RequestType::CANCEL_ORDER);
     order.expected = order.confirmed;
     order.pending.type = RequestType::UNDEFINED;    
 }
@@ -424,7 +426,7 @@ void Manager::order_accept(oms::Market& market, oms::Order& order, const OrderAc
 void Manager::order_confirm(oms::Market& market, oms::Order& order, const OrderUpdate& u) {
     assert(order.order_id == u.order_id);
     order.external_order_id = u.external_order_id;
-    order.confirmed.status = u.status;
+    order.confirmed.status = u.order_status;
     order.confirmed.price = u.price;
     order.confirmed.quantity = u.remaining_quantity;
     order.confirmed.version = u.max_accepted_version;
@@ -461,17 +463,24 @@ void Manager::exposure_update(oms::Market& market) {
     
     market.last_position_modify_time = now();
 
+    bool by_orders = position_source==core::PositionSource::ORDERS;
+    core::Volume position {};
+    switch(position_source) {
+        case core::PositionSource::ORDERS: position = market.position_by_orders; break;
+        case core::PositionSource::ACCOUNT: position = market.position_by_account; break;
+        default: throw roq::RuntimeError("PositionSource {} not supported", position_source);
+    }
     core::Exposure exposure {
     //            .side = u.side,
     //            .price = u.last_traded_price,
     //            .quantity = fill_size,
-        .position_buy = std::max(market.position_by_orders, 0.),
-        .position_sell = std::max(-market.position_by_orders, 0.),
+        .position_buy = position.max(0),    // FIXME: std::max(NAN, 0) = 0 but empty value should "infect"
+        .position_sell = (-position).max(0),
         .market = market.market,        
         .exchange = market.exchange,
         .symbol = market.symbol,
-        .portfolio = this->portfolio,             
-        .account = market.account,           
+        .portfolio = market.portfolio,             
+        .portfolio_name = market.portfolio_name,           
     };    
     core::ExposureUpdate update {
         .exposure = std::span {&exposure, 1}
@@ -487,8 +496,10 @@ void Manager::order_fills(oms::Market& market, const T& u, double fill_size) {
     if(utils::compare(fill_size, 0.)==std::strong_ordering::greater) {
         if(u.side==Side::SELL)
             fill_size = -fill_size;
-        market.position_by_orders += fill_size;
-        exposure_update(market);
+        market.position_by_orders += fill_size;        
+        if(position_source==core::PositionSource::ORDERS) {
+            exposure_update(market);            
+        }
     }
 }
 
@@ -499,7 +510,7 @@ void Manager::order_fills(oms::Market& market, const T& u, double fill_size) {
 
 void Manager::order_complete(oms::Market& market, oms::Order& order, const OrderUpdate& u) {
     assert(order.order_id == u.order_id);
-    order.confirmed.status = u.status;
+    order.confirmed.status = u.order_status;
     order.confirmed.price = u.price;
     order.confirmed.quantity = 0;
     order.confirmed.version = u.max_accepted_version;
@@ -516,7 +527,7 @@ void Manager::order_complete(oms::Market& market, oms::Order& order, const Order
 
 void Manager::order_canceled(oms::Market& market, oms::Order& order, const OrderUpdate& u) {
     assert(order.order_id == u.order_id);
-    order.confirmed.status = u.status;
+    order.confirmed.status = u.order_status;
     order.confirmed.type = RequestType::UNDEFINED;
     order.confirmed.price = u.price;
     order.confirmed.quantity = 0;
@@ -548,8 +559,8 @@ void Manager::operator()(roq::Event<Timer> const& event) {
 }
 
 void Manager::operator()(roq::Event<ReferenceData> const& event) {
-    auto [market,is_new] = emplace_market(event);
     auto& u = event.value;    
+    auto [market,is_new] = emplace_market(u.symbol, u.exchange);
     market.tick_size = u.tick_size;
     market.min_trade_vol = u.min_trade_vol;
     Base::operator()(event);
@@ -598,9 +609,10 @@ bool Manager::erase_order(oms::Market& market, uint64_t order_id) {
 }
 
 void Manager::operator()(roq::Event<OrderUpdate> const& event) {
-    auto [market,is_new] = emplace_market(event);
-    
     auto& u = event.value;
+
+    auto [market,is_new] = emplace_market(u.symbol, u.exchange);
+
     auto market_id = core_.markets.get_market_ident(u.symbol, u.exchange);    
     assert(market.market==market.market);
 
@@ -608,7 +620,7 @@ void Manager::operator()(roq::Event<OrderUpdate> const& event) {
     assert(order.order_id == u.order_id);
 
     log::info<1>("OMS order_update is_new_order={} order_id={}.{} side={} price={} remaining_quantity={} status={} update_type={} symbol={} exchange={} market={}", 
-        is_new_order, u.order_id, u.max_accepted_version, u.side, u.price, u.remaining_quantity, u.status, u.update_type, u.symbol, u.exchange, market.market);
+        is_new_order, u.order_id, u.max_accepted_version, u.side, u.price, u.remaining_quantity, u.order_status, u.update_type, u.symbol, u.exchange, market.market);
 
     if(u.update_type==roq::UpdateType::STALE) {
         erase_order(market, u.order_id);
@@ -620,7 +632,7 @@ void Manager::operator()(roq::Event<OrderUpdate> const& event) {
         order.traded_quantity = u.traded_quantity;
         order.confirmed.type = RequestType::CREATE_ORDER;
         order.confirmed.version = u.max_accepted_version;
-        order.confirmed.status = u.status;
+        order.confirmed.status = u.order_status;
         order.confirmed.price = u.price;
         order.confirmed.quantity = u.remaining_quantity;
         order.external_order_id = u.external_order_id;
@@ -629,18 +641,18 @@ void Manager::operator()(roq::Event<OrderUpdate> const& event) {
         order.expected = order.confirmed;
         market_by_order_[order.order_id] = market.market;
         
-        if(u.status!=OrderStatus::WORKING) {
+        if(u.order_status!=OrderStatus::WORKING) {
             // keep only working
             erase_order(market, order.order_id);
         }
     } else {
-        if(u.status==OrderStatus::WORKING) {
+        if(u.order_status==OrderStatus::WORKING) {
             order_confirm(market, order, u);
-        } else if(u.status == OrderStatus::COMPLETED) {
+        } else if(u.order_status == OrderStatus::COMPLETED) {
             order_complete(market, order, u);
-        } else if(u.status == OrderStatus::CANCELED) {
+        } else if(u.order_status == OrderStatus::CANCELED) {
             order_canceled(market, order, u);
-        } else if(u.status == OrderStatus::REJECTED) {
+        } else if(u.order_status == OrderStatus::REJECTED) {
             erase_order(market, order.order_id);
         }
     }
@@ -652,6 +664,9 @@ std::pair<oms::Market&, bool> Manager::emplace_market(core::MarketInfo const& ma
     if(iter!=std::end(markets_)) {
         return {iter->second, false};
     } else {
+        assert(market.market);
+        assert(!market.exchange.empty());
+        assert(!market.symbol.empty());
         oms::Market& market_2 = markets_[market.market];
         market_2.market = market.market;        
         market_2.exchange = market.exchange;
@@ -683,22 +698,22 @@ void Manager::operator()(roq::Event<OrderAck> const& event) {
         market_id = iter->second;
     else {
         log::info<1>("OMS order_ack not_found {} order_id={}.{} side={}, status={} symbol={} exchange={} market={}", 
-            u.type, u.order_id, u.version, u.side, u.status, u.symbol, u.exchange, market_id);
+            u.request_type, u.order_id, u.version, u.side, u.request_status, u.symbol, u.exchange, market_id);
         return;
     }
-    auto [market, is_new] = emplace_market(event);
+    auto [market, is_new] = emplace_market(u.symbol, u.exchange);
 
     if(!market.get_order(u.order_id, [&](oms::Order& order) {
         assert(order.order_id == u.order_id);
         log::info<1>("OMS order_ack {} order_id={}.{} side={}, status={} external_id={}, symbol={} exchange={} market={}, error={}, text={}", 
-            u.type, u.order_id, u.version, u.side, u.status, order.external_order_id, u.symbol, u.exchange, market.market, u.error, u.text);            
+            u.request_type, u.order_id, u.version, u.side, u.request_status, order.external_order_id, u.symbol, u.exchange, market.market, u.error, u.text);            
 
-        if(u.status == RequestStatus::REJECTED) {
-            if(u.type==RequestType::CANCEL_ORDER) {
+        if(u.request_status == RequestStatus::REJECTED) {
+            if(u.request_type==RequestType::CANCEL_ORDER) {
                 order_cancel_reject(market, order, u);
-            } else if(u.type==RequestType::CREATE_ORDER) {
+            } else if(u.request_type==RequestType::CREATE_ORDER) {
                 order_create_reject(market, order, u);
-            } else if(u.type==RequestType::MODIFY_ORDER) {
+            } else if(u.request_type==RequestType::MODIFY_ORDER) {
                 order_modify_reject(market, order, u);
             }
             if(u.error==Error::TOO_LATE_TO_MODIFY_OR_CANCEL) {
@@ -712,14 +727,14 @@ void Manager::operator()(roq::Event<OrderAck> const& event) {
             } else {
                 process(market);
             }
-        } else if(u.status == RequestStatus::ACCEPTED) {
+        } else if(u.request_status == RequestStatus::ACCEPTED) {
             order_accept(market, order, u);
-        } else if(u.status == RequestStatus::FORWARDED) {
+        } else if(u.request_status == RequestStatus::FORWARDED) {
             order_fwd(market, order, u);
         }
     })) {
         log::info<1>("OMS order_ack not_found {} order_id={}.{} side={}, status={} symbol={} exchange={} market={}", 
-            u.type, u.order_id, u.version, u.side, u.status, u.symbol, u.exchange, market.market);            
+            u.request_type, u.order_id, u.version, u.side, u.request_status, u.symbol, u.exchange, market.market);            
     }
 }
 
@@ -728,15 +743,16 @@ void Manager::operator()(Event<PositionUpdate> const & event) {
     Base::operator()(event);
     auto gateway_id = event.message_info.source;
     bool is_downloading = core_.gateways.is_downloading(gateway_id);    
-    auto [market,is_new] = emplace_market(event);
-    auto& u = event.value;
+    auto& u = event.value;    
+    auto [market,is_new] = emplace_market(u.symbol, u.exchange);
+log::info<2>("PositionUpdate {}", event);
     auto new_position = u.long_quantity - u.short_quantity;
-    market.position_by_account = new_position;    
-    log::info<2>("PositionUpdate {}", event);
+    market.position_by_account = new_position; 
     if(!is_downloading && position_source==core::PositionSource::ACCOUNT) {
-    log::info<1>("OMS position_update downloading {} account {} position_by_orders {} position_by_account {} symbol {} exchange {} market {} portfolio {}",
-        is_downloading, market.account, market.position_by_orders, market.position_by_account,
-        market.symbol, market.exchange, market.market, this->portfolio);
+        market.position_by_orders = new_position;
+        log::info<1>("OMS position_update downloading {} account {} position_by_orders {} position_by_account {} symbol {} exchange {} market {} portfolio {}",
+            is_downloading, market.account, market.position_by_orders, market.position_by_account,
+            market.symbol, market.exchange, market.market, this->portfolio);
         exposure_update(market);
     }
 }
@@ -782,7 +798,6 @@ void Manager::operator()(roq::Event<DownloadEnd> const& event) {
     
     max_order_id  = std::max(max_order_id, event.value.max_order_id);
     auto& u = event.value;
-    
     if(!u.account.empty() && position_snapshot==core::PositionSnapshot::ACCOUNT) {
         for(auto & [market_id, market] : markets_) {
             if(market.account==u.account) {
@@ -813,4 +828,10 @@ void Manager::operator()(roq::Event<RateLimitTrigger> const& event) {
    }
 }
 
-} // namespace roq::mmaker
+std::pair<oms::Market &, bool>
+Manager::emplace_market(std::string_view symbol, std::string_view exchange) {
+   auto [market, is_new] =
+       core_.markets.emplace_market({.symbol = symbol, .exchange = exchange});
+   return this->emplace_market(market);
+}
+} // namespace roq::oms

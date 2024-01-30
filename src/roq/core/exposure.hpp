@@ -20,16 +20,17 @@ struct Exposure {
     std::string_view exchange;
     std::string_view symbol;
 
-    core::PortfolioIdent portfolio;
-    std::string_view account;    
+    core::PortfolioIdent portfolio; 
+    std::string_view portfolio_name;
 };
 
 } // roq::core
 
 ROQ_CORE_FMT_DECL(roq::core::Exposure, 
-    "{{ buy price {} buy pos {} sell price {} sell pos {} "
-    "symbol {} exchange {} market {} "
-    "portfolio {} account {} }}", 
-    _.avg_price_buy, _.position_buy, _.avg_price_sell, _.position_sell,
-    _.symbol, _.exchange, _.market, 
-    _.portfolio, _.account);
+    "{{ buy {}@{} sell {}@{} "
+    "market.{} {}@{}  "
+    "portfolio.{} {} }}", 
+    _.position_buy, _.avg_price_buy,
+    _.position_sell, _.avg_price_sell, 
+    _.market, _.symbol, _.exchange,  
+    _.portfolio, _.portfolio_name);

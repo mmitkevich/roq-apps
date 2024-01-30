@@ -32,6 +32,8 @@ struct Market {
     double position_by_orders = 0;
     double position_by_account = 0;
     core::TimePoint last_position_modify_time;
+    core::PortfolioIdent portfolio {};
+      roq::Account portfolio_name;
 public:
   std::pair<oms::Level &, bool> emplace_level(Side side, double price);
 

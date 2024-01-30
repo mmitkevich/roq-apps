@@ -15,6 +15,11 @@ using Ident = uint32_t;
 using MarketIdent = core::Ident;
 using PortfolioIdent = core::Ident;
 
+struct PortfolioKey {
+    core::PortfolioIdent portfolio;
+    std::string_view portfolio_name;
+};
+
 using Integer = int64_t;
 using Bool = bool;
 using String = std::string;
