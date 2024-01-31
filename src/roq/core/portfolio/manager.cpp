@@ -2,6 +2,7 @@
 #include "roq/core/portfolio/manager.hpp"
 #include "roq/core/exposure_update.hpp"
 #include "roq/core/manager.hpp"
+#include "roq/core/types.hpp"
 #include "roq/logging.hpp"
 #include <roq/string_types.hpp>
 #include <roq/core/config/toml_file.hpp>
@@ -11,10 +12,17 @@ namespace roq::core::portfolio {
 void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
     config.get_nodes(root,"portfolio", [&](config::TomlNode node) {
         auto [portfolio, is_new] = emplace_portfolio({
-            .portfolio_name = config.get_string(node, "portfolio_name"),
+            .portfolio_name = config.get_string(node, "portfolio"),
         });
-        portfolio.portfolio_type = config.get_value_or(node, "portfolio_type", core::PortfolioType::UNDEFINED);
-        log::info("configure portfolio.{} {} type {}", portfolio.portfolio, portfolio.portfolio_name, portfolio.portfolio_type);
+        log::info("configure portfolio.{} {}", portfolio.portfolio, portfolio.portfolio_name);
+    });
+    config.get_nodes(root, "account", [&](auto node) {
+        roq::Exchange exchange = config.get_string_or(node, "exchange", {});
+        roq::Account account = config.get_string_or(node, "account", {});
+        std::string portfolio_name = config.get_string_or(node, "portfolio", {});
+        core::PortfolioIdent portfolio = get_portfolio_ident(portfolio_name);
+        portfolio_by_account_[exchange][account] = portfolio;
+        log::info("configure account {}@{} -> portfolio.{}", account, exchange, portfolio);
     });
 }
 
@@ -24,39 +32,29 @@ void Manager::operator()(core::ExposureUpdate const& u) {
     }
 }
 
+
 void Manager::operator()(const roq::Event<roq::PositionUpdate>& event) {
     auto& u = event.value;
     auto [market, is_new_market] = core.markets.emplace_market(event);
     
-    // automatically creates account-based portfolios
-    std::array<char, roq::detail::MAX_LENGTH_ACCOUNT+roq::detail::MAX_LENGTH_EXCHANGE+16> portfolio_name;
-    auto result = fmt::format_to_n(portfolio_name.data(), portfolio_name.size(), "{}:{}", u.exchange, u.account);
-
-    auto [portfolio,is_new] = emplace_portfolio({
-        .portfolio_name = std::string_view{ portfolio_name.data(), result.size },
-    });
-    
-    portfolio.portfolio_type = PortfolioType::ACCOUNT;
-
     core::Exposure exposure {
         .position_buy = u.long_quantity,
         .position_sell = u.short_quantity,
         .market = market.market,
         .exchange = market.exchange,        
         .symbol = market.symbol,
-        .portfolio = portfolio.portfolio,
-        .portfolio_name = portfolio.portfolio_name,
+//        .portfolio = portfolio.portfolio,
+//        .portfolio_name = portfolio.portfolio_name,
     };
-
-    log::info<2>("Portfolios:: PositionUpdate exposure {} portfolio.{} {} market.{} {}@{}", 
-        exposure, 
-        portfolio.portfolio, 
-        portfolio.portfolio_name, 
-        market.market, 
-        u.symbol, 
-        u.exchange);
     
-    portfolio.set_position(market.market, exposure);
+    get_portfolio_by_account(u.account, u.exchange,[&](core::Portfolio & portfolio){
+        exposure.portfolio = portfolio.portfolio;
+        exposure.portfolio_name = portfolio.portfolio_name;
+        portfolio.set_position(market.market, exposure);
+    });
+
+    log::info<2>("portfolios:: PositionUpdate exposure {}", exposure);
+    
     if(handler) {
         core::ExposureUpdate update {
             .exposure = std::span {&exposure, 1}

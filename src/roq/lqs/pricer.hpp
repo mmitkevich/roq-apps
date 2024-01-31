@@ -27,6 +27,11 @@ struct Pricer : core::Handler {
   bool get_leg(core::MarketIdent market, std::invocable<lqs::Leg &> auto fn);
   void get_legs(lqs::Underlying& underlying, std::invocable<Leg&> auto fn);
   
+  bool get_liquidate_flag(lqs::Leg& leg) {
+    auto iter= lqs_portfolios_.find(leg.portfolio);
+    return iter != std::end(lqs_portfolios_);
+  }
+  
   core::Dispatcher &dispatcher;
   core::Manager &core;
 private:
@@ -35,6 +40,7 @@ private:
 private:  
   core::Hash<core::MarketIdent, lqs::Underlying> underlyings;
   core::Hash<core::MarketIdent, lqs::Leg> leg_by_market;
+  core::Hash<core::PortfolioIdent, core::Bool> lqs_portfolios_; // to liquidate
 };
 
 

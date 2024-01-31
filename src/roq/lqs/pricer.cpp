@@ -60,7 +60,15 @@ void Pricer::operator()(const roq::Event<roq::ParametersUpdate> & e) {
             leg.underlying = underlying.market.market;
             underlying.legs.push_back(leg.market.market);
             log::debug("lqs add leg {} to underlying {}", leg.market.market, underlying.market.market);
-        } else if(p.exchange == lqs::EXCHANGE) {    // underlyings are identified by having 'lqs' exchange
+        } else if(p.label == "liquidate"sv) {
+            core::PortfolioIdent portfolio = core.portfolios.get_portfolio_ident(p.value);
+            if(portfolio) {
+                lqs_portfolios_[portfolio] = (std::string_view {p.value} == "true"sv);
+                log::info("lqs portfolio {} flag {}", portfolio, lqs_portfolios_[portfolio]);
+            } else {
+                log::warn("lqs portfolio not found {}", p.value);
+            }
+        } else  if(p.exchange == lqs::EXCHANGE) {    // underlyings are identified by having 'lqs' exchange
             auto [underlying, is_new_underlying] = emplace_underlying(p.symbol, p.exchange);
             underlying(p, *this);
         } else { // otherwise it is leg

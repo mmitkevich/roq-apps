@@ -152,12 +152,6 @@ void oms::Manager::configure(const Config& config, Node node) {
     static constexpr core::Integer MIN_REJECT_TIMEOUT_MS = 100;
 
     this->reject_timeout_ =  std::chrono::milliseconds { config.get_value_or(node, "reject_timeout", MIN_REJECT_TIMEOUT_MS) };
-
-    //config.get_nodes(node, "account", [&](auto node) {
-    //    roq::Exchange exchange = config.get_string_or(node, "exchange", {});
-    //    roq::Account account = config.get_string_or(node, "account", {});
-    //    account_by_exchange_[exchange] = account;
-    //});
 }
 
 

@@ -11,14 +11,21 @@
     position_source     = "ACCOUNT" # "ORDERS"
     position_snapshot   = "PORTFOLIO"
 
-# define liquidation group by merging some subaccounts possibly different exchanges
-[[portfolio]]                          
-    portfolio_name  = "deribit:A1"
-    portfolio_type  = "ACCOUNT"
+# LG1 portfolio merges accounts on two different exchanges 
+# NOTE! portfolio CAN't merge accounts on same exchange! only different exchanges so that {symbol,exchange} pairs do not collide!
 
-[[portfolio]]
-    portfolio_name  = "deribit:A2"
-    portfolio_type  = "ACCOUNT"
+[[portfolio]]                          
+    portfolio  = "LG1"
+
+[[account]]
+    account = "A1"
+    exchange = "deribit"
+    portfolio = "LG1"   
+
+[[parameter]]
+    label           = "liquidate"
+    account         = "LG1"             # FIXME: here account is used to track portfolio 
+    value           = "true"
 
 # underlying symbol for each contract
 [[parameter]]

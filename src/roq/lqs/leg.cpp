@@ -65,6 +65,10 @@ void Leg::compute(lqs::Underlying const& u, lqs::Pricer& pricer) {
     q.buy.volume = q.buy.volume.min( (u.delta_max-u.delta).max(0)/delta_by_volume );
     q.sell.volume = q.sell.volume.min( (u.delta-u.delta_min).max(0)/delta_by_volume );
 
+    if(!pricer.get_liquidate_flag(*this)) {
+        q.buy.volume = q.sell.volume = 0;
+    }
+    
     // take market agressively
     if(q.buy.volume>0)
         q.buy.price = m.sell.price;

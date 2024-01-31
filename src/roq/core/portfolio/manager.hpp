@@ -63,12 +63,26 @@ struct Manager {
 
     void configure(const config::TomlFile& config, config::TomlNode root);
 
+    bool get_portfolio_by_account(std::string_view account, std::string_view exchange, std::invocable<core::Portfolio&> auto callback) {
+        auto & by_account = portfolio_by_account_[exchange];
+        auto iter = by_account.find(account);
+        if( iter != std::end(by_account) ) {
+          core::PortfolioIdent portfolio_id = iter->second;
+          auto iter_2 = portfolios_.find(portfolio_id);
+          if(iter_2!=std::end(portfolios_)) {
+            callback(iter_2->second);
+            return true;
+          }
+        }
+        return false;
+    }
   private:
     portfolio::Handler* handler = nullptr; // notify about exposure change
     core::Manager& core;
     core::PortfolioIdent last_portfolio_id {};
     core::Hash<core::PortfolioIdent, core::Portfolio> portfolios_;
     core::Hash<roq::Account, core::PortfolioIdent> portfolio_by_name_;
+    core::Hash<roq::Exchange, core::Hash<roq::Account, core::PortfolioIdent>> portfolio_by_account_;
 };
 
 

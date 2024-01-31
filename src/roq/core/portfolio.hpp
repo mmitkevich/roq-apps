@@ -11,12 +11,6 @@
 
 namespace roq::core {
 
-enum class PortfolioType {
-    UNDEFINED,
-    ACCOUNT,
-    STRATEGY
-};
-
 struct Portfolio {
     template<class...Args>
     Portfolio(Args&&...args) : positions_ {std::forward<Args>(args)...} {}
@@ -43,13 +37,9 @@ struct Portfolio {
 public:
     core::PortfolioIdent portfolio;
     roq::Account portfolio_name;      // arbitrary name (could be account name)
-    core::PortfolioType portfolio_type = PortfolioType::UNDEFINED;
 private:
     core::Hash<core::MarketIdent, core::Exposure> positions_;
 };
 
 
 } // roq::core
-
-#include "magic_enum.hpp"
-ROQ_CORE_FMT_DECL(roq::core::PortfolioType, "{}", magic_enum::enum_name(_));
