@@ -6,6 +6,7 @@
 #include "roq/core/oms/order_version.hpp"
 #include "roq/core/hash.hpp"
 #include "roq/core/oms/level.hpp"
+#include <chrono>
 
 namespace roq::core::oms {
 
@@ -25,7 +26,7 @@ struct Market {
     roq::Account account;
     double tick_size = NAN;
     double min_trade_vol = NAN;
-    core::Duration ban_post_fill = {};
+    core::Duration post_fill_timeout = std::chrono::milliseconds{100};
     MarketIdent market {};
     core::TimePoint ban_until {};
     std::array<uint16_t,2> pending = {0,0};

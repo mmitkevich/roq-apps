@@ -2,6 +2,7 @@
 
 #pragma once
 #include <absl/container/flat_hash_map.h>
+#include <ratio>
 #include <roq/client.hpp>
 #include <roq/client/dispatcher.hpp>
 #include <roq/client/handler.hpp>
@@ -148,8 +149,10 @@ void oms::Manager::configure(const Config& config, Node node) {
     // FIXME:
     // this->portfolio  = portfolio;
 
-    this->reject_timeout_ = std::chrono::nanoseconds { uint64_t(
-        std::max(core::Double(100.0), config.get_value_or(node, "reject_timeout_ms", core::Double(1000.0))*1E6)) };
+    static constexpr core::Integer MIN_REJECT_TIMEOUT_MS = 100;
+
+    this->reject_timeout_ =  std::chrono::milliseconds { config.get_value_or(node, "reject_timeout", MIN_REJECT_TIMEOUT_MS) };
+
     //config.get_nodes(node, "account", [&](auto node) {
     //    roq::Exchange exchange = config.get_string_or(node, "exchange", {});
     //    roq::Account account = config.get_string_or(node, "account", {});

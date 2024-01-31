@@ -76,7 +76,7 @@
 
 # ban future order placements after order has been fully filled (separately each side of the book)
 [[parameter]]
-    label           = "ban_post_fill"
+    label           = "post_fill_timeout"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     exchange        = "deribit"
-    value           = ["1000",                  "1000"]
+    value           = ["100",                  "100"]

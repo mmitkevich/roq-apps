@@ -490,6 +490,8 @@ void Manager::order_fills(oms::Market& market, const T& u, double fill_size) {
         market.position_by_orders += fill_size;        
         if(position_source==core::PositionSource::ORDERS) {
             exposure_update(market);            
+        } else {
+            market.ban_until = now() + market.post_fill_timeout;
         }
     }
 }
@@ -714,7 +716,7 @@ void Manager::operator()(roq::Event<OrderAck> const& event) {
                 order.confirmed.type = RequestType::UNDEFINED;
             }
             if(u.error==Error::REQUEST_RATE_LIMIT_REACHED || u.error==Error::GATEWAY_NOT_READY) {
-                market.ban_until = now_ + reject_timeout_;
+                market.ban_until = std::max(market.ban_until, now() + reject_timeout_);
             } else {
                 process(market);
             }
@@ -812,7 +814,7 @@ void Manager::operator()(roq::Event<RateLimitTrigger> const& event) {
        case roq::BufferCapacity::FULL: {
            for(auto &[market_id, market] : markets_ ) {
                if(event.message_info.source_name == market.exchange) {
-                auto ban_until = market.ban_until = u.ban_expires;
+                auto ban_until = market.ban_until = std::max(now(), u.ban_expires);
                 log::info<1>("RateLimitTrigger ban_until {} ({}s) exchange {} market {}", 
                     market.ban_until, ban_until.count() ? (ban_until-this->now()).count()/1E9:NaN, market.exchange, market.market);
                }
