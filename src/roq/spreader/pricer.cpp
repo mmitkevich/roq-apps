@@ -19,27 +19,29 @@ Pricer::Pricer(core::Dispatcher &dispatcher, core::Manager &core)
 void Pricer::build_spreads() {
     core.portfolios.get_portfolios([&](core::Portfolio const& portfolio) {
         spreader::Spread& spread = spreads.emplace_back();
-        core.portfolios.get_positions(portfolio.portfolio, [&](core::Exposure const& exposure) {
-            spread.get_legs([&](LegIdent leg_id, spreader::Leg & leg) {
-                leg = {
-                    .market = { 
-                        .market = exposure.market, 
-                        .symbol = exposure.symbol,
-                        .exchange = exposure.exchange,
-                    },
-                    .side = leg_id == 0 ? roq::Side::BUY : roq::Side::SELL,    
-                    .position = {
-                        .buy = {
-                            .price = exposure.avg_price_buy,                            
-                            .volume = exposure.position_buy,
+        core.portfolios.get_positions(portfolio.portfolio, [&](core::ExposureUpdate const& update) {
+            for(core::Exposure const& exposure : update.exposure) {
+                spread.get_legs([&](LegIdent leg_id, spreader::Leg & leg) {
+                    leg = {
+                        .market = { 
+                            .market = exposure.market, 
+                            .symbol = exposure.symbol,
+                            .exchange = exposure.exchange,
                         },
-                        .sell = {
-                            .price = exposure.avg_price_sell,                            
-                            .volume = exposure.position_sell,
+                        .side = leg_id == 0 ? roq::Side::BUY : roq::Side::SELL,    
+                        .position = {
+                            .buy = {
+                                .price = exposure.avg_price_buy,                            
+                                .volume = exposure.position_buy,
+                            },
+                            .sell = {
+                                .price = exposure.avg_price_sell,                            
+                                .volume = exposure.position_sell,
+                            }
                         }
-                    }
-                };
-            });
+                    };
+                });
+            }
         });
     });
 }

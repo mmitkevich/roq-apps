@@ -55,16 +55,23 @@ struct Manager {
     }
 
     // enumerate exposure for specific portfolio
-    void get_positions(core::PortfolioIdent portfolio_id, std::invocable<core::Exposure const&> auto callback) {
+    void get_positions(core::PortfolioIdent portfolio_id, std::invocable<core::ExposureUpdate const&> auto callback) {
       auto iter = portfolios_.find(portfolio_id);
       core::Portfolio& portfolio = iter->second;
-      portfolio.get_positions(callback);
+      portfolio.get_positions([&](core::Exposure const& exposure) {
+        core::ExposureUpdate update {
+          .exposure = std::span {&exposure, 1},
+          .portfolio = portfolio.portfolio,
+          .portfolio_name = portfolio.portfolio_name,
+        };
+        callback(update);
+      });
     }
 
     // enumerate exposure in all portfolios
-    void get_positions(std::invocable<core::Exposure const&> auto callback) {
+    void get_positions(std::invocable<core::ExposureUpdate const&> auto callback) {
       for(auto& [portfolio_id, portfolio] : portfolios_) {
-        get_positions(portfolio_id, callback);
+        this->get_positions(portfolio_id, callback);
       }
     }
 

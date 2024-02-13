@@ -81,15 +81,16 @@ void Manager::operator()(const roq::Event<roq::PositionUpdate>& event) {
     auto [market, is_new_market] = core.markets.emplace_market(event);
     
     auto gateway_id = event.message_info.source;
-    bool is_downloading = core.gateways.is_downloading(gateway_id);   
+    bool is_downloading = core.gateways.is_downloading(gateway_id, u.account);   
 
     switch(position_source) {
-        case core::PositionSource::ORDERS: 
+        case core::PositionSource::ORDERS:      
+            // only position snapshot should be used
             if(!is_downloading) 
                 return; 
         break;
-        case core::PositionSource::PORTFOLIO: 
-        break;
+        case core::PositionSource::PORTFOLIO:   // before download_end take snapshot from PORTFOLIO
+
         break;
     }
 

@@ -39,8 +39,8 @@ struct Exposure {
     std::string_view symbol;    
     std::string_view exchange;
 
-    core::PortfolioIdent portfolio;     // portfolio is logical grouping of positions
-    std::string_view portfolio_name;
+    //core::PortfolioIdent portfolio;     // portfolio is logical grouping of positions
+    //std::string_view portfolio_name;
 };
 
 } // roq::core

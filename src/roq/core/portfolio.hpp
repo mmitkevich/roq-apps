@@ -4,6 +4,7 @@
 #include <roq/string_types.hpp>
 #include "roq/core/best_quotes.hpp"
 #include "roq/core/exposure.hpp"
+#include "roq/core/exposure_update.hpp"
 #include "roq/core/types.hpp"
 // (c) copyright 2023 Mikhail Mitkevich
 #include "roq/core/hash.hpp"
@@ -52,10 +53,14 @@ inline bool Portfolio::get_position(core::ExposureKey const& key, std::invocable
         .avg_price_sell = v.avg_price_sell,
         .market = key.market,
         .account = key.account,
-        .portfolio = portfolio,
-        .portfolio_name = portfolio_name
     };
-    fn(exposure);
+
+    core::ExposureUpdate update {
+        .exposure = std::span {&exposure, 1},
+        .portfolio = portfolio,
+        .portfolio_name = portfolio_name,
+    };
+    fn(update);
     return true;
 }
 
@@ -69,9 +74,8 @@ inline void Portfolio::get_positions(std::invocable<core::Exposure const&> auto 
                 .avg_price_sell = v.avg_price_sell,
                 .market = market,
                 .account = account,
-                .portfolio = portfolio,
-                .portfolio_name = portfolio_name
             };
+            
             fn(exposure);
         }
     }

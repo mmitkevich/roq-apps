@@ -38,6 +38,22 @@ bool gateway::Manager::is_ready(roq::Mask<SupportType> mask, uint32_t source, st
   }
   return ready;
 }
+
+bool Manager::is_downloading(uint32_t source, std::string_view account) const {
+  auto gateway_iter = gateway_by_id_.find(source);
+  if (gateway_iter == std::end(gateway_by_id_)) {
+    return true;
+  }
+  const core::Gateway& gateway = gateway_iter->second;
+  const cache::Gateway& gateway_1 = gateway;
+  auto &state_by_account = gateway_1.state_by_account;
+  auto iter = state_by_account.find(account);
+  if (iter != std::end(state_by_account)) {
+    return iter->second.downloading;
+  }
+  return true;
+}
+
 bool gateway::Manager::is_downloading(uint32_t id) const {
   auto iter = gateway_by_id_.find(id);
   if (iter == std::end(gateway_by_id_)) {

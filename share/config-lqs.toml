@@ -13,14 +13,14 @@
 # attach portfolio to accounts
 [[parameter]]
     label = "portfolio"
-    account = "A1"
+    account = "REN_DERIBIT"
     exchange = "deribit"
-    value = "P:100"     # this is portfolio name
+    value = "100"     # this is portfolio name (FIXME: correlate to strategy_id?)
     symbol = ""
 
 [[parameter]]
     label = "enabled"
-    account = "P:100"   # this is portfolio (not account) to liquidate
+    account = "100"     # this is portfolio (not account) to liquidate
     exchange = "lqs"    # FIXME: this is the name of the pricer
     value = "true"      # flag to liquidate
 

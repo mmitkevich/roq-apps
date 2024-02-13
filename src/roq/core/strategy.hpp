@@ -72,11 +72,11 @@ struct Strategy final
     template<class T>
     void dispatch(const roq::Event<T> &event) {
         Base::dispatch(event);
-        if constexpr(std::is_invocable_v<decltype(oms), decltype(event)>) {
-          oms(event);
-        }
         if constexpr(std::is_invocable_v<decltype(core), decltype(event)>) {
           core(event);
+        }
+        if constexpr(std::is_invocable_v<decltype(oms), decltype(event)>) {
+          oms(event);
         }
         if constexpr(std::is_invocable_v<decltype(*pricer), decltype(event)>) {
           (*pricer)(event);        

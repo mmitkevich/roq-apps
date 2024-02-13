@@ -754,11 +754,11 @@ double Manager::get_position(std::string_view account, std::string_view symbol, 
 */
 void Manager::operator()(Event<FundsUpdate> const & event) {
     Base::operator()(event);
-    log::info<2>("FundsUpdate {}", event);
+    log::info<2>("oms {}", event);
 }
 
 void Manager::operator()(roq::Event<DownloadBegin> const& event) {
-    log::info<2>("DownloadBegin {}", event);
+    log::info<2>("oms {}", event);
 //    position_by_account_.erase(event.value.account);
 //    ready_by_gateway_[event.message_info.source] = false;
     auto& u = event.value;

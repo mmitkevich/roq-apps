@@ -19,7 +19,9 @@ struct Manager {
 
     bool is_ready(roq::Mask<SupportType> mask, uint32_t source, std::string_view account) const;
 
-    bool is_downloading(uint32_t id) const;
+    bool is_downloading(uint32_t source) const;
+
+    bool is_downloading(uint32_t source, std::string_view account) const;
 
     template<class Fn>
     bool get_gateway(uint32_t id, Fn&& fn) const {
@@ -41,6 +43,8 @@ struct Manager {
                 auto [gateway, is_new] = emplace_gateway(event.message_info);
                 cache::Gateway& gateway_2 = gateway;
                 result = gateway_2(event);
+                bool is_downloading = gateway_2.state.downloading;
+                log::debug<2>("gateway {} is_downloading {}", gateway.gateway_name, is_downloading);
             }
         }
         return result;
