@@ -9,7 +9,7 @@ namespace roq::lqs {
 
 using namespace std::literals;
 
-void Leg::operator()(const roq::Parameter & p, lqs::Pricer& pricer) {
+void Leg::operator()(const roq::Parameter & p, lqs::Portfolio& portfolio) {
     if(p.label=="delta_by_volume"sv) {
         delta_by_volume = core::Double::parse(p.value);
     } else if(p.label=="buy_volume"sv) {
@@ -23,7 +23,7 @@ void Leg::operator()(const roq::Parameter & p, lqs::Pricer& pricer) {
     }
 }
 
-void Leg::operator()(const core::Exposure& e, lqs::Pricer& pricer) {
+void Leg::operator()(const core::Exposure& e, lqs::Portfolio& portfolio) {
     this->position.buy.volume = e.position_buy;   
     this->position.sell.volume = e.position_sell;
     log::info("lqs market.{} {}@{} position {} buy {} sell {}", market.market, market.symbol, market.exchange, 
@@ -42,7 +42,7 @@ bool Leg::check_market_quotes(core::BestQuotes& m) {
     return true;
 }
 
-void Leg::compute(lqs::Underlying const& u, lqs::Pricer& pricer) {
+void Leg::compute(lqs::Underlying const& u, lqs::Portfolio const & portfolio) {
     core::BestQuotes& q = this->exec_quotes;
     core::BestQuotes& m = this->market_quotes;            
     core::BestQuotes& p = this->position;
@@ -65,7 +65,7 @@ void Leg::compute(lqs::Underlying const& u, lqs::Pricer& pricer) {
     q.buy.volume = q.buy.volume.min( (u.delta_max-u.delta).max(0)/delta_by_volume );
     q.sell.volume = q.sell.volume.min( (u.delta-u.delta_min).max(0)/delta_by_volume );
 
-    if(!pricer.get_liquidate_flag(*this)) {
+    if(!portfolio.enabled) {
         q.buy.volume = q.sell.volume = 0;
     }
     

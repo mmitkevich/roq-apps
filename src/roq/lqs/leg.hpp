@@ -11,6 +11,7 @@ namespace roq::lqs {
 
 struct Pricer;
 struct Underlying;
+struct Portfolio;
 
 using LegIdent = uint32_t;
 
@@ -27,8 +28,9 @@ struct Leg {
     .buy = { .volume = 0},
     .sell = { .volume = 0}
   };
-  lqs::PassiveMode passive_mode = PassiveMode::CROSS;
   core::Volume target_position = {0};
+  lqs::PassiveMode passive_mode = PassiveMode::CROSS;
+
   //core::Volume exposure; // = position.buy.volume - position.sell.volume
 
   core::Double delta_greek = 1.0;         // of leg price to underlying price, e.g. 1
@@ -37,16 +39,15 @@ struct Leg {
   core::Volume buy_volume, sell_volume;
   core::Double slippage;
   core::Double delta_by_volume = 1.0;
-  core::PortfolioIdent portfolio;
   roq::Account account;
 
   core::Duration ban_fill;    // don't place new orders after order has been filled in full for at least post_filled_delay
 
-  void operator()(const roq::Parameter& p, lqs::Pricer& pricer);
-  void operator()(const core::Exposure& e, lqs::Pricer& pricer);
+  void operator()(const roq::Parameter& p, lqs::Portfolio& potfolio);
+  void operator()(const core::Exposure& e, lqs::Portfolio& potfolio);
 
   bool check_market_quotes(core::BestQuotes& m);
-  void compute(lqs::Underlying const& underlying, lqs::Pricer& pricer);
+  void compute(lqs::Underlying const& underlying, lqs::Portfolio const& portfolio);
 };
 
 } // roq::lqs

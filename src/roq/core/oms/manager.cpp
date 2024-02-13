@@ -42,36 +42,42 @@ Manager::Manager(oms::Handler& handler, client::Dispatcher& dispatcher, core::Ma
 void Manager::operator()(core::TargetQuotes const & target_quotes) {
     log::info<2>("TargetQuotes {}", target_quotes);    
     assert(!target_quotes.account.empty());
-    get_market(core::Market {
-            .market = target_quotes.market,        
-            .account = target_quotes.account
-        }, [&](oms::Market& market, core::market::Info const& info) {
-        assert(market.exchange == target_quotes.exchange);
-        assert(market.symbol == target_quotes.symbol);
+    
+    core::Market key {
+        .market = target_quotes.market,        
+        .symbol = target_quotes.symbol,
+        .exchange = target_quotes.exchange,
+        .account = target_quotes.account
+    };
 
-        for(auto& [price_index, quote]: market.bids) {
-            quote.target_quantity = 0;
-            quote.exec_inst = {};
+    auto [info, _] = core.markets.emplace_market(key);
+    auto [market, is_new] = emplace_market(info);
+
+    assert(market.exchange == target_quotes.exchange);
+    assert(market.symbol == target_quotes.symbol);
+
+    for(auto& [price_index, quote]: market.bids) {
+        quote.target_quantity = 0;
+        quote.exec_inst = {};
+    }
+    for(auto& quote: target_quotes.buy) {
+        if(!is_empty_value(quote)) {
+            auto [level,is_new] = market.emplace_level(Side::BUY, quote.price, info.tick_size);
+            level.target_quantity = quote.volume;
+            level.exec_inst = quote.exec_inst;
         }
-        for(auto& quote: target_quotes.buy) {
-            if(!is_empty_value(quote)) {
-                auto [level,is_new] = market.emplace_level(Side::BUY, quote.price, info.tick_size);
-                level.target_quantity = quote.volume;
-                level.exec_inst = quote.exec_inst;
-            }
+    }
+    for(auto& [price_index, quote]: market.asks) {
+        quote.target_quantity = 0;
+        quote.exec_inst = {};
+    }
+    for(auto& quote: target_quotes.sell) {
+        if(!is_empty_value(quote)) {
+            auto [level,is_new] = market.emplace_level(Side::SELL, quote.price, info.tick_size);
+            level.target_quantity = quote.volume;
+            level.exec_inst = quote.exec_inst;
         }
-        for(auto& [price_index, quote]: market.asks) {
-            quote.target_quantity = 0;
-            quote.exec_inst = {};
-        }
-        for(auto& quote: target_quotes.sell) {
-            if(!is_empty_value(quote)) {
-                auto [level,is_new] = market.emplace_level(Side::SELL, quote.price, info.tick_size);
-                level.target_quantity = quote.volume;
-                level.exec_inst = quote.exec_inst;
-            }
-        }
-    });
+    }
 
     get_markets([&](oms::Market & market, core::market::Info const& info) {
         process(market, info);

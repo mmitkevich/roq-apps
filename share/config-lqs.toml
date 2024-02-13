@@ -15,14 +15,14 @@
     label = "portfolio"
     account = "REN_DERIBIT"
     exchange = "deribit"
-    value = "100"     # this is portfolio name (FIXME: correlate to strategy_id?)
+    value = "P:101"     # this is portfolio name (FIXME: correlate to strategy_id?)
     symbol = ""
 
 [[parameter]]
     label = "enabled"
-    account = "100"     # this is portfolio (not account) to liquidate
+    account = "P:101"   # this is portfolio (not account) to liquidate
     exchange = "lqs"    # FIXME: this is the name of the pricer
-    value = "true"      # flag to liquidate
+    value = "true"      # enabled means should liquidate
 
 # underlying symbol for each contract
 [[parameter]]
@@ -30,6 +30,7 @@
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
     value           = ["lqs:BTC/USD",               "lqs:BTC/USD"]  # exchange:symbol
+    account         = ["P:101"]
 
 # delta greek
 [[parameter]]
@@ -37,6 +38,7 @@
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
     value           = ["1",                         "1"]
+    account         = ["P:101"]
 
 # min delta (in USD) for the whole combination
 [[parameter]]
@@ -44,6 +46,7 @@
     exchange        = "lqs"
     symbol          = "BTC/USD"
     value           = "-1000"
+    account         = "P:101"         # portfolio (or strategy id?)
 
 # max delta (in USD) for the whole combination
 [[parameter]]
@@ -51,6 +54,7 @@
     symbol          = "BTC/USD"
     exchange        = "lqs"
     value           = "1000"
+    account         = "P:101"   
 
 # multiplier contract volume -> delta in USD
 [[parameter]]
@@ -58,25 +62,28 @@
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["1",                     "1"]
+    account         = ["P:101"]
 
 [[parameter]]
     label           = "account"
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["A1",                    "A1"]
-
+    account         = ["P:101"]
 
 [[parameter]]
     label           = "buy_volume"
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["100",                   "100"]
+    account         = ["P:101"]
 
 [[parameter]]
     label           = "sell_volume"
     exchange        = "deribit"    
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["100",                   "100"]
+    account         = ["P:101"]
 
 # ban future order placements after order has been fully filled (separately each side of the book)
 [[parameter]]
@@ -84,3 +91,4 @@
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     exchange        = "deribit"
     value           = ["100",                  "100"]
+    account         = ["P:101"]

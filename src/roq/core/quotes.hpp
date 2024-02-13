@@ -12,7 +12,7 @@ struct Quotes  {
     std::string_view symbol {};    
     std::string_view exchange {};
     std::string_view account {};
-    std::string_view portfolio {};
+    core::PortfolioIdent portfolio {};
     std::span<const ExecQuote> buy = {};
     std::span<const ExecQuote> sell = {};
 

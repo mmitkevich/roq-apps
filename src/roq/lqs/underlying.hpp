@@ -8,6 +8,7 @@
 namespace roq::lqs {
 
 struct Pricer;
+struct Portfolio;
 
 struct Underlying {
   core::Market market;
@@ -19,9 +20,9 @@ struct Underlying {
 
   void remove_leg(core::MarketIdent leg);
 
-  void operator()(const roq::Parameter& p, lqs::Pricer& pricer);
+  void operator()(const roq::Parameter& p, lqs::Portfolio& portfolio);
 
-  void compute(lqs::Pricer& pricer);
+  void compute(lqs::Portfolio& portfolio);
 };
 
 } // roq::lqs

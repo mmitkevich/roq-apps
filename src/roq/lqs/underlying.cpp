@@ -6,7 +6,7 @@ namespace roq::lqs {
 
 using namespace std::literals;
 
-void Underlying::operator()(const roq::Parameter & p, lqs::Pricer& pricer) {
+void Underlying::operator()(const roq::Parameter & p, lqs::Portfolio& portfolio) {
     if(p.label=="delta_min"sv) {
         delta_min = core::Double::parse(p.value);
     } else if(p.label=="delta_max"sv) {
@@ -15,9 +15,9 @@ void Underlying::operator()(const roq::Parameter & p, lqs::Pricer& pricer) {
 }
 
 
-void Underlying::compute(lqs::Pricer& pricer) {
+void Underlying::compute(lqs::Portfolio& portfolio) {
     delta = 0;
-    pricer.get_legs(*this, [&](lqs::Leg const& leg) {
+    portfolio.get_legs(*this, [&](lqs::Leg const& leg) {
         delta += (leg.position.buy.volume - leg.position.sell.volume) * leg.delta_by_volume;
     });
 }
