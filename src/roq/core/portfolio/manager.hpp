@@ -8,13 +8,15 @@
 #include <roq/position_update.hpp>
 #include "roq/core/config/toml_file.hpp"
 #include "roq/parameters_update.hpp"
+#include "roq/order_update.hpp"
+#include "roq/core/position_source.hpp"
 
 namespace roq::core::portfolio {
 
 struct Manager;
 
 struct Handler {
-  virtual void operator()(core::ExposureUpdate const& u,  portfolio::Manager& source) = 0;
+  virtual void operator()(core::ExposureUpdate const& u) = 0;
 };
 
 
@@ -27,13 +29,15 @@ struct Manager {
       this->handler = h;
     }
 
+    // config::Handler
     void operator()(roq::Event<roq::ParametersUpdate> const& event);
 
     // oms::Handler
-    void operator()(core::ExposureUpdate const& event);
+    void operator()(core::Trade const & trade);
     
-    // from gateway
+    // client::Handler
     void operator()(const roq::Event<roq::PositionUpdate>& event);
+
 
     //core::Volume get_net_exposure(core::PortfolioIdent portfolio, core::MarketIdent market, core::Volume exposure = {});
 
@@ -79,6 +83,8 @@ struct Manager {
         }
         return false;
     }
+  public:
+    core::PositionSource position_source {core::PositionSource::PORTFOLIO};
   private:
     portfolio::Handler* handler = nullptr; // notify about exposure change
     core::Manager& core;

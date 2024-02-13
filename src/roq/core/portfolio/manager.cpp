@@ -12,6 +12,8 @@ namespace roq::core::portfolio {
 using namespace std::literals;
 
 void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
+    this->position_source = config.get_value_or(root["oms"], "position_source", core::PositionSource::ORDERS);
+    
     config.get_nodes(root,"portfolio", [&](config::TomlNode node) {
         auto [portfolio, is_new] = emplace_portfolio({
             .portfolio_name = config.get_string(node, "portfolio"),
@@ -43,17 +45,54 @@ void Manager::operator()(roq::Event<roq::ParametersUpdate> const& event) {
 }
     
 
-void Manager::operator()(core::ExposureUpdate const& u) {
-    for(auto const& exposure : u.exposure) {
-        log::info<2>("Portfolios::ExposureUpdate exposure {}", exposure);
-    }
+// from OMS
+void Manager::operator()(core::Trade const& u) {
+    if(position_source!=core::PositionSource::ORDERS)
+        return;
+    get_portfolio_by_account(u.account, u.exchange, [&](core::Portfolio & portfolio) {
+        auto [v, is_new] = portfolio(u);
+
+        core::Exposure exposure {
+            .position_buy = v.position_buy,
+            .position_sell = v.position_sell,
+            .market = u.market,
+            .symbol = u.symbol,        
+            .exchange = u.exchange,        
+    //        .portfolio = portfolio.portfolio,
+    //        .portfolio_name = portfolio.portfolio_name,
+        };
+        core::ExposureUpdate update {
+            .exposure = std::span {&exposure, 1},
+            .portfolio = portfolio.portfolio,
+            .portfolio_name = portfolio.portfolio_name,
+        };
+        
+        log::info<2>("portfolios trade exposure {}", exposure);
+        
+        if(handler) {
+            (*handler)(update);
+        }
+    });
 }
 
-
+/// from the gateway
 void Manager::operator()(const roq::Event<roq::PositionUpdate>& event) {
     auto& u = event.value;
     auto [market, is_new_market] = core.markets.emplace_market(event);
     
+    auto gateway_id = event.message_info.source;
+    bool is_downloading = core.gateways.is_downloading(gateway_id);   
+
+    switch(position_source) {
+        case core::PositionSource::ORDERS: 
+            if(!is_downloading) 
+                return; 
+        break;
+        case core::PositionSource::PORTFOLIO: 
+        break;
+        break;
+    }
+
     core::Exposure exposure {
         .position_buy = u.long_quantity,
         .position_sell = u.short_quantity,
@@ -63,11 +102,12 @@ void Manager::operator()(const roq::Event<roq::PositionUpdate>& event) {
 //        .portfolio = portfolio.portfolio,
 //        .portfolio_name = portfolio.portfolio_name,
     };
+
     core::ExposureUpdate update {
         .exposure = std::span {&exposure, 1},
     };
     
-    get_portfolio_by_account(u.account, u.exchange, [&](core::Portfolio & portfolio){
+    get_portfolio_by_account(u.account, u.exchange, [&](core::Portfolio & portfolio) {
         //exposure.portfolio = portfolio.portfolio;
         //exposure.portfolio_name = portfolio.portfolio_name;
         ExposureKey key = {
@@ -79,12 +119,13 @@ void Manager::operator()(const roq::Event<roq::PositionUpdate>& event) {
         update.portfolio = portfolio.portfolio;
     });
 
-    log::info<2>("portfolios:: PositionUpdate exposure {}", exposure);
+    log::info<2>("portfolios position_update exposure {}", exposure);
     
     if(handler) {
-        (*handler)(update, *this);
+        (*handler)(update);
     }
 }
+
 
 std::pair<core::Portfolio &, bool> Manager::emplace_portfolio(core::PortfolioKey key) {
     if (key.portfolio != 0) {

@@ -124,16 +124,13 @@ void Strategy::operator()(const Event<core::Quotes>& event) {
     (*pricer)(event);
 }
 
-// provide REST interface to push volume to liquidate ? 
-
-// route portfolio calculation from oms into portfolios cache
-void Strategy::operator()(core::ExposureUpdate const& u, core::oms::Manager& oms) {
-    // cache position
-    core.portfolios(u);
+void Strategy::operator()(core::Trade const & trade) {
+  // route trade from oms to portfolios
+  core.portfolios(trade);
 }
 
 // route portfolios notification into pricer
-void Strategy::operator()(core::ExposureUpdate const& u,  core::portfolio::Manager& portfolios) {
+void Strategy::operator()(core::ExposureUpdate const& u) {
     
     MessageInfo info;
     roq::Event event {info, u};

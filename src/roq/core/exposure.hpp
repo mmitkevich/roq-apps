@@ -12,10 +12,10 @@ struct ExposureKey {
 };
 
 struct ExposureValue {
-    core::Volume position_buy;
-    core::Volume position_sell;
-    core::Price  avg_price_buy;
-    core::Price  avg_price_sell;
+    core::Volume position_buy {0};
+    core::Volume position_sell {0};
+    core::Price  avg_price_buy {};
+    core::Price  avg_price_sell {};
 };
 
 struct Exposure {

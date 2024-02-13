@@ -8,8 +8,7 @@
     trade_gateway   = "deribit"
 
 [oms]
-    position_source     = "ACCOUNT" # "ORDERS"
-    position_snapshot   = "ACCOUNT"
+    position_source     = "PORTFOLIO" # "ORDERS"
 
 # attach portfolio to accounts
 [[parameter]]

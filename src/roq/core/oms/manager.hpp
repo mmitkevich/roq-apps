@@ -92,8 +92,6 @@ public:
     // roq::pricer::Handler
     void operator()(core::TargetQuotes const& target_quotes) override;    
 public:
-    core::PositionSource position_source {core::PositionSource::ORDERS};
-    core::PositionSnapshot position_snapshot {core::PositionSnapshot::PORTFOLIO};
     //core::PortfolioIdent portfolio;
 
 /// IMPLEMENTATION
@@ -110,8 +108,7 @@ private:
     void order_complete(oms::Market& market, oms::Order& order, const OrderUpdate& u);
     void order_canceled(oms::Market& market, oms::Order& order, const OrderUpdate& u);
 
-    template<class T>
-    void order_fills(oms::Market& market, const T& u, double fill_size);
+    void order_fills(oms::Market& market, roq::Side side, double price, double fill_size);
 
     bool is_throttled(oms::Market& market, RequestType req);
     bool can_create(oms::Market& market, core::market::Info const& info, const core::TargetOrder & target_order);
@@ -186,8 +183,8 @@ void core::oms::Manager::get_markets(std::invocable<core::oms::Market &,core::ma
 
 template<class Config, class Node>
 void Manager::configure(const Config& config, Node node) {
-    this->position_snapshot = config.get_value_or(node, "position_snapshot", core::PositionSnapshot::PORTFOLIO);
-    this->position_source = config.get_value_or(node, "position_source", core::PositionSource::ORDERS);
+    //this->position_snapshot = config.get_value_or(node, "position_snapshot", core::PositionSnapshot::PORTFOLIO);
+    //this->position_source = config.get_value_or(node, "position_source", core::PositionSource::ORDERS);
     //std::string_view portfolio = config.get_string_or(node, "portfolio", {});
     // FIXME:
     // this->portfolio  = portfolio;

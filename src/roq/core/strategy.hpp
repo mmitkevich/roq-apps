@@ -63,9 +63,10 @@ struct Strategy final
     ~Strategy();
 
     /// client::Handler
-
-    void operator()(core::ExposureUpdate const& u, core::oms::Manager& oms) override;
-    void operator()(core::ExposureUpdate const& u,  core::portfolio::Manager& portfolios) override;
+    void operator()(core::Trade const & trade) override;
+    
+    /// portfolio::Handler
+    void operator()(core::ExposureUpdate const& u) override;
 
     // route events
     template<class T>

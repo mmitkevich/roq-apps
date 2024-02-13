@@ -429,7 +429,7 @@ void Manager::order_confirm(oms::Market& market, oms::Order& order, const OrderU
     order.pending.type = RequestType::UNDEFINED;
     order.expected = order.confirmed;
     assert(!std::isnan(order.expected.quantity));
-    order_fills(market, u, fill_size);
+    order_fills(market, u.side, u.last_traded_price, fill_size);
 }
 
 
@@ -454,43 +454,34 @@ bool Manager::reconcile_positions(oms::Market& market) {
 // NOTE: only publishes position in "position_source==ORDERS" mode
 void Manager::exposure_update(oms::Market& market) {
     log::info<1>("oms::exposure_update  position_by_orders {} position_by_account {} market {} position_source {}", 
-        market.position_by_orders, market.position_by_account, market.market, position_source);        
+        market.position_by_orders, market.position_by_account, market.market, core.portfolios.position_source);        
     
     market.last_position_modify_time = now();
-
-    if(position_source != core::PositionSource::ORDERS)
-        return;
-
-    core::Volume position  = market.position_by_orders;
-
-    core::Exposure exposure {
-    //            .side = u.side,
-    //            .price = u.last_traded_price,
-    //            .quantity = fill_size,
-        .position_buy = position.max(0),    // FIXME: std::max(NAN, 0) = 0 but empty value should "infect"
-        .position_sell = (-position).max(0),
-        .market = market.market,    
-        .symbol = market.symbol,            
-        .exchange = market.exchange,
-        //.portfolio = market.portfolio,             
-        //.portfolio_name = market.portfolio_name,           
-    };    
-    core::ExposureUpdate update {
-        .exposure = std::span {&exposure, 1},
-        .portfolio = market.portfolio,
-        .portfolio_name = market.portfolio_name
-    };
-    handler_(update, *this);
 }
 
-template<class T>
-void Manager::order_fills(oms::Market& market, const T& u, double fill_size) {
+void Manager::order_fills(oms::Market& market, roq::Side side, double price, double fill_size) {
     assert(!std::isnan(fill_size));
     if(utils::compare(fill_size, 0.)==std::strong_ordering::greater) {
-        if(u.side==Side::SELL)
-            fill_size = -fill_size;
-        market.position_by_orders += fill_size;        
-        if(position_source==core::PositionSource::ORDERS) {
+        switch(side) {
+            case Side::BUY:     market.position_by_orders += fill_size; break;
+            case Side::SELL:    market.position_by_orders -= fill_size; break;
+            default: assert(false);
+        }
+
+        core::Trade trade {
+            .side = side,
+            .price = price,
+            .quantity = fill_size,
+            .market = market.market,
+            .symbol = market.symbol,
+            .exchange = market.exchange,
+            .portfolio = market.portfolio,
+        };
+
+        // to portfolio::Manager
+        handler_(trade);
+
+        if(core.portfolios.position_source==core::PositionSource::ORDERS) {
             exposure_update(market);            
         } else {
             market.ban_until = now() + market.post_fill_timeout;
@@ -517,7 +508,7 @@ void Manager::order_complete(oms::Market& market, oms::Order& order, const Order
     assert(!std::isnan(order.expected.quantity));
     auto order_id = order.order_id;
     erase_order(market, order_id);
-    order_fills(market, u, fill_size);
+    order_fills(market, u.side, u.last_traded_price, fill_size);
 }
 
 void Manager::order_canceled(oms::Market& market, oms::Order& order, const OrderUpdate& u) {
@@ -740,7 +731,7 @@ void Manager::operator()(Event<PositionUpdate> const & event) {
         market.position_by_account = new_position; 
         auto gateway_id = event.message_info.source;
         bool is_downloading = core.gateways.is_downloading(gateway_id);    
-        if(!is_downloading && position_source==core::PositionSource::ACCOUNT) {
+        if(!is_downloading && core.portfolios.position_source==core::PositionSource::PORTFOLIO) {
             market.position_by_account = new_position;
             log::info<1>("OMS position_update downloading {} account {} position_by_orders {} position_by_account {} symbol {} exchange {} market {}",
                 is_downloading, market.account, market.position_by_orders, market.position_by_account,
@@ -775,10 +766,10 @@ void Manager::operator()(roq::Event<DownloadBegin> const& event) {
         return;
     get_markets([&](oms::Market& market, core::market::Info const& info) {
         if(market.account == u.account) {
-            if(position_snapshot==core::PositionSnapshot::ACCOUNT) {
+            //if(position_snapshot==core::PositionSnapshot::ACCOUNT) {
                 market.position_by_orders = 0;
                 market.position_by_account = 0;
-            }
+            //}
             erase_all_orders(market);
             log::info<1>("OMS position_download_begin account {} market.{} {}@{} portfolio.{} {} position_by_orders {} position_by_account {} erase_all_orders",
                 market.account, market.market,market.symbol, market.exchange, 
@@ -793,7 +784,7 @@ void Manager::operator()(roq::Event<DownloadEnd> const& event) {
     
     max_order_id  = std::max(max_order_id, event.value.max_order_id);
     auto& u = event.value;
-    if(!u.account.empty() && position_snapshot==core::PositionSnapshot::ACCOUNT) {
+    if(!u.account.empty() /*&& position_snapshot==core::PositionSnapshot::ACCOUNT*/) {
         get_markets([&](oms::Market & market, core::market::Info const& info) {
             if(market.account==u.account) {
                 market.position_by_orders = market.position_by_account;
