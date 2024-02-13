@@ -19,7 +19,7 @@ Pricer::Pricer(core::Dispatcher &dispatcher, core::Manager &core)
 void Pricer::build_spreads() {
     core.portfolios.get_portfolios([&](core::Portfolio const& portfolio) {
         spreader::Spread& spread = spreads.emplace_back();
-        core.portfolios.get_exposures(portfolio.portfolio, [&](core::Exposure const& exposure) {
+        core.portfolios.get_positions(portfolio.portfolio, [&](core::Exposure const& exposure) {
             spread.get_legs([&](LegIdent leg_id, spreader::Leg & leg) {
                 leg = {
                     .market = { 

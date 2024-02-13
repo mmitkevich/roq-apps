@@ -6,9 +6,12 @@
 
 namespace roq::core::oms {
 
-std::pair<oms::Level&, bool> Market::emplace_level(Side side, double price) {
+std::pair<oms::Level&, bool> Market::emplace_level(Side side, core::Price price, core::Double new_tick_size) {
     assert(!std::isnan(price));
-    assert(!std::isnan(tick_size));
+    if(tick_size.empty()) {
+      this->tick_size = new_tick_size;
+    }
+    assert(this->tick_size.empty() || this->tick_size == new_tick_size);
     LevelIdent index = std::roundl(price/tick_size);
     auto &levels = this->get_levels(side);
     auto iter = levels.find(index);

@@ -7,6 +7,7 @@
 #include "roq/core/exposure_update.hpp"
 #include <roq/position_update.hpp>
 #include "roq/core/config/toml_file.hpp"
+#include "roq/parameters_update.hpp"
 
 namespace roq::core::portfolio {
 
@@ -26,13 +27,15 @@ struct Manager {
       this->handler = h;
     }
 
+    void operator()(roq::Event<roq::ParametersUpdate> const& event);
+
     // oms::Handler
     void operator()(core::ExposureUpdate const& event);
     
     // from gateway
     void operator()(const roq::Event<roq::PositionUpdate>& event);
 
-    core::Volume get_net_exposure(core::PortfolioIdent portfolio, core::MarketIdent market, core::Volume exposure = {});
+    //core::Volume get_net_exposure(core::PortfolioIdent portfolio, core::MarketIdent market, core::Volume exposure = {});
 
     std::pair<core::Portfolio &, bool> emplace_portfolio(core::PortfolioKey key);
 
@@ -48,16 +51,16 @@ struct Manager {
     }
 
     // enumerate exposure for specific portfolio
-    void get_exposures(core::PortfolioIdent portfolio_id, std::invocable<core::Exposure const&> auto callback) {
+    void get_positions(core::PortfolioIdent portfolio_id, std::invocable<core::Exposure const&> auto callback) {
       auto iter = portfolios_.find(portfolio_id);
       core::Portfolio& portfolio = iter->second;
       portfolio.get_positions(callback);
     }
 
     // enumerate exposure in all portfolios
-    void get_exposures(std::invocable<core::Exposure const&> auto callback) {
+    void get_positions(std::invocable<core::Exposure const&> auto callback) {
       for(auto& [portfolio_id, portfolio] : portfolios_) {
-        get_exposures(portfolio_id, callback);
+        get_positions(portfolio_id, callback);
       }
     }
 

@@ -83,6 +83,13 @@ struct Manager : core::BasicDispatch<market::Manager> {
         return get_market_ident(event.value.symbol, event.value.exchange);
     }
     
+    bool get_market(core::Market const& market, std::invocable<core::market::Info const&> auto&& fn) const {
+        if(market.market)
+            return get_market(market.market, fn);
+        auto market_id = get_market_ident(market.symbol, market.exchange);
+        return get_market(market_id, fn);
+    }
+
     bool get_market(core::MarketIdent market_id, std::invocable<core::market::Info const&> auto&& fn) const {
         auto iter = market_by_id_.find(market_id);
         if(iter != std::end(market_by_id_)) {

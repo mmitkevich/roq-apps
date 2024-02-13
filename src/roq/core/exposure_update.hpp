@@ -12,8 +12,11 @@ enum class ExposureType {
 };
 
 struct ExposureUpdate {
-    ExposureType type;
+    ExposureType type = ExposureType::UNDEFINED;
     std::span<core::Exposure> exposure;
+    core::PortfolioIdent portfolio {};    
+    std::string_view portfolio_name;
+    std::string_view account;
 };
 
 }

@@ -3,3 +3,4 @@ build/**
 **/contrib/**
 **/compile_commands.json
 **/_trash
+compile_flags.txt

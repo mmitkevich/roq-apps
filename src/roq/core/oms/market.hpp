@@ -19,13 +19,11 @@ struct Market {
     core::Hash<OrderIdent, oms::Order> orders;
     core::Hash<LevelIdent, oms::Level> bids;
     core::Hash<LevelIdent, oms::Level> asks;
-
+    core::Double tick_size {};
     roq::Exchange exchange;
     uint32_t trade_gateway_id = (uint32_t)-1;
     roq::Symbol symbol;
     roq::Account account;
-    double tick_size = NAN;
-    double min_trade_vol = NAN;
     core::Duration post_fill_timeout = std::chrono::milliseconds{100};
     MarketIdent market {};
     core::TimePoint ban_until {};
@@ -36,7 +34,7 @@ struct Market {
     core::PortfolioIdent portfolio {};
       roq::Account portfolio_name;
 public:
-  std::pair<oms::Level &, bool> emplace_level(Side side, double price);
+  std::pair<oms::Level &, bool> emplace_level(Side side, core::Price price, core::Double new_tick_size);
 
   core::Hash<LevelIdent, oms::Level> &get_levels(Side side);
 

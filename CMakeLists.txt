@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.12)
 project(roqa)
 
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 
 # conda
 
@@ -50,9 +50,9 @@ find_package(fmt REQUIRED)
 find_package(roq-api REQUIRED)
 find_package(roq-client REQUIRED)
 find_package(roq-logging REQUIRED)
-find_package(roq-logging REQUIRED)
 find_package(tomlplusplus REQUIRED)
 find_package(roq-flags REQUIRED)
+find_package(roq-cache REQUIRED)
 
 #add_compile_options(-DUMM_USE_ROQ -DUMM_USE_ABSL -DUMM_USE_TOML)
 

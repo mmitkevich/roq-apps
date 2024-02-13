@@ -9,23 +9,23 @@
 
 [oms]
     position_source     = "ACCOUNT" # "ORDERS"
-    position_snapshot   = "PORTFOLIO"
+    position_snapshot   = "ACCOUNT"
 
-# LG1 portfolio merges accounts on two different exchanges 
-# NOTE! portfolio CAN't merge accounts on same exchange! only different exchanges so that {symbol,exchange} pairs do not collide!
-
-[[portfolio]]                          
-    portfolio  = "LG1"
-
-[[account]]
+# attach portfolio to accounts
+[[parameter]]
+    label = "portfolio"
     account = "A1"
     exchange = "deribit"
-    portfolio = "LG1"   
+    strategy = "100"
+    value = "LG100"  
+    symbol = ""
 
 [[parameter]]
-    label           = "liquidate"
-    account         = "LG1"             # FIXME: here account is used to track portfolio 
-    value           = "true"
+    label = "enable"
+    account = "LG1" # portfolio actually
+    exchange = "lqs"
+    
+
 
 # underlying symbol for each contract
 [[parameter]]

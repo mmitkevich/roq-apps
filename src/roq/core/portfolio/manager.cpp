@@ -9,6 +9,8 @@
 
 namespace roq::core::portfolio {
 
+using namespace std::literals;
+
 void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
     config.get_nodes(root,"portfolio", [&](config::TomlNode node) {
         auto [portfolio, is_new] = emplace_portfolio({
@@ -26,6 +28,21 @@ void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
     });
 }
 
+void Manager::operator()(roq::Event<roq::ParametersUpdate> const& event) {
+    for(auto& p: event.value.parameters) {
+        if(p.label == "portfolio"sv) {
+            auto [portfolio, is_new] = emplace_portfolio({
+                .portfolio_name = p.value
+            });
+            //portfolio.account = p.account;
+            //portfolio.exchange = p.exchange;
+            portfolio_by_account_[p.exchange][p.account] = portfolio.portfolio;
+            log::info("account {}@{} -> portfolio.{} {}", p.account, p.exchange, portfolio.portfolio, p.value);
+        }
+    }
+}
+    
+
 void Manager::operator()(core::ExposureUpdate const& u) {
     for(auto const& exposure : u.exposure) {
         log::info<2>("Portfolios::ExposureUpdate exposure {}", exposure);
@@ -41,24 +58,30 @@ void Manager::operator()(const roq::Event<roq::PositionUpdate>& event) {
         .position_buy = u.long_quantity,
         .position_sell = u.short_quantity,
         .market = market.market,
+        .symbol = market.symbol,        
         .exchange = market.exchange,        
-        .symbol = market.symbol,
 //        .portfolio = portfolio.portfolio,
 //        .portfolio_name = portfolio.portfolio_name,
     };
+    core::ExposureUpdate update {
+        .exposure = std::span {&exposure, 1},
+    };
     
-    get_portfolio_by_account(u.account, u.exchange,[&](core::Portfolio & portfolio){
-        exposure.portfolio = portfolio.portfolio;
-        exposure.portfolio_name = portfolio.portfolio_name;
-        portfolio.set_position(market.market, exposure);
+    get_portfolio_by_account(u.account, u.exchange, [&](core::Portfolio & portfolio){
+        //exposure.portfolio = portfolio.portfolio;
+        //exposure.portfolio_name = portfolio.portfolio_name;
+        ExposureKey key = {
+            .market = market.market,
+            .account = u.account
+        };
+        portfolio.set_position(key, exposure);
+        update.portfolio_name = portfolio.portfolio_name;
+        update.portfolio = portfolio.portfolio;
     });
 
     log::info<2>("portfolios:: PositionUpdate exposure {}", exposure);
     
     if(handler) {
-        core::ExposureUpdate update {
-            .exposure = std::span {&exposure, 1}
-        };
         (*handler)(update, *this);
     }
 }
@@ -91,12 +114,12 @@ core::PortfolioIdent Manager::get_portfolio_ident(std::string_view name) {
     }
     return iter->second;
 }
-
+/*
 core::Volume Manager::get_net_exposure(core::PortfolioIdent portfolio, core::MarketIdent market, core::Volume exposure) {
     portfolios_[portfolio].get_position(market, [&] (core::Exposure const& p) {
         exposure =  p.position_buy -  p.position_sell;
     });
     return exposure;
-}
+}*/
 
 } // namespace roq::core

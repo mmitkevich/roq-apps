@@ -30,6 +30,7 @@ void Manager::load(std::string_view url) {
         roq::Parameter p;
         p.label = toml.get_string(node, "label"sv);
         p.exchange = toml.get_string(node, "exchange"sv);
+        p.account = toml.get_string_or(node, "account"sv, "");
         toml.get_pairs(type_c<std::string>{}, node, "symbol"sv, "value"sv, [&](auto key, auto val) {
             p.symbol = key;
             p.value = val;

@@ -106,11 +106,11 @@ public:
 
     // association
     template<class V, class Fn>
-    void get_pairs(type_c<V>, Node parent, std::string_view key, std::string_view value, Fn&& fn) const;
+    std::size_t get_pairs(type_c<V>, Node parent, std::string_view key, std::string_view value, Fn&& fn) const;
 
     // scalar or array
     template<class V, class Fn>
-    void get_values(type_c<V>, Node parent, std::string_view value, Fn&& fn) const;
+    std::size_t get_values(type_c<V>, Node parent, std::string_view value, Fn&& fn) const;
 
 
     //void configure(roq::core::IModel& model, Node node) const;
@@ -212,12 +212,17 @@ auto TomlFile::get_value(TomlNode node) const {
 
 
 template<class V, class Fn>
-inline void TomlFile::get_pairs(type_c<V>, Node parent, std::string_view key, std::string_view value, Fn&& fn) const {
+inline std::size_t TomlFile::get_pairs(type_c<V>, Node parent, std::string_view key, std::string_view value, Fn&& fn) const {
     auto values_node = parent[value];
     auto keys_node = parent[key];
-    if(!values_node || !keys_node) {
-      return;
+    if(!values_node) {
+      return 0;
     }
+    if(!keys_node) {
+        fn(std::string{}, get_value<V>(values_node));
+        return 1;
+    }
+    std::size_t num_entries = 0;
     if(keys_node.is_array()) {
         const auto &keys = *keys_node.as_array();
         if(values_node.is_array()) {
@@ -228,35 +233,43 @@ inline void TomlFile::get_pairs(type_c<V>, Node parent, std::string_view key, st
                     fn(key, get_value<V>(TomlNode{values.get(i)}));
                 else if(values.size()>0)
                     fn(key, get_value<V>(TomlNode{values.get(values.size()-1)}));
+                num_entries++;
             }
         } else {
             for(std::size_t i=0;i<keys.size();i++) {
                 auto key = get_value<std::string>(TomlNode{keys.get(i)});
                 fn(key, get_value<V>(values_node));
+                num_entries++;
             }
         }
     } else {
         // assume scalars
         fn(get_value<std::string>(keys_node), get_value<V>(values_node));
+        num_entries++;
     }
+    return num_entries;
 }
 
 
 template<class V, class Fn>
-inline void TomlFile::get_values(type_c<V>, Node parent, std::string_view value, Fn&& fn) const {
+inline std::size_t TomlFile::get_values(type_c<V>, Node parent, std::string_view value, Fn&& fn) const {
     auto values_node = parent[value];
     if(!values_node) {
-      return;
+      return 0;
     }
+    std::size_t num_entries = 0;
     if(values_node.is_array()) {
         const auto &values = *values_node.as_array();
         for(std::size_t i=0;i<values.size();i++) {
             fn(i, get_value<V>(TomlNode{values.get(i)}));
+            num_entries++;
         }
     } else {
         // single value
         fn(0, get_value<V>(values_node));
+        num_entries++;
     }
+    return num_entries;
 }
 
 } // namespace umm

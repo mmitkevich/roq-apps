@@ -11,6 +11,7 @@ struct Market {
     core::MarketIdent market;
     std::string_view symbol;
     std::string_view exchange;
+    std::string_view account;
 };
 
 } // roq::core
@@ -26,9 +27,10 @@ struct fmt::formatter<roq::core::Market> {
     using namespace std::literals;
     return fmt::format_to(
         context.out(),
-        "market {} symbol {} exchange {}"sv,
+        "market {} symbol {} exchange {} account"sv,
         value.market,
         value.symbol,
-        value.exchange);
+        value.exchange,
+        value.account);
   }
 };

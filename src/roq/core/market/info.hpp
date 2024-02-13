@@ -8,6 +8,7 @@ struct Info {
     core::MarketIdent market;
     roq::Symbol symbol;
     roq::Exchange exchange;
+    roq::Account account;
 
     operator core::Market() const {
         return core::Market {
@@ -31,6 +32,7 @@ struct Info {
     core::Volume lot_size = 1;
     
     core::Double tick_size;
+    core::Double min_trade_vol;
 
     uint32_t depth_num_levels = 0;
 };

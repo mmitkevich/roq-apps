@@ -56,6 +56,7 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
   ${PROJECT_NAME}-flags 
   roq-client::roq-client 
   roq-client::roq-client-flags
+  roq-cache::roq-cache
   absl::flags 
   fmt::fmt 
   roq-flags::roq-flags

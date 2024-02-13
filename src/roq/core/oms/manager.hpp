@@ -69,8 +69,11 @@ public:
 //    double get_position(std::string_view account, std::string_view symbol, std::string_view exchange);
 
     std::pair<oms::Market&, bool> emplace_market(core::market::Info const& market);
+    bool get_market(core::Market const& market, std::invocable<oms::Market&, core::market::Info const&> auto fn);
+    void get_markets(std::invocable<oms::Market &, core::market::Info const &> auto fn);
 
-    std::pair<oms::Market &, bool> emplace_market(std::string_view symbol, std::string_view exchange);
+    template<class T, std::invocable<core::oms::Market&,core::market::Info const &> Fn>
+    bool get_market(roq::Event<T> const& event, Fn&&fn);
 
     // roq::client::Handler
     void operator()(roq::Event<Timer> const& event) override;
@@ -84,7 +87,6 @@ public:
     void operator()(Event<FundsUpdate> const & event) override;
     void operator()(Event<DownloadBegin> const& event) override;
     void operator()(Event<DownloadEnd> const& event) override;
-    void operator()(Event<ReferenceData> const& event) override;
     void operator()(Event<RateLimitTrigger> const& event) override;
     
     // roq::pricer::Handler
@@ -112,37 +114,78 @@ private:
     void order_fills(oms::Market& market, const T& u, double fill_size);
 
     bool is_throttled(oms::Market& market, RequestType req);
-    bool can_create(oms::Market& market, const core::TargetOrder & target_order);
-    bool can_cancel(oms::Market& market, oms::Order& order);
-    bool can_modify(oms::Market& market, oms::Order& order);
+    bool can_create(oms::Market& market, core::market::Info const& info, const core::TargetOrder & target_order);
+    bool can_cancel(oms::Market& market, core::market::Info const& info, oms::Order& order);
+    bool can_modify(oms::Market& market, core::market::Info const& info, oms::Order& order);
 
     oms::Order& create_order(oms::Market& market, const core::TargetOrder& target);
     void modify_order(oms::Market& market, oms::Order& order, const core::TargetOrder& target);
     void cancel_order(oms::Market& market, oms::Order& order);
-    void process(oms::Market& market);
+    void process(oms::Market& market, core::market::Info const& info);
     
     bool reconcile_positions(oms::Market&);
     void exposure_update(oms::Market& market);
+
+
 private:
     std::chrono::nanoseconds reject_timeout_ = std::chrono::seconds {2};
     uint64_t max_order_id = 0;
     std::array<char, 32> routing_id;
-    absl::flat_hash_map<uint64_t, core::MarketIdent> market_by_order_;
-    absl::flat_hash_map<core::MarketIdent, Market> markets_;
+    core::Hash<uint64_t, core::MarketIdent> market_by_order_;
+    core::Hash<roq::Account, core::Hash<core::MarketIdent, oms::Market> > markets_;
     //absl::flat_hash_map<roq::Exchange, roq::Account> account_by_exchange_;
     int source_id = 0;
     std::chrono::nanoseconds now_{};
     std::chrono::nanoseconds last_process_{};
     
     client::Dispatcher & dispatcher;
-    core::Manager& core_;
+    core::Manager& core;
     oms::Handler& handler_;
     //client::Dispatcher& dispatcher_;
 };
 
+template<class T, std::invocable<core::oms::Market&,core::market::Info const &> Fn>
+bool core::oms::Manager::get_market(roq::Event<T> const& event,  Fn&&fn) {
+    bool found = false;
+    T const& u = event.value;
+    //        .market = core.get_market_ident(u.symbol. u.exchange),
+    core.markets.get_market({
+        .symbol = u.symbol,
+        .exchange = u.exchange
+    }, [&](core::market::Info const & info) {
+        found = get_market(info, fn);
+    });
+    return found;
+}
+
+bool core::oms::Manager::get_market(core::Market const& market, std::invocable<core::oms::Market&,core::market::Info const &> auto fn) {
+    auto iter_1 = markets_.find(market.account);
+    if(iter_1 == std::end(markets_)) {
+        return false;
+    }
+    auto& by_market = iter_1->second;
+    auto iter_2 = by_market.find(market.market);
+    if(iter_2 == std::end(by_market)) {
+        return false;
+    }
+    oms::Market& market_2 = iter_2->second;
+    return core.markets.get_market(market_2.market, [&](core::market::Info const & info) {
+        fn(market_2, info);
+    });
+}
+
+void core::oms::Manager::get_markets(std::invocable<core::oms::Market &,core::market::Info const &> auto fn) {
+    for(auto& [account, by_market] : markets_) {
+        for(auto& [market_id, market] : by_market) {
+            core.markets.get_market(market_id, [&](core::market::Info const & info) {
+                fn(market, info);
+            });
+        }
+    }
+}
 
 template<class Config, class Node>
-void oms::Manager::configure(const Config& config, Node node) {
+void Manager::configure(const Config& config, Node node) {
     this->position_snapshot = config.get_value_or(node, "position_snapshot", core::PositionSnapshot::PORTFOLIO);
     this->position_source = config.get_value_or(node, "position_source", core::PositionSource::ORDERS);
     //std::string_view portfolio = config.get_string_or(node, "portfolio", {});
@@ -156,7 +199,8 @@ void oms::Manager::configure(const Config& config, Node node) {
 
 
 
-} // roq::mmaker
+} // roq::oms
+
 /*
 template <>
 struct fmt::formatter<roq::mmaker::TargetQuotes> {
