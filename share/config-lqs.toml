@@ -16,16 +16,14 @@
     label = "portfolio"
     account = "A1"
     exchange = "deribit"
-    strategy = "100"
-    value = "LG100"  
+    value = "P:100"     # this is portfolio name
     symbol = ""
 
 [[parameter]]
-    label = "enable"
-    account = "LG1" # portfolio actually
-    exchange = "lqs"
-    
-
+    label = "enabled"
+    account = "P:100"   # this is portfolio (not account) to liquidate
+    exchange = "lqs"    # FIXME: this is the name of the pricer
+    value = "true"      # flag to liquidate
 
 # underlying symbol for each contract
 [[parameter]]

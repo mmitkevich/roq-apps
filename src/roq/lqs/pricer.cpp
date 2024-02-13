@@ -60,7 +60,7 @@ void Pricer::operator()(const roq::Event<roq::ParametersUpdate> & e) {
             leg.underlying = underlying.market.market;
             underlying.legs.push_back(leg.market.market);
             log::debug("lqs add leg {} to underlying {}", leg.market.market, underlying.market.market);
-        } else if(p.label == "liquidate"sv) {
+        } else if(p.label == "enabled"sv) {
             core::PortfolioIdent portfolio = core.portfolios.get_portfolio_ident(p.value);
             if(portfolio) {
                 lqs_portfolios_[portfolio] = (std::string_view {p.value} == "true"sv);
