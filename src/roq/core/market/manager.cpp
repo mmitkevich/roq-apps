@@ -37,11 +37,11 @@ void market::Manager::operator()(const Event<GatewaySettings> &event) {
       log::info<1>("market::Manager: assigned mdata_gateway_id {} mdata_gateway {}",
                    market.mdata_gateway_id, market.mdata_gateway_name);
     }
-    if (event.message_info.source_name == market.trade_gateway_name) {
-      market.trade_gateway_id = event.message_info.source;
-      log::info<1>("market::Manager: assigned trade_gateway_id {} trade_gateway {}",
-                   market.trade_gateway_id, market.trade_gateway_name);
-    }
+    //if (event.message_info.source_name == market.trade_gateway_name) {
+    //  market.trade_gateway_id = event.message_info.source;
+    //  log::info<1>("market::Manager: assigned trade_gateway_id {} trade_gateway {}",
+    //               market.trade_gateway_id, market.trade_gateway_name);
+    //}
   }
 }
 

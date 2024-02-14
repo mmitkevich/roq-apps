@@ -33,10 +33,10 @@ struct Manager : core::BasicDispatch<market::Manager> {
     std::pair<core::market::Info&, bool> emplace_market(roq::Event<T> const& e) {
         auto & u = e.value;
         auto [market, is_new] = emplace_market({.symbol=u.symbol, .exchange=u.exchange});
-        if(is_new) {
-            market.mdata_gateway_id = market.trade_gateway_id = e.message_info.source;
-            market.mdata_gateway_name = market.trade_gateway_name = e.message_info.source_name;
-        }
+        //if(is_new) {
+        //    market.mdata_gateway_id = market.trade_gateway_id = e.message_info.source;
+        //    market.mdata_gateway_name = market.trade_gateway_name = e.message_info.source_name;
+        //}
         return {market, is_new};
     }
 
@@ -53,12 +53,12 @@ struct Manager : core::BasicDispatch<market::Manager> {
             auto exchange = config.get_string(node, "exchange");
             //auto market_str = config.get_string(node, "market");
             auto mdata_gateway_name = config.get_string_or(node, "mdata_gateway", "");
-            auto trade_gateway_name = config.get_string_or(node, "trade_gateway", "");
+            //auto trade_gateway_name = config.get_string_or(node, "trade_gateway", "");
             config.get_values(type_c<std::string>{}, node, "symbol"sv, [&](auto i, auto symbol) {
                 core::MarketIdent market = this->get_market_ident(symbol, exchange);
-                log::info<1>("symbol {}, exchange {}, market {} mdata_gateway '{}' trade_gateway '{}'", 
+                log::info<1>("symbol {}, exchange {}, market {} mdata_gateway '{}'", 
                     symbol, exchange, market, 
-                    mdata_gateway_name, trade_gateway_name);
+                    mdata_gateway_name);
                 auto [item, is_new] = emplace_market({.market=market, .symbol=symbol, .exchange=exchange});
                 // FIXME:
                 //item.market = market_str;
@@ -66,7 +66,7 @@ struct Manager : core::BasicDispatch<market::Manager> {
                 item.best_quotes_source = config.get_value_or(node, "best_quotes_source", core::BestQuotesSource::MARKET_BY_PRICE);
                 item.lot_size = config.get_value_or(node, "lot_size", core::Volume{1.0});
                 item.mdata_gateway_name = mdata_gateway_name;
-                item.trade_gateway_name = trade_gateway_name;
+                //item.trade_gateway_name = trade_gateway_name;
                 item.depth_num_levels = config.get_value_or(node, "depth_num_levels", core::Integer{0});
             });
         });    

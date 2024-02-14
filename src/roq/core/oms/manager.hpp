@@ -1,8 +1,8 @@
 // (c) copyright 2023 Mikhail Mitkevich
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
-#include <ratio>
+#include "roq/core/oms/book.hpp"
+
 #include <roq/client.hpp>
 #include <roq/client/dispatcher.hpp>
 #include <roq/client/handler.hpp>
@@ -68,11 +68,11 @@ public:
 
 //    double get_position(std::string_view account, std::string_view symbol, std::string_view exchange);
 
-    std::pair<oms::Market&, bool> emplace_market(core::market::Info const& market);
-    bool get_market(core::Market const& market, std::invocable<oms::Market&, core::market::Info const&> auto fn);
-    void get_markets(std::invocable<oms::Market &, core::market::Info const &> auto fn);
+    std::pair<oms::Book&, bool> emplace_market(oms::Market const& market);
+    bool get_market(oms::Market const& market, std::invocable<oms::Book&, market::Info const&> auto fn);
+    void get_markets(std::invocable<oms::Book &, market::Info const &> auto fn);
 
-    template<class T, std::invocable<core::oms::Market&,core::market::Info const &> Fn>
+    template<class T, std::invocable<oms::Book&, market::Info const &> Fn>
     bool get_market(roq::Event<T> const& event, Fn&&fn);
 
     // roq::client::Handler
@@ -96,32 +96,32 @@ public:
 
 /// IMPLEMENTATION
 private:
-    bool erase_order(oms::Market& market, uint64_t order_id);
-    void erase_all_orders(oms::Market& market);
+    bool erase_order(oms::Book& market, uint64_t order_id);
+    void erase_all_orders(oms::Book& market);
 
-    void order_create_reject(oms::Market& market, oms::Order& order, const OrderAck& u);
-    void order_modify_reject(oms::Market& market, oms::Order& order, const OrderAck& u);
-    void order_cancel_reject(oms::Market& market, oms::Order& order, const OrderAck& u);
-    void order_fwd(oms::Market& market, oms::Order& order, const OrderAck& u);
-    void order_accept(oms::Market& market, oms::Order& order, const OrderAck& u);
-    void order_confirm(oms::Market& market, oms::Order& order, const OrderUpdate& u);
-    void order_complete(oms::Market& market, oms::Order& order, const OrderUpdate& u);
-    void order_canceled(oms::Market& market, oms::Order& order, const OrderUpdate& u);
+    void order_create_reject(oms::Book& market, oms::Order& order, const roq::OrderAck& u);
+    void order_modify_reject(oms::Book& market, oms::Order& order, const roq::OrderAck& u);
+    void order_cancel_reject(oms::Book& market, oms::Order& order, const roq::OrderAck& u);
+    void order_fwd(oms::Book& market, oms::Order& order, const roq::OrderAck& u);
+    void order_accept(oms::Book& market, oms::Order& order, const roq::OrderAck& u);
+    void order_confirm(oms::Book& market, oms::Order& order, const roq::OrderUpdate& u);
+    void order_complete(oms::Book& market, oms::Order& order, const roq::OrderUpdate& u);
+    void order_canceled(oms::Book& market, oms::Order& order, const roq::OrderUpdate& u);
 
-    void order_fills(oms::Market& market, roq::Side side, double price, double fill_size);
+    void order_fills(oms::Book& market, roq::Side side, double price, double fill_size);
 
-    bool is_throttled(oms::Market& market, RequestType req);
-    bool can_create(oms::Market& market, core::market::Info const& info, const core::TargetOrder & target_order);
-    bool can_cancel(oms::Market& market, core::market::Info const& info, oms::Order& order);
-    bool can_modify(oms::Market& market, core::market::Info const& info, oms::Order& order);
+    bool is_throttled(oms::Book& market, roq::RequestType req);
+    bool can_create(oms::Book& market, market::Info const& info, const core::TargetOrder & target_order);
+    bool can_cancel(oms::Book& market, market::Info const& info, oms::Order& order);
+    bool can_modify(oms::Book& market, market::Info const& info, oms::Order& order);
 
-    oms::Order& create_order(oms::Market& market, const core::TargetOrder& target);
-    void modify_order(oms::Market& market, oms::Order& order, const core::TargetOrder& target);
-    void cancel_order(oms::Market& market, oms::Order& order);
-    void process(oms::Market& market, core::market::Info const& info);
+    oms::Order& create_order(oms::Book& market, const core::TargetOrder& target);
+    void modify_order(oms::Book& market, oms::Order& order, const core::TargetOrder& target);
+    void cancel_order(oms::Book& market, oms::Order& order);
+    void process(oms::Book& market, market::Info const& info);
     
-    bool reconcile_positions(oms::Market&);
-    void exposure_update(oms::Market& market);
+    bool reconcile_positions(oms::Book&);
+    void exposure_update(oms::Book& market);
 
 
 private:
@@ -129,9 +129,9 @@ private:
     uint64_t max_order_id = 0;
     std::array<char, 32> routing_id;
     core::Hash<uint64_t, core::MarketIdent> market_by_order_;
-    core::Hash<roq::Account, core::Hash<core::MarketIdent, oms::Market> > markets_;
+    core::Hash<core::StrategyIdent, core::Hash<roq::Account, core::Hash<core::MarketIdent, oms::Book> > > books_;
     //absl::flat_hash_map<roq::Exchange, roq::Account> account_by_exchange_;
-    int source_id = 0;
+    //int source_id = 0;
     std::chrono::nanoseconds now_{};
     std::chrono::nanoseconds last_process_{};
     
@@ -141,7 +141,7 @@ private:
     //client::Dispatcher& dispatcher_;
 };
 
-template<class T, std::invocable<core::oms::Market&,core::market::Info const &> Fn>
+template<class T, std::invocable<oms::Book&, market::Info const &> Fn>
 bool core::oms::Manager::get_market(roq::Event<T> const& event,  Fn&&fn) {
     bool found = false;
     T const& u = event.value;
@@ -149,15 +149,20 @@ bool core::oms::Manager::get_market(roq::Event<T> const& event,  Fn&&fn) {
     core.markets.get_market({
         .symbol = u.symbol,
         .exchange = u.exchange
-    }, [&](core::market::Info const & info) {
-        found = get_market(info, fn);
+    }, [&](market::Info const & info) {
+        found = this->get_market(oms::Market::from(info), fn);
     });
     return found;
 }
 
-bool core::oms::Manager::get_market(core::Market const& market, std::invocable<core::oms::Market&,core::market::Info const &> auto fn) {
-    auto iter_1 = markets_.find(market.account);
-    if(iter_1 == std::end(markets_)) {
+bool core::oms::Manager::get_market(oms::Market const& market, std::invocable<oms::Book&, market::Info const &> auto fn) {
+    auto iter = books_.find(market.strategy);
+    if(iter == std::end(books_)) {
+        return false;
+    }
+    auto& by_account = iter->second;
+    auto iter_1 = by_account.find(market.account);
+    if(iter_1 == std::end(by_account)) {
         return false;
     }
     auto& by_market = iter_1->second;
@@ -165,18 +170,20 @@ bool core::oms::Manager::get_market(core::Market const& market, std::invocable<c
     if(iter_2 == std::end(by_market)) {
         return false;
     }
-    oms::Market& market_2 = iter_2->second;
-    return core.markets.get_market(market_2.market, [&](core::market::Info const & info) {
+    oms::Book& market_2 = iter_2->second;
+    return core.markets.get_market(market_2.market, [&](market::Info const & info) {
         fn(market_2, info);
     });
 }
 
-void core::oms::Manager::get_markets(std::invocable<core::oms::Market &,core::market::Info const &> auto fn) {
-    for(auto& [account, by_market] : markets_) {
-        for(auto& [market_id, market] : by_market) {
-            core.markets.get_market(market_id, [&](core::market::Info const & info) {
-                fn(market, info);
-            });
+void oms::Manager::get_markets(std::invocable<oms::Book &, market::Info const &> auto fn) {
+    for(auto& [strategy, by_account] : books_) {
+        for(auto& [account, by_market] : by_account) {
+            for(auto& [market_id, market] : by_market) {
+                core.markets.get_market(market_id, [&](market::Info const & info) {
+                    fn(market, info);
+                });
+            }
         }
     }
 }

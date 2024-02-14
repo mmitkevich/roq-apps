@@ -1,12 +1,12 @@
 // (c) copyright 2023 Mikhail Mitkevich
-#include "roq/core/oms/market.hpp" 
+#include "roq/core/oms/book.hpp" 
 #include "roq/numbers.hpp"
 #include "roq/utils/compare.hpp"
 #include <roq/logging.hpp>
 
 namespace roq::core::oms {
 
-std::pair<oms::Level&, bool> Market::emplace_level(Side side, core::Price price, core::Double new_tick_size) {
+std::pair<oms::Level&, bool> Book::emplace_level(Side side, core::Price price, core::Double new_tick_size) {
     assert(!std::isnan(price));
     if(tick_size.empty()) {
       this->tick_size = new_tick_size;
@@ -28,7 +28,7 @@ std::pair<oms::Level&, bool> Market::emplace_level(Side side, core::Price price,
     }
 }
 
-roq::core::Hash<LevelIdent, oms::Level> &Market::get_levels(Side side) {
+roq::core::Hash<LevelIdent, oms::Level> &Book::get_levels(Side side) {
   switch (side) {
   case Side::BUY:
     return bids;
@@ -39,7 +39,7 @@ roq::core::Hash<LevelIdent, oms::Level> &Market::get_levels(Side side) {
   }
 }
 
-std::pair<oms::Order &, bool> Market::emplace_order(OrderIdent order_id) {
+std::pair<oms::Order &, bool> Book::emplace_order(OrderIdent order_id) {
   auto iter = orders.find(order_id);
   if (iter == std::end(orders)) {
     auto &order = orders[order_id];

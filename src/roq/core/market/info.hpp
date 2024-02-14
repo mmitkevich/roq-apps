@@ -23,8 +23,8 @@ struct Info {
     roq::Source mdata_gateway_name;
     
     // preferred
-    uint32_t trade_gateway_id = -1;
-    roq::Source trade_gateway_name;
+    //uint32_t trade_gateway_id = -1;
+    //roq::Source trade_gateway_name;
 
     core::BestQuotesSource pub_price_source;
     core::BestQuotesSource best_quotes_source = core::BestQuotesSource::MARKET_BY_PRICE;

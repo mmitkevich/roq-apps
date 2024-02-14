@@ -51,7 +51,7 @@ void Manager::operator()(core::TargetQuotes const & target_quotes) {
     };
 
     auto [info, _] = core.markets.emplace_market(key);
-    auto [market, is_new] = emplace_market(info);
+    auto [market, is_new] = emplace_market(oms::Market::from(info));
 
     assert(market.exchange == target_quotes.exchange);
     assert(market.symbol == target_quotes.symbol);
@@ -79,17 +79,17 @@ void Manager::operator()(core::TargetQuotes const & target_quotes) {
         }
     }
 
-    get_markets([&](oms::Market & market, core::market::Info const& info) {
-        process(market, info);
+    get_markets([&](oms::Book & book, core::market::Info const& info) {
+        process(book, info);
     });
 }
 
 
-bool Manager::is_throttled(oms::Market& market, RequestType req) {
+bool Manager::is_throttled(oms::Book& book, RequestType req) {
     return false;
 }
 
-bool Manager::can_create(oms::Market& market, core::market::Info const& info, const core::TargetOrder & target_order) {
+bool Manager::can_create(oms::Book& market, core::market::Info const& info, const core::TargetOrder & target_order) {
     if(market.pending[target_order.side==Side::SELL]>0)
         return false;
 
@@ -102,7 +102,7 @@ bool Manager::can_create(oms::Market& market, core::market::Info const& info, co
     return true;
 }
 
-bool Manager::can_cancel(oms::Market& market, core::market::Info const& info, oms::Order& order) {
+bool Manager::can_cancel(oms::Book& book, core::market::Info const& info, oms::Order& order) {
     if(!order.confirmed.version)
         return false;   // still pending
     if(order.is_pending())
@@ -110,7 +110,7 @@ bool Manager::can_cancel(oms::Market& market, core::market::Info const& info, om
     return true;
 }
 
-bool Manager::can_modify(oms::Market& market, core::market::Info const& info, oms::Order& order) {
+bool Manager::can_modify(oms::Book& book, core::market::Info const& info, oms::Order& order) {
     return false;
     //if(!order.is_confirmed())
     if(!order.confirmed.version)    
@@ -120,14 +120,14 @@ bool Manager::can_modify(oms::Market& market, core::market::Info const& info, om
     return true;
 }
 
-void Manager::process(oms::Market& market, core::market::Info const& info) {
-    if(market.account.empty())
+void Manager::process(oms::Book& book, core::market::Info const& info) {
+    if(book.account.empty())
         return;
     std::chrono::nanoseconds now = this->now();
     auto mask = roq::Mask{roq::SupportType::CREATE_ORDER, roq::SupportType::CANCEL_ORDER};
-    bool ready = core.gateways.is_ready(mask, market.trade_gateway_id, market.account);
+    bool ready = core.gateways.is_ready(mask, book.trade_gateway_id, book.account);
     log::info<2>("OMS process now {} symbol {} exchange {} ban {} ready {} tick_size {}",
-         now, market.symbol, market.exchange, market.ban_until.count() ? (market.ban_until-now).count()/1E9:NaN, ready, market.tick_size);
+         now, book.symbol, book.exchange, book.ban_until.count() ? (book.ban_until-now).count()/1E9:NaN, ready, book.tick_size);
     
     if(!ready) {
         return;
@@ -137,33 +137,33 @@ void Manager::process(oms::Market& market, core::market::Info const& info) {
         return;
     }
     
-    if(now < market.ban_until) {
+    if(now < book.ban_until) {
         return;
     } else {
-        market.ban_until = {};
+        book.ban_until = {};
     }
 
     for(auto side: std::array {Side::BUY, Side::SELL}) {
-        auto& levels = market.get_levels(side);
+        auto& levels = book.get_levels(side);
         for(auto& [price_index, level]: levels) {
             level.expected_quantity = 0;
             level.confirmed_quantity = 0;
         }
     }
 
-    market.pending = {0,0};
+    book.pending = {0,0};
     
-    for(auto& [order_id, order] : market.orders) {
+    for(auto& [order_id, order] : book.orders) {
         if(order.confirmed.status == OrderStatus::COMPLETED || order.confirmed.status == OrderStatus::CANCELED)
             continue;
         assert(order.confirmed.status!=OrderStatus::COMPLETED);
         assert(order.confirmed.status!=OrderStatus::CANCELED);
         assert(!std::isnan(order.expected.quantity));
         if(order.is_pending())
-            market.pending[order.side==Side::SELL]++;
+            book.pending[order.side==Side::SELL]++;
 
         //assert(utils::compare(order.expected.quantity,0)==std::strong_ordering::greater);
-        auto [level,is_new_level] = market.emplace_level(order.side, order.price, info.tick_size);
+        auto [level,is_new_level] = book.emplace_level(order.side, order.price, info.tick_size);
         assert(!std::isnan(level.expected_quantity));          
         level.expected_quantity += order.expected.quantity;
         level.confirmed_quantity += order.confirmed.quantity;
@@ -172,40 +172,40 @@ void Manager::process(oms::Market& market, core::market::Info const& info) {
             " symbol={} exchange={} market={}",
             order.order_id, order.pending.version, order.confirmed.version,order.side,order.pending.type, order.pending.price,order.pending.quantity,
             order.confirmed.status, order.confirmed.price, order.confirmed.quantity,
-            order.external_order_id, market.symbol, market.exchange, market.market);
+            order.external_order_id, book.symbol, book.exchange, book.market);
     }
 
     log::info<2>("OMS order_state BUY count {} pending {}  SELL count {} pending {}", 
-        market.bids.size(), market.pending[0],
-        market.asks.size(), market.pending[1]);
+        book.bids.size(), book.pending[0],
+        book.asks.size(), book.pending[1]);
 
     for(Side side: std::array {Side::BUY, Side::SELL}) {
-        auto& levels = (side==Side::BUY) ? market.bids : market.asks;
+        auto& levels = (side==Side::BUY) ? book.bids : book.asks;
         for(const auto& [price_index, level]: levels) {
             log::info<2>("OMS level_state {} {} target {} expected {} confirmed {}", side, level.price, level.target_quantity, level.expected_quantity, level.confirmed_quantity);
         }
     }
-    std::size_t orders_count = market.orders.size();
-    for(auto& [order_id, order] : market.orders) {
-        auto [level,is_new_level] = market.emplace_level(order.side, order.price, info.tick_size);
+    std::size_t orders_count = book.orders.size();
+    for(auto& [order_id, order] : book.orders) {
+        auto [level,is_new_level] = book.emplace_level(order.side, order.price, info.tick_size);
         if(utils::compare(level.expected_quantity, level.target_quantity)==std::strong_ordering::greater) {
-            bool flag = can_modify(market, info, order);
+            bool flag = can_modify(book, info, order);
             log::info<2>("OMS can_modify {} order_id={}.{}.{} side={} req={}  price={}  quantity={}"
             " c.req={}, c.status.{} c.price={}  c.quantity={} external_id={}"
             " symbol={} exchange={} market={}", flag,
             order.order_id, order.pending.version, order.confirmed.version,order.side,order.pending.type, order.pending.price,order.pending.quantity,
             order.confirmed.type, order.confirmed.status, order.confirmed.price, order.confirmed.quantity,
-            order.external_order_id, market.symbol, market.exchange, market.market);
+            order.external_order_id, book.symbol, book.exchange, book.market);
 
             if(flag) {
-                const auto& levels = market.get_levels(order.side);                
+                const auto& levels = book.get_levels(order.side);                
                 for(const auto& [new_price_index, new_level]:  levels) {
                     assert(!std::isnan(new_level.target_quantity));
                     assert(!std::isnan(new_level.expected_quantity));                    
                     assert(!std::isnan(order.confirmed.quantity));
                     if(utils::compare(new_level.target_quantity,new_level.expected_quantity+order.confirmed.quantity)!=std::strong_ordering::less) {
                         ///
-                        modify_order(market, order, core::TargetOrder {
+                        modify_order(book, order, core::TargetOrder {
                             .quantity = order.confirmed.quantity,    // can_modify_qty?new_level.target_quantity-new_level.expected_quantity : order.confirmed.quantity
                             .price = new_level.price,
                         });
@@ -213,8 +213,8 @@ void Manager::process(oms::Market& market, core::market::Info const& info) {
                     }
                 }
             }
-            if(can_cancel(market, info, order)) {
-                this->cancel_order(market, order);
+            if(can_cancel(book, info, order)) {
+                this->cancel_order(book, order);
                 goto orders_continue;
             }
             // can't do anything with this order (yet)
@@ -222,28 +222,28 @@ void Manager::process(oms::Market& market, core::market::Info const& info) {
         orders_continue:;
     }
     for(auto side: std::array {Side::BUY, Side::SELL}) {
-        auto& levels = market.get_levels(side);//(side==Side::BUY) ? bids : asks;
+        auto& levels = book.get_levels(side);//(side==Side::BUY) ? bids : asks;
         for(auto& [price_index, level] : levels) {
             assert(!std::isnan(level.target_quantity));
             assert(!std::isnan(level.expected_quantity));
             if(utils::compare(level.target_quantity, level.expected_quantity)==std::strong_ordering::greater) {
                 auto target_order = core::TargetOrder {
-                    .market = market.market,
+                    .market = book.market,
                     .side = side,
                     .quantity = level.target_quantity - level.expected_quantity,
                     .price = level.price,
                     .exec_inst = level.exec_inst
                 };
-                if(can_create(market, info, target_order)) {
+                if(can_create(book, info, target_order)) {
                     //queue_.push_back(target_order); 
-                    create_order(market, target_order);
+                    create_order(book, target_order);
                 }
             }
         }
     }
     
     for(auto side: std::array {Side::BUY, Side::SELL}) {
-        auto& levels = market.get_levels(side);
+        auto& levels = book.get_levels(side);
 
         for(auto it = levels.begin(); it!=levels.end();) {
             auto& level = it->second;
@@ -263,13 +263,13 @@ void Manager::process(oms::Market& market, core::market::Info const& info) {
     }
 }
 
-oms::Order& Manager::create_order(oms::Market& market, const core::TargetOrder& target) {
-    assert(market.market == target.market);
+oms::Order& Manager::create_order(oms::Book& book, const core::TargetOrder& target) {
+    assert(book.market == target.market);
     auto const mask = roq::Mask<roq::SupportType>{roq::SupportType::MODIFY_ORDER};
-    assert(core.gateways.is_ready(mask, market.trade_gateway_id, market.account));
+    assert(core.gateways.is_ready(mask, book.trade_gateway_id, book.account));
     auto order_id = ++max_order_id;
-    assert(market.orders.find(order_id)==std::end(market.orders));
-    auto& order = market.orders[order_id] = oms::Order {
+    assert(book.orders.find(order_id)==std::end(book.orders));
+    auto& order = book.orders[order_id] = oms::Order {
         .order_id = order_id,
         .side = target.side,
         .price = target.price,
@@ -301,10 +301,10 @@ oms::Order& Manager::create_order(oms::Market& market, const core::TargetOrder& 
         execution_instructions.set(roq::ExecutionInstruction::PARTICIPATE_DO_NOT_INITIATE);
 
     auto create_order = roq::CreateOrder {
-        .account = market.account,
+        .account = book.account,
         .order_id = order_id,
-        .exchange = market.exchange,
-        .symbol = market.symbol,
+        .exchange = book.exchange,
+        .symbol = book.symbol,
         .side = target.side,
         //.execution_instructions = target.execution_instructions,
         .order_type = OrderType::LIMIT,
@@ -314,25 +314,25 @@ oms::Order& Manager::create_order(oms::Market& market, const core::TargetOrder& 
         .price = target.price, 
         .routing_id = routing_id_v
     };
-    market_by_order_[order_id] = market.market;
+    market_by_order_[order_id] = book.market;
     log::info<1>("OMS create_order {{ order_id={}.{} side={} price={} qty={} symbol={} exchange={} market {}, account={}, execution_instructions={} }}", 
         order_id, order.pending.version, target.side, target.price, target.quantity, 
-        market.symbol, market.exchange, market.market, market.account, 
+        book.symbol, book.exchange, book.market, book.account, 
         create_order.execution_instructions);
-    dispatcher.send(create_order, source_id);
+    dispatcher.send(create_order, book.trade_gateway_id);
     return order;
 }
 
-void Manager::modify_order(oms::Market& market, oms::Order& order, const core::TargetOrder & target) {
+void Manager::modify_order(oms::Book& book, oms::Order& order, const core::TargetOrder & target) {
     const auto mask = roq::Mask<roq::SupportType>{roq::SupportType::MODIFY_ORDER};
-    assert(core.gateways.is_ready(mask, market.trade_gateway_id, market.account));
+    assert(core.gateways.is_ready(mask, book.trade_gateway_id, book.account));
     ++order.pending.version;
     order.pending.type = RequestType::MODIFY_ORDER;
     order.pending.price = target.price;
     order.pending.quantity = target.quantity;
 
     auto modify_order = ModifyOrder {
-        .account = market.account,
+        .account = book.account,
         .order_id = order.order_id,
         .quantity = target.quantity,
         .price = target.price,
@@ -344,24 +344,24 @@ void Manager::modify_order(oms::Market& market, oms::Order& order, const core::T
         modify_order.order_id, modify_order.version, modify_order.conditional_on_version, 
         order.side, order.price, modify_order.price, order.quantity, 
         modify_order.quantity, order.external_order_id, 
-        market.market, market.symbol, market.exchange, market.account);
+        book.market, book.symbol, book.exchange, book.account);
     
     order.expected = order.pending;
 
-    dispatcher.send(modify_order, source_id);
+    dispatcher.send(modify_order, book.trade_gateway_id);
 }
 
-void Manager::cancel_order(oms::Market& market, oms::Order& order) {
+void Manager::cancel_order(oms::Book& book, oms::Order& order) {
     const auto mask = roq::Mask<roq::SupportType>{roq::SupportType::CANCEL_ORDER};
-    assert(core.gateways.is_ready(mask, market.trade_gateway_id, market.account));
-    assert(market.orders.find(order.order_id)!=std::end(market.orders));
+    assert(core.gateways.is_ready(mask, book.trade_gateway_id, book.account));
+    assert(book.orders.find(order.order_id)!=std::end(book.orders));
     ++order.pending.version;
     order.pending.type = RequestType::CANCEL_ORDER;
     order.pending.price = order.price;
     order.pending.quantity = 0;
 
     auto cancel_order = CancelOrder {
-        .account = market.account,
+        .account = book.account,
         .order_id = order.order_id,
         .version = order.pending.version,
         .conditional_on_version = order.confirmed.version,
@@ -369,15 +369,15 @@ void Manager::cancel_order(oms::Market& market, oms::Order& order) {
     
     log::info<1>("OMS cancel_order {{ order_id={}.{}/{}, side={} price={} qty={} external_id={} market={} symbol={} exchange={} account={} }}", 
         cancel_order.order_id, cancel_order.version, cancel_order.conditional_on_version, 
-        order.side, order.price, order.quantity, order.external_order_id, market.market, market.symbol, market.exchange, market.account);
+        order.side, order.price, order.quantity, order.external_order_id, book.market, book.symbol, book.exchange, book.account);
     
     order.expected = order.pending;
 
-    dispatcher.send(cancel_order, source_id);
+    dispatcher.send(cancel_order, book.trade_gateway_id);
 }
 
 
-void Manager::order_create_reject(oms::Market& market, oms::Order& order, const OrderAck& u) {
+void Manager::order_create_reject(oms::Book& market, oms::Order& order, const OrderAck& u) {
     assert(order.order_id == u.order_id);
     assert(u.request_type == RequestType::CREATE_ORDER);
     order.reject_version = u.version;
@@ -397,7 +397,7 @@ void Manager::order_create_reject(oms::Market& market, oms::Order& order, const 
     erase_order(market, order.order_id);
 }
 
-void Manager::order_modify_reject(oms::Market& market, oms::Order& order, const OrderAck& u) {
+void Manager::order_modify_reject(oms::Book& market, oms::Order& order, const OrderAck& u) {
     assert(order.order_id == u.order_id);
     assert(u.request_type == RequestType::MODIFY_ORDER);
     order.reject_version = u.version;
@@ -407,23 +407,23 @@ void Manager::order_modify_reject(oms::Market& market, oms::Order& order, const 
     order.pending.type = RequestType::UNDEFINED;
 }
 
-void Manager::order_cancel_reject(oms::Market& market, oms::Order& order, const OrderAck& u) {
+void Manager::order_cancel_reject(oms::Book& market, oms::Order& order, const OrderAck& u) {
     assert(order.order_id == u.order_id);
     assert(u.request_type == RequestType::CANCEL_ORDER);
     order.expected = order.confirmed;
     order.pending.type = RequestType::UNDEFINED;    
 }
 
-void Manager::order_fwd(oms::Market& market, oms::Order& order, const OrderAck& u) {
+void Manager::order_fwd(oms::Book& market, oms::Order& order, const OrderAck& u) {
     assert(order.order_id == u.order_id);
 }
 
-void Manager::order_accept(oms::Market& market, oms::Order& order, const OrderAck& u) {
+void Manager::order_accept(oms::Book& market, oms::Order& order, const OrderAck& u) {
     assert(order.order_id == u.order_id);
     order.accept_version = u.version;
 }
 
-void Manager::order_confirm(oms::Market& market, oms::Order& order, const OrderUpdate& u) {
+void Manager::order_confirm(oms::Book& market, oms::Order& order, const OrderUpdate& u) {
     assert(order.order_id == u.order_id);
     order.external_order_id = u.external_order_id;
     order.confirmed.status = u.order_status;
@@ -439,17 +439,17 @@ void Manager::order_confirm(oms::Market& market, oms::Order& order, const OrderU
 }
 
 
-bool Manager::reconcile_positions(oms::Market& market) {
-    bool is_downloading = core.gateways.is_downloading(market.trade_gateway_id);
+bool Manager::reconcile_positions(oms::Book& book) {
+    bool is_downloading = core.gateways.is_downloading(book.trade_gateway_id);
     if(is_downloading)
         return false;
-    if(now()-market.last_position_modify_time > std::chrono::seconds{3}) {
-        auto delta =  market.position_by_account - market.position_by_orders;    // stable
+    if(now()-book.last_position_modify_time > std::chrono::seconds{3}) {
+        auto delta =  book.position_by_account - book.position_by_orders;    // stable
         if( !std::isnan(delta) && utils::compare(delta, 0.)!=std::strong_ordering::equal) {
-            auto prev_by_orders = market.position_by_orders;
-            market.position_by_orders = market.position_by_account;
+            auto prev_by_orders = book.position_by_orders;
+            book.position_by_orders = book.position_by_account;
             log::info<1>("OMS reconcile_positions by_orders {}->{} position_by_account {} delta {}",
-                prev_by_orders, market.position_by_orders, market.position_by_account, delta);
+                prev_by_orders, book.position_by_orders, book.position_by_account, delta);
             
             return true;
         }
@@ -458,19 +458,19 @@ bool Manager::reconcile_positions(oms::Market& market) {
 }
 
 // NOTE: only publishes position in "position_source==ORDERS" mode
-void Manager::exposure_update(oms::Market& market) {
+void Manager::exposure_update(oms::Book& book) {
     log::info<1>("oms::exposure_update  position_by_orders {} position_by_account {} market {} position_source {}", 
-        market.position_by_orders, market.position_by_account, market.market, core.portfolios.position_source);        
+        book.position_by_orders, book.position_by_account, book.market, core.portfolios.position_source);        
     
-    market.last_position_modify_time = now();
+    book.last_position_modify_time = now();
 }
 
-void Manager::order_fills(oms::Market& market, roq::Side side, double price, double fill_size) {
+void Manager::order_fills(oms::Book& book, roq::Side side, double price, double fill_size) {
     assert(!std::isnan(fill_size));
     if(utils::compare(fill_size, 0.)==std::strong_ordering::greater) {
         switch(side) {
-            case Side::BUY:     market.position_by_orders += fill_size; break;
-            case Side::SELL:    market.position_by_orders -= fill_size; break;
+            case Side::BUY:     book.position_by_orders += fill_size; break;
+            case Side::SELL:    book.position_by_orders -= fill_size; break;
             default: assert(false);
         }
 
@@ -478,19 +478,19 @@ void Manager::order_fills(oms::Market& market, roq::Side side, double price, dou
             .side = side,
             .price = price,
             .quantity = fill_size,
-            .market = market.market,
-            .symbol = market.symbol,
-            .exchange = market.exchange,
-            .portfolio = market.portfolio,
+            .market = book.market,
+            .symbol = book.symbol,
+            .exchange = book.exchange,
+            .portfolio = book.portfolio,
         };
 
         // to portfolio::Manager
         handler_(trade);
 
         if(core.portfolios.position_source==core::PositionSource::ORDERS) {
-            exposure_update(market);            
+            exposure_update(book);            
         } else {
-            market.ban_until = now() + market.post_fill_timeout;
+            book.ban_until = now() + book.post_fill_timeout;
         }
     }
 }
@@ -500,7 +500,7 @@ void Manager::order_fills(oms::Market& market, roq::Side side, double price, dou
 //    handler_(event);
 //}
 
-void Manager::order_complete(oms::Market& market, oms::Order& order, const OrderUpdate& u) {
+void Manager::order_complete(oms::Book& market, oms::Order& order, const OrderUpdate& u) {
     assert(order.order_id == u.order_id);
     order.confirmed.status = u.order_status;
     order.confirmed.price = u.price;
@@ -517,7 +517,7 @@ void Manager::order_complete(oms::Market& market, oms::Order& order, const Order
     order_fills(market, u.side, u.last_traded_price, fill_size);
 }
 
-void Manager::order_canceled(oms::Market& market, oms::Order& order, const OrderUpdate& u) {
+void Manager::order_canceled(oms::Book& market, oms::Order& order, const OrderUpdate& u) {
     assert(order.order_id == u.order_id);
     order.confirmed.status = u.order_status;
     order.confirmed.type = RequestType::UNDEFINED;
@@ -536,29 +536,29 @@ void Manager::order_canceled(oms::Market& market, oms::Order& order, const Order
 void Manager::operator()(roq::Event<Timer> const& event) {
     now_ = event.value.now;
     if(now_ - last_process_ >= std::chrono::seconds(1)) {
-        get_markets([&](oms::Market& market, core::market::Info const& info) {
+        get_markets([&](oms::Book& market, core::market::Info const& info) {
             //    if(!is_downloading(state.gateway_id))
             process(market, info);
             reconcile_positions(market);
         });
         last_process_ = now_;        
     }
-/*    for(auto& [market_id, market] : markets_) {
-        //if(!is_downloading(market.gateway_id))
-        market.reconcile_positions(market);
+/*    for(auto& [market_id, market] : books_) {
+        //if(!is_downloading(book.gateway_id))
+        book.reconcile_positions(market);
     }
 */
 }
 
 void Manager::operator()(roq::Event<GatewayStatus> const& event) {
-    log::info<2>("OMS GatewayStatus {}, markets_size {} erase_all_orders_on_gateway_not_ready {}", event, markets_.size(), core::Flags::erase_all_orders_on_gateway_not_ready());
-    get_markets([&](oms::Market& market, core::market::Info const& info) {
-        if(!event.value.account.empty() && market.account == event.value.account) {
+    log::info<2>("OMS GatewayStatus {}, books_size {} erase_all_orders_on_gateway_not_ready {}", event, books_.size(), core::Flags::erase_all_orders_on_gateway_not_ready());
+    get_markets([&](oms::Book& book, core::market::Info const& info) {
+        if(!event.value.account.empty() && book.account == event.value.account) {
             if(core::Flags::erase_all_orders_on_gateway_not_ready()) {
                 if(!event.value.available.has_all(roq::Mask{roq::SupportType::CREATE_ORDER, roq::SupportType::CANCEL_ORDER})) {
                     log::info<1>("OMS GatewayStatus available {} account {} exchange {} symbol {} market {} erase_all_orders", 
-                        event.value.available, market.account, market.exchange, market.symbol, market.market);
-                    erase_all_orders(market);
+                        event.value.available, book.account, book.exchange, book.symbol, book.market);
+                    erase_all_orders(book);
                 }
             }
         }
@@ -566,44 +566,44 @@ void Manager::operator()(roq::Event<GatewayStatus> const& event) {
     Base::operator()(event);
 }
 
-void Manager::erase_all_orders(oms::Market& market) {
-    for(auto& [order_id, order]: market.orders) {
+void Manager::erase_all_orders(oms::Book& book) {
+    for(auto& [order_id, order]: book.orders) {
         log::info<1>("OMS erase_all_orders order_id={}.{} side={} price={} remaining_quantity={} status={} symbol={} exchange={} market={}", 
             order_id, order.pending.version, order.side, order.price, order.quantity,
             order.confirmed.status, 
-            market.symbol, market.exchange, market.market);    
+            book.symbol, book.exchange, book.market);    
         market_by_order_.erase(order_id);
     }
-    market.orders.clear();
+    book.orders.clear();
 }
 
-bool Manager::erase_order(oms::Market& market, uint64_t order_id) {
-    auto iter = market.orders.find(order_id);
-    assert(iter!=std::end(market.orders));
-    if(iter==std::end(market.orders))
+bool Manager::erase_order(oms::Book& book, uint64_t order_id) {
+    auto iter = book.orders.find(order_id);
+    assert(iter!=std::end(book.orders));
+    if(iter==std::end(book.orders))
         return false;
     auto& order = iter->second;
     log::info<1>("OMS erase_order order_id={}.{} side={} price={} remaining_quantity={} status={} symbol={} exchange={} market={}", 
         order_id, order.pending.version, order.side, order.price, order.quantity, 
         order.confirmed.status, 
-        market.symbol, market.exchange, market.market);
-    market.orders.erase(iter);
+        book.symbol, book.exchange, book.market);
+    book.orders.erase(iter);
     market_by_order_.erase(order_id);
     return true;
 }
 
 void Manager::operator()(roq::Event<OrderUpdate> const& event) {
     auto& u = event.value;
-    if(!get_market(event, [&](oms::Market& market, core::market::Info const & info) {
+    if(!get_market(event, [&](oms::Book& book, core::market::Info const & info) {
 
-        auto [order,is_new_order] =  market.emplace_order(u.order_id);
+        auto [order,is_new_order] =  book.emplace_order(u.order_id);
         assert(order.order_id == u.order_id);
 
         log::info<1>("OMS order_update is_new_order={} order_id={}.{} side={} price={} remaining_quantity={} status={} update_type={} symbol={} exchange={} market={}", 
-            is_new_order, u.order_id, u.max_accepted_version, u.side, u.price, u.remaining_quantity, u.order_status, u.update_type, u.symbol, u.exchange, market.market);
+            is_new_order, u.order_id, u.max_accepted_version, u.side, u.price, u.remaining_quantity, u.order_status, u.update_type, u.symbol, u.exchange, book.market);
 
         if(u.update_type==roq::UpdateType::STALE) {
-            erase_order(market, u.order_id);
+            erase_order(book, u.order_id);
         } else if(is_new_order) {
             order.side = u.side;
             order.order_id = u.order_id;
@@ -619,31 +619,32 @@ void Manager::operator()(roq::Event<OrderUpdate> const& event) {
             order.pending.version = u.max_accepted_version;
             order.pending.type = RequestType::UNDEFINED;
             order.expected = order.confirmed;
-            market_by_order_[order.order_id] = market.market;
+            market_by_order_[order.order_id] = book.market;
             
             if(u.order_status!=OrderStatus::WORKING) {
                 // keep only working
-                erase_order(market, order.order_id);
+                erase_order(book, order.order_id);
             }
         } else {
             if(u.order_status==OrderStatus::WORKING) {
-                order_confirm(market, order, u);
+                order_confirm(book, order, u);
             } else if(u.order_status == OrderStatus::COMPLETED) {
-                order_complete(market, order, u);
+                order_complete(book, order, u);
             } else if(u.order_status == OrderStatus::CANCELED) {
-                order_canceled(market, order, u);
+                order_canceled(book, order, u);
             } else if(u.order_status == OrderStatus::REJECTED) {
-                erase_order(market, order.order_id);
+                erase_order(book, order.order_id);
             }
         }
-        process(market, info);
+        process(book, info);
     })) {
         log::debug<1>("oms order_update market {}@{} not found", u.symbol, u.exchange);
     }
 }
 
-std::pair<oms::Market&, bool> Manager::emplace_market(core::market::Info const& market) {    
-    auto& by_market = markets_[market.account];
+std::pair<oms::Book&, bool> Manager::emplace_market(oms::Market const & market) {    
+    auto& by_account = books_[market.portfolio];
+    auto& by_market = by_account[market.account];
     auto iter = by_market.find(market.market);
     if(iter!=std::end(by_market)) {
         return {iter->second, false};
@@ -651,15 +652,15 @@ std::pair<oms::Market&, bool> Manager::emplace_market(core::market::Info const& 
         assert(market.market);
         assert(!market.exchange.empty());
         assert(!market.symbol.empty());
-        oms::Market& market_2 = by_market[market.market];
-        market_2.market = market.market;        
-        market_2.exchange = market.exchange;
-        market_2.symbol = market.symbol;
-        market_2.trade_gateway_id = market.trade_gateway_id;
+        oms::Book& book = by_market[market.market];
+        book.market = market.market;        
+        book.exchange = market.exchange;
+        book.symbol = market.symbol;
+        //book.trade_gateway_id = market.trade_gateway_id;
         //market_2.account = market.account;
         //market_2.tick_size = market.tick_size;
         //market_2.min_trade_vol = market.min_trade_vol;
-        market_2.last_position_modify_time = now();
+        book.last_position_modify_time = now();
         // FIXME: no accounts ?
         
         //if(market_2.account.empty()) {
@@ -668,8 +669,8 @@ std::pair<oms::Market&, bool> Manager::emplace_market(core::market::Info const& 
         //    });
         //}
         log::info<2>("oms::emplace_market symbol {} exchange {} account {} market {}", 
-            market_2.symbol, market_2.exchange, market_2.account, market_2.market);
-        return {market_2, true};
+            book.symbol, book.exchange, book.account, book.market);
+        return {book, true};
     }
 }
 
@@ -686,7 +687,7 @@ void Manager::operator()(roq::Event<OrderAck> const& event) {
         return;
     }
     
-    if(!get_market(event, [&](oms::Market & market, core::market::Info const& info) {
+    if(!get_market(event, [&](oms::Book & market, core::market::Info const& info) {
 
         if(!market.get_order(u.order_id, [&](oms::Order& order) {
             assert(order.order_id == u.order_id);
@@ -732,7 +733,7 @@ void Manager::operator()(Event<PositionUpdate> const & event) {
     Base::operator()(event);
     auto& u = event.value;    
     log::info<2>("PositionUpdate {}", event);    
-    get_market(event,[&](oms::Market& market, core::market::Info const& info) {
+    get_market(event,[&](oms::Book& market, core::market::Info const& info) {
         auto new_position = u.long_quantity - u.short_quantity;
         market.position_by_account = new_position; 
         auto gateway_id = event.message_info.source;
@@ -770,7 +771,7 @@ void Manager::operator()(roq::Event<DownloadBegin> const& event) {
     auto& u = event.value;
     if(u.account.empty())
         return;
-    get_markets([&](oms::Market& market, core::market::Info const& info) {
+    get_markets([&](oms::Book& market, core::market::Info const& info) {
         if(market.account == u.account) {
             //if(position_snapshot==core::PositionSnapshot::ACCOUNT) {
                 market.position_by_orders = 0;
@@ -791,7 +792,7 @@ void Manager::operator()(roq::Event<DownloadEnd> const& event) {
     max_order_id  = std::max(max_order_id, event.value.max_order_id);
     auto& u = event.value;
     if(!u.account.empty() /*&& position_snapshot==core::PositionSnapshot::ACCOUNT*/) {
-        get_markets([&](oms::Market & market, core::market::Info const& info) {
+        get_markets([&](oms::Book & market, core::market::Info const& info) {
             if(market.account==u.account) {
                 market.position_by_orders = market.position_by_account;
                 log::info<1>("OMS position_snapshot account {} portfolio.{} {} position_by_orders = position_by_account = {}  market {}",  
@@ -809,7 +810,7 @@ void Manager::operator()(roq::Event<RateLimitTrigger> const& event) {
        case roq::BufferCapacity::HIGH_WATER_MARK: {
        } break;
        case roq::BufferCapacity::FULL: {
-           get_markets([&](oms::Market &market, core::market::Info const& info){
+           get_markets([&](oms::Book &market, core::market::Info const& info){
                if(event.message_info.source_name == market.exchange) {
                 auto ban_until = market.ban_until = std::max(now(), u.ban_expires);
                 log::info<1>("RateLimitTrigger ban_until {} ({}s) exchange {} market {}", 

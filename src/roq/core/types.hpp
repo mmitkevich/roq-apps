@@ -14,6 +14,7 @@ using Volume = Double;
 using Ident = uint32_t;
 using MarketIdent = core::Ident;
 using PortfolioIdent = core::Ident;
+using StrategyIdent = core::Ident;
 
 struct PortfolioKey {
     core::PortfolioIdent portfolio;
