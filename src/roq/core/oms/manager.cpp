@@ -130,12 +130,11 @@ void Manager::process(oms::Book& book, core::market::Info const& info) {
     std::chrono::nanoseconds now = this->now();
     auto mask = roq::Mask{roq::SupportType::CREATE_ORDER, roq::SupportType::CANCEL_ORDER};
     
-    resolve_trade_gateway(book);
-    assert(book.trade_gateway_id>=0);
+    bool trade_gateway_resolve_result = resolve_trade_gateway(book);
 
-    bool ready = core.gateways.is_ready(mask, book.trade_gateway_id, book.account);
-    log::info<2>("OMS process now {} symbol {} exchange {} ban {} ready {} tick_size {}",
-         now, book.symbol, book.exchange, book.ban_until.count() ? (book.ban_until-now).count()/1E9:NaN, ready, book.tick_size);
+    bool ready = core.gateways.is_ready(mask, book.trade_gateway_id, book.account) && trade_gateway_resolve_result;
+    log::info<2>("OMS process now {} symbol {} exchange {} account {} ban {} ready {} trade_gateway.{} {} tick_size {}",
+         now, book.symbol, book.exchange, book.account, book.ban_until.count() ? (book.ban_until-now).count()/1E9:NaN, ready, book.trade_gateway_id, book.trade_gateway_name, book.tick_size);
     
     if(!ready) {
         return;
@@ -322,7 +321,14 @@ oms::Order& Manager::create_order(oms::Book& book, const core::TargetOrder& targ
         .price = target.price, 
         .routing_id = routing_id_v
     };
-    market_by_order_[order_id] = book.market;
+    market_by_order_[order_id] = oms::Market {
+        .market = book.market,
+        .symbol = book.symbol,
+        .exchange = book.exchange,
+        .account = book.account,
+        .trade_gateway_name = book.trade_gateway_name
+    };
+
     log::info<1>("OMS create_order {{ order_id={}.{} side={} price={} qty={} symbol={} exchange={} market {}, account={}, execution_instructions={} }}", 
         order_id, order.pending.version, target.side, target.price, target.quantity, 
         book.symbol, book.exchange, book.market, book.account, 
@@ -608,7 +614,13 @@ bool Manager::erase_order(oms::Book& book, uint64_t order_id) {
 
 void Manager::operator()(roq::Event<OrderUpdate> const& event) {
     auto& u = event.value;
-    if(!get_book(event, [&](oms::Book& book, core::market::Info const & info) {
+    oms::Market key = {
+        .symbol = u.symbol,
+        .exchange = u.exchange,
+        .account = u.account,
+        .strategy = u.strategy_id
+    };
+    if(!get_book(key, [&](oms::Book& book, core::market::Info const & info) {
 
         auto [order,is_new_order] =  book.emplace_order(u.order_id);
         assert(order.order_id == u.order_id);
@@ -633,7 +645,14 @@ void Manager::operator()(roq::Event<OrderUpdate> const& event) {
             order.pending.version = u.max_accepted_version;
             order.pending.type = RequestType::UNDEFINED;
             order.expected = order.confirmed;
-            market_by_order_[order.order_id] = book.market;
+            market_by_order_[order.order_id] = oms::Market {
+                .market = book.market,
+                .symbol = book.symbol,
+                .exchange = book.exchange,
+                .account = book.account,
+                .strategy = book.strategy,
+                .trade_gateway_name = book.trade_gateway_name,                
+            };
             
             if(u.order_status!=OrderStatus::WORKING) {
                 // keep only working
@@ -652,11 +671,11 @@ void Manager::operator()(roq::Event<OrderUpdate> const& event) {
         }
         process(book, info);
     })) {
-        log::debug<1>("oms order_update market {}@{} not found", u.symbol, u.exchange);
+        log::info<1>("oms order_update not_found market {}@{} account {} strategy {}", u.symbol, u.exchange, u.account, u.strategy_id);
     }
 }
 
-void Manager::resolve_trade_gateway(oms::Book& book) {
+bool Manager::resolve_trade_gateway(oms::Book& book) {
     if(book.trade_gateway_name.empty()) {
         book.trade_gateway_name = core.markets.get_trade_gateway(oms::Market {
             .market=book.market,            
@@ -670,10 +689,11 @@ void Manager::resolve_trade_gateway(oms::Book& book) {
         book.trade_gateway_id = core.gateways.get_source(book.trade_gateway_name);
         log::info("oms resolved trade_gateway_id to {} for gateway {} for book {}@{}", book.trade_gateway_id, book.trade_gateway_name, book.symbol, book.exchange);
     }
+    return book.trade_gateway_id>=0;
 }
 
 std::pair<oms::Book&, bool> Manager::emplace_book(oms::Market const & market) {    
-    auto& by_account = books_[market.portfolio];
+    auto& by_account = books_[market.strategy];
     auto& by_market = by_account[market.account];
     auto iter = by_market.find(market.market);
     if(iter!=std::end(by_market)) {
@@ -688,6 +708,7 @@ std::pair<oms::Book&, bool> Manager::emplace_book(oms::Market const & market) {
         book.exchange = market.exchange;
         book.symbol = market.symbol;
         book.account = market.account;
+        book.strategy = market.strategy;
         book.trade_gateway_name = market.trade_gateway_name;
         resolve_trade_gateway(book);
         //book.trade_gateway_id = market.trade_gateway_id;
@@ -702,8 +723,8 @@ std::pair<oms::Book&, bool> Manager::emplace_book(oms::Market const & market) {
         //        market_2.account = account;
         //    });
         //}
-        log::info<2>("oms::emplace_market symbol {} exchange {} account {} market {}", 
-            book.symbol, book.exchange, book.account, book.market);
+        log::info<2>("oms emplace_book symbol {} exchange {} account {} market {} strategy {}", 
+            book.symbol, book.exchange, book.account, book.market, book.strategy);
         return {book, is_new};
     }
 }
@@ -712,16 +733,14 @@ std::pair<oms::Book&, bool> Manager::emplace_book(oms::Market const & market) {
 void Manager::operator()(roq::Event<OrderAck> const& event) {
     auto& u = event.value;
     auto iter = market_by_order_.find(u.order_id);
-    core::MarketIdent market_id;
-    if(iter!=market_by_order_.end())
-        market_id = iter->second;
-    else {
-        log::info<1>("OMS order_ack not_found {} order_id={}.{} side={}, status={} symbol={} exchange={} market={}", 
-            u.request_type, u.order_id, u.version, u.side, u.request_status, u.symbol, u.exchange, market_id);
+    if(iter==market_by_order_.end())
+    {
+        log::info<1>("OMS order_ack not_found {} order_id={}.{} side={}, status={} symbol={} exchange={}", 
+            u.request_type, u.order_id, u.version, u.side, u.request_status, u.symbol, u.exchange);
         return;
     }
-    
-    if(!get_book(event, [&](oms::Book & market, core::market::Info const& info) {
+    oms::Market& key = iter->second;
+    if(!get_book(key, [&](oms::Book & market, core::market::Info const& info) {
 
         if(!market.get_order(u.order_id, [&](oms::Order& order) {
             assert(order.order_id == u.order_id);
@@ -757,7 +776,7 @@ void Manager::operator()(roq::Event<OrderAck> const& event) {
                 u.request_type, u.order_id, u.version, u.side, u.request_status, u.symbol, u.exchange, market.market);            
         }
     })) {
-        log::info<1>("OMS order_ack market not_found {} order_id={}.{} side={}, status={} symbol={} exchange={}", 
+        log::info<1>("OMS order_ack book not_found {} order_id={}.{} side={}, status={} symbol={} exchange={}", 
             u.request_type, u.order_id, u.version, u.side, u.request_status, u.symbol, u.exchange);            
     }
 }

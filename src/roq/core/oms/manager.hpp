@@ -123,12 +123,12 @@ private:
     bool reconcile_positions(oms::Book&);
     void exposure_update(oms::Book& market);
 
-    void resolve_trade_gateway(oms::Book& book);
+    bool resolve_trade_gateway(oms::Book& book);
 private:
     std::chrono::nanoseconds reject_timeout_ = std::chrono::seconds {2};
     uint64_t max_order_id = 0;
     std::array<char, 32> routing_id;
-    core::Hash<uint64_t, core::MarketIdent> market_by_order_;
+    core::Hash<uint64_t, oms::Market> market_by_order_;
     core::Hash<core::StrategyIdent, core::Hash<roq::Account, core::Hash<core::MarketIdent, oms::Book> > > books_;
     //absl::flat_hash_map<roq::Exchange, roq::Account> account_by_exchange_;
     //int source_id = 0;
@@ -155,18 +155,25 @@ bool core::oms::Manager::get_book(roq::Event<T> const& event,  Fn&&fn) {
     return found;
 }
 
-bool core::oms::Manager::get_book(oms::Market const& market, std::invocable<oms::Book&, market::Info const &> auto fn) {
-    auto iter = books_.find(market.strategy);
+bool core::oms::Manager::get_book(oms::Market const& key, std::invocable<oms::Book&, market::Info const &> auto fn) {
+    auto iter = books_.find(key.strategy);
     if(iter == std::end(books_)) {
         return false;
     }
     auto& by_account = iter->second;
-    auto iter_1 = by_account.find(market.account);
+    auto iter_1 = by_account.find(key.account);
     if(iter_1 == std::end(by_account)) {
         return false;
     }
     auto& by_market = iter_1->second;
-    auto iter_2 = by_market.find(market.market);
+    core::MarketIdent market = key.market;
+    if(!market) {
+        market = core.get_market_ident(key.symbol, key.exchange);
+    }
+    if(!market) {
+        return false;
+    }
+    auto iter_2 = by_market.find(market);
     if(iter_2 == std::end(by_market)) {
         return false;
     }
