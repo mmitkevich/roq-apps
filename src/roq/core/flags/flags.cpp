@@ -37,21 +37,13 @@ ABSL_FLAG(
 namespace roq {
 namespace core {
 
-/*std::string_view Flags::log_path() {
-  static const std::string result = absl::GetFlag(FLAGS_log_path);
-  return result;
-}*/
-
-
 const std::string& Flags::config_file() {
   static const std::string result = absl::GetFlag(FLAGS_config_file);
-  //static const std::string result = "/opt/tbricks/roq-rencap/umm/alpha_maker/alpha_maker.toml";
   return result;
 }
 
 const std::string& Flags::strategy() {
   static const std::string result = absl::GetFlag(FLAGS_strategy);
-  //static const std::string result = "AlphaMaker@deribit";
   return result;
 }
 

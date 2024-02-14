@@ -1,14 +1,9 @@
 // (c) copyright 2023 Mikhail Mitkevich
-//#include "umm/prologue.hpp"
 #include "roq/client.hpp"
 
 #include "roq/flags/args.hpp"
 #include "roq/logging/flags/settings.hpp"
 
-//#include "roq/mmaker/publisher.hpp"
-//#include "umm/core/model_api.hpp"
-//#include "umm/model/provider.hpp"
-//#include "./context.hpp"
 #include "roq/core/application.hpp"
 #include "roq/core/flags/flags.hpp"
 #include "roq/core/strategy.hpp"
@@ -21,18 +16,6 @@
 
 using namespace std::chrono_literals;
 using namespace std::literals;
-
-/*
-namespace umm {
-UMM_NOINLINE
-LogLevel get_log_level_from_env() {
-    const char* v = getenv("ROQ_v");
-    if(v)
-        return  (umm::LogLevel)atoi(v);
-    return LogLevel::WARN;
-}
-}
-*/
 
 namespace roq {
 namespace core {

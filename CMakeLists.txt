@@ -54,10 +54,6 @@ find_package(tomlplusplus REQUIRED)
 find_package(roq-flags REQUIRED)
 find_package(roq-cache REQUIRED)
 
-#add_compile_options(-DUMM_USE_ROQ -DUMM_USE_ABSL -DUMM_USE_TOML)
-
-#find_package(umm REQUIRED)
-
 link_libraries(${CMAKE_DL_LIBS})
 
 # include
