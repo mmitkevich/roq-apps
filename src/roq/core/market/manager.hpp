@@ -4,7 +4,6 @@
 #include "string_view"
 //#include "umm/core/type.hpp"
 #include "roq/core/best_quotes_source.hpp"
-#include "absl/container/flat_hash_map.h"
 #include <absl/container/node_hash_map.h>
 #include <roq/gateway_status.hpp>
 #include <roq/reference_data.hpp>
@@ -14,6 +13,8 @@
 #include "roq/core/types.hpp"
 #include "roq/core/market.hpp"
 #include "roq/core/market/info.hpp"
+#include "roq/core/config/toml_file.hpp"
+#include "roq/core/hash.hpp"
 
 namespace roq::core::market {
 
@@ -45,35 +46,8 @@ struct Manager : core::BasicDispatch<market::Manager> {
     void operator()(const Event<GatewaySettings> &event);
     void operator()(const Event<ReferenceData> &event);
 
-    template<class Config, class Node>
-    void configure(const Config& config, Node root) {
-        clear();
-        config.get_nodes(root, "market",[&](auto node) {
-            using namespace std::literals;
-            auto exchange = config.get_string(node, "exchange");
-            //auto market_str = config.get_string(node, "market");
-            auto mdata_gateway_name = config.get_string_or(node, "mdata_gateway", "");
-            //auto trade_gateway_name = config.get_string_or(node, "trade_gateway", "");
-            config.get_values(type_c<std::string>{}, node, "symbol"sv, [&](auto i, auto symbol) {
-                core::MarketIdent market = this->get_market_ident(symbol, exchange);
-                log::info<1>("symbol {}, exchange {}, market {} mdata_gateway '{}'", 
-                    symbol, exchange, market, 
-                    mdata_gateway_name);
-                auto [item, is_new] = emplace_market({.market=market, .symbol=symbol, .exchange=exchange});
-                // FIXME:
-                //item.market = market_str;
-                item.pub_price_source = config.get_value_or(node, "pub_price_source", core::BestQuotesSource::UNDEFINED);
-                item.best_quotes_source = config.get_value_or(node, "best_quotes_source", core::BestQuotesSource::MARKET_BY_PRICE);
-                item.lot_size = config.get_value_or(node, "lot_size", core::Volume{1.0});
-                item.mdata_gateway_name = mdata_gateway_name;
-                //item.trade_gateway_name = trade_gateway_name;
-                item.depth_num_levels = config.get_value_or(node, "depth_num_levels", core::Integer{0});
-            });
-        });    
-
-
-    }
-
+    void configure(const config::TomlFile& config, config::TomlNode root);
+    
     void clear();
 
     core::MarketIdent get_market_ident(std::string_view symbol, std::string_view exchange) const;

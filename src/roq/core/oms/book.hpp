@@ -32,6 +32,7 @@ struct Book {
 
     core::Double tick_size {};
     uint32_t trade_gateway_id = (uint32_t)-1;
+    roq::Source trade_gateway_name;
     
     core::Duration post_fill_timeout = std::chrono::milliseconds{100};
     core::TimePoint ban_until {};

@@ -552,7 +552,13 @@ void Manager::operator()(roq::Event<Timer> const& event) {
 
 void Manager::operator()(roq::Event<GatewayStatus> const& event) {
     log::info<2>("OMS GatewayStatus {}, books_size {} erase_all_orders_on_gateway_not_ready {}", event, books_.size(), core::Flags::erase_all_orders_on_gateway_not_ready());
+
     get_markets([&](oms::Book& book, core::market::Info const& info) {
+        if (event.message_info.source_name == book.trade_gateway_name) {
+            book.trade_gateway_id = event.message_info.source;
+            log::info<1>("oms assigned trade_gateway_id {} to trade_gateway {}",
+                    book.trade_gateway_id, book.trade_gateway_name);
+        }
         if(!event.value.account.empty() && book.account == event.value.account) {
             if(core::Flags::erase_all_orders_on_gateway_not_ready()) {
                 if(!event.value.available.has_all(roq::Mask{roq::SupportType::CREATE_ORDER, roq::SupportType::CANCEL_ORDER})) {
@@ -820,4 +826,39 @@ void Manager::operator()(roq::Event<RateLimitTrigger> const& event) {
        } break;
    }
 }
+
+void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
+    //this->position_snapshot = config.get_value_or(node, "position_snapshot", core::PositionSnapshot::PORTFOLIO);
+    //this->position_source = config.get_value_or(node, "position_source", core::PositionSource::ORDERS);
+    //std::string_view portfolio = config.get_string_or(node, "portfolio", {});
+    // FIXME:
+    // this->portfolio  = portfolio;
+
+    auto node = root["oms"];
+
+    static constexpr core::Integer MIN_REJECT_TIMEOUT_MS = 100;
+
+    this->reject_timeout_ =  std::chrono::milliseconds { config.get_value_or(node, "reject_timeout", MIN_REJECT_TIMEOUT_MS) };
+
+    config.get_nodes(root, "market",[&](auto node) {
+        using namespace std::literals;
+        auto exchange = config.get_string(node, "exchange");
+        //auto market_str = config.get_string(node, "market");
+        auto trade_gateway_name = config.get_string_or(node, "trade_gateway", "");
+        config.get_values(type_c<std::string>{}, node, "symbol"sv, [&](auto i, auto symbol) {
+            //core::MarketIdent market = core.get_market_ident(symbol, exchange);
+            auto [info, is_new_1] = core.markets.emplace_market({
+                .symbol = symbol,
+                .exchange = exchange,
+            });
+            log::info<1>("symbol {}, exchange {}, market {} trade_gateway '{}'", 
+                symbol, exchange, info.market, 
+                trade_gateway_name);
+            auto [book, is_new] = emplace_market(oms::Market::from(info));
+            book.trade_gateway_name = trade_gateway_name;
+        });
+    });    
+}
+
+
 } // namespace roq::oms

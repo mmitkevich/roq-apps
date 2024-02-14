@@ -35,6 +35,7 @@
 #include "roq/core/oms/handler.hpp"
 #include "roq/core/oms/market.hpp"
 #include "roq/core/basic_handler.hpp"
+#include "roq/core/config/toml_file.hpp"
 
 //#include "roq/mmaker/profit_loss.hpp"
 
@@ -63,8 +64,7 @@ public:
 //    bool is_ready(uint32_t source, std::string_view account, roq::Mask<roq::SupportType> mask) const;
 //    bool is_downloading(uint32_t source) const;
     
-    template<class Config, class Node>
-    void configure(const Config& config, Node node);
+    void configure(const config::TomlFile& config, config::TomlNode node);
 
 //    double get_position(std::string_view account, std::string_view symbol, std::string_view exchange);
 
@@ -188,18 +188,6 @@ void oms::Manager::get_markets(std::invocable<oms::Book &, market::Info const &>
     }
 }
 
-template<class Config, class Node>
-void Manager::configure(const Config& config, Node node) {
-    //this->position_snapshot = config.get_value_or(node, "position_snapshot", core::PositionSnapshot::PORTFOLIO);
-    //this->position_source = config.get_value_or(node, "position_source", core::PositionSource::ORDERS);
-    //std::string_view portfolio = config.get_string_or(node, "portfolio", {});
-    // FIXME:
-    // this->portfolio  = portfolio;
-
-    static constexpr core::Integer MIN_REJECT_TIMEOUT_MS = 100;
-
-    this->reject_timeout_ =  std::chrono::milliseconds { config.get_value_or(node, "reject_timeout", MIN_REJECT_TIMEOUT_MS) };
-}
 
 
 
