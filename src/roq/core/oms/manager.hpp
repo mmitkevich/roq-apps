@@ -22,7 +22,6 @@
 #include "roq/core/clock.hpp"
 
 #include "roq/core/order.hpp"
-#include "roq/core/exposure_update.hpp"
 #include "roq/core/types.hpp"
 #include "roq/core/quote.hpp"
 #include "roq/core/quotes.hpp"
@@ -121,7 +120,6 @@ private:
     void process(oms::Book& market, market::Info const& info);
     
     bool reconcile_positions(oms::Book&);
-    void exposure_update(oms::Book& market);
 
     bool resolve_trade_gateway(oms::Book& book);
 private:

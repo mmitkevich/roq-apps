@@ -461,22 +461,14 @@ bool Manager::reconcile_positions(oms::Book& book) {
         auto delta =  book.position_by_account - book.position_by_orders;    // stable
         if( !std::isnan(delta) && utils::compare(delta, 0.)!=std::strong_ordering::equal) {
             auto prev_by_orders = book.position_by_orders;
-            book.position_by_orders = book.position_by_account;
-            log::info<1>("OMS reconcile_positions by_orders {}->{} position_by_account {} delta {}",
+            //book.position_by_orders = book.position_by_account;
+            log::info<1>("OMS reconcile_positions (ignored) by_orders {} -> {} position_by_account {} delta {}",
                 prev_by_orders, book.position_by_orders, book.position_by_account, delta);
             
             return true;
         }
     }
     return false;
-}
-
-// NOTE: only publishes position in "position_source==ORDERS" mode
-void Manager::exposure_update(oms::Book& book) {
-    log::info<1>("oms::exposure_update  position_by_orders {} position_by_account {} market {} position_source {}", 
-        book.position_by_orders, book.position_by_account, book.market, core.portfolios.position_source);        
-    
-    book.last_position_modify_time = now();
 }
 
 void Manager::order_fills(oms::Book& book, roq::Side side, double price, double fill_size) {
@@ -498,14 +490,14 @@ void Manager::order_fills(oms::Book& book, roq::Side side, double price, double 
             .portfolio = book.portfolio,
         };
 
+        if(core.portfolios.position_source!=core::PositionSource::ORDERS) {
+            // NOTE: since PositionUpdate is asyncronous, we should prevent adding new orders (FIXME: we should be able to cancel though)
+            book.last_position_modify_time = now();
+            book.ban_until = now() + book.post_fill_timeout;
+        }
         // to portfolio::Manager
         handler_(trade);
 
-        if(core.portfolios.position_source==core::PositionSource::ORDERS) {
-            exposure_update(book);            
-        } else {
-            book.ban_until = now() + book.post_fill_timeout;
-        }
     }
 }
 
@@ -782,17 +774,18 @@ void Manager::operator()(Event<PositionUpdate> const & event) {
     Base::operator()(event);
     auto& u = event.value;    
     log::info<2>("PositionUpdate {}", event);    
-    get_book(event,[&](oms::Book& market, core::market::Info const& info) {
+    get_book(event,[&](oms::Book& book, core::market::Info const& info) {
         auto new_position = u.long_quantity - u.short_quantity;
-        market.position_by_account = new_position; 
+        book.position_by_account = new_position; 
         auto gateway_id = event.message_info.source;
         bool is_downloading = core.gateways.is_downloading(gateway_id);    
         if(!is_downloading && core.portfolios.position_source==core::PositionSource::PORTFOLIO) {
-            market.position_by_account = new_position;
+            book.position_by_account = new_position;
+            book.last_position_modify_time = now();
             log::info<1>("OMS position_update downloading {} account {} position_by_orders {} position_by_account {} symbol {} exchange {} market {}",
-                is_downloading, market.account, market.position_by_orders, market.position_by_account,
-                market.symbol, market.exchange, market.market);
-            //exposure_update(market);
+                is_downloading, book.account, book.position_by_orders, book.position_by_account,
+                book.symbol, book.exchange, book.market);
+
         }
     });
 }
@@ -841,12 +834,12 @@ void Manager::operator()(roq::Event<DownloadEnd> const& event) {
     max_order_id  = std::max(max_order_id, event.value.max_order_id);
     auto& u = event.value;
     if(!u.account.empty() /*&& position_snapshot==core::PositionSnapshot::ACCOUNT*/) {
-        get_books([&](oms::Book & market, core::market::Info const& info) {
-            if(market.account==u.account) {
-                market.position_by_orders = market.position_by_account;
+        get_books([&](oms::Book & book, core::market::Info const& info) {
+            if(book.account==u.account) {
+                book.position_by_orders = book.position_by_account;
+                book.last_position_modify_time = now();
                 log::info<1>("OMS position_snapshot account {} portfolio.{} {} position_by_orders = position_by_account = {}  market {}",  
-                        u.account, market.portfolio, market.portfolio_name, market.position_by_orders, market.market);
-                exposure_update(market);
+                        u.account, book.portfolio, book.portfolio_name, book.position_by_orders, book.market);
             }
         });
     }
