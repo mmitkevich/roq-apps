@@ -711,10 +711,6 @@ std::pair<oms::Book&, bool> Manager::emplace_book(oms::Market const & market) {
         book.strategy = market.strategy;
         book.trade_gateway_name = market.trade_gateway_name;
         resolve_trade_gateway(book);
-        //book.trade_gateway_id = market.trade_gateway_id;
-        //market_2.account = market.account;
-        //market_2.tick_size = market.tick_size;
-        //market_2.min_trade_vol = market.min_trade_vol;
         book.last_position_modify_time = now();
         // FIXME: no accounts ?
         
