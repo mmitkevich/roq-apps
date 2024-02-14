@@ -3,15 +3,13 @@
     #label           = "~FUT ~Q1 ~BIT" # set of labels (groups) for the symbol
     symbol          = ["BTC-PERPETUAL","BTC-29MAR24"]
     exchange        = "deribit"
-#    tick_size       = 0.01
     mdata_gateway   = "deribit"
     trade_gateway   = "deribit"
-#    account         = "REN_DERIBIT"
 
 [oms]
     position_source     = "PORTFOLIO" # "ORDERS"
 
-# specify trade gateway for each [exchange,account] pair
+# specify accounts and attach them to trade gateway
 [[account]]
     exchange        = "deribit"
     account         = "REN_DERIBIT"

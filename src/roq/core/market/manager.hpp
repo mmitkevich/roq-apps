@@ -57,16 +57,6 @@ struct Manager : core::BasicDispatch<market::Manager> {
         return get_market_ident(event.value.symbol, event.value.exchange);
     }
     
-    std::string_view get_trade_gateway(oms::Market const& market) {
-        auto iter_1 = trade_gateway_by_account_by_exchange_.find(market.exchange);
-        if(iter_1 == std::end(trade_gateway_by_account_by_exchange_))
-            return "";
-        auto iter_2 = iter_1->second.find(market.account);
-        if(iter_2 == std::end(iter_1->second))
-            return "";
-        return iter_2->second;
-    }
-
     bool get_market(core::Market const& market, std::invocable<core::market::Info const&> auto&& fn) const {
         if(market.market)
             return get_market(market.market, fn);
@@ -83,23 +73,11 @@ struct Manager : core::BasicDispatch<market::Manager> {
         }
         return false;
     }
-/*
-    template<class Fn, class V>
-    auto get_market_prop(core::MarketIdent market_id, Fn&& fn, V default_value) const {
-        auto iter = market_by_id_.find(market_id);
-        if(iter != std::end(market_by_id_)) {
-            const auto& item = iter->second;
-            return fn(item);
-        }
-        return default_value;
-    }
-*/
 public:
     core::MarketIdent last_market_id = 0;
 private:
     absl::flat_hash_map<std::string_view/*roq::Exchange*/, absl::flat_hash_map<std::string_view/*roq::Symbol*/, core::MarketIdent> > market_by_symbol_by_exchange_;
     absl::node_hash_map<core::MarketIdent, core::market::Info> market_by_id_;
-    absl::flat_hash_map<roq::Exchange, absl::flat_hash_map<roq::Account, roq::Source>> trade_gateway_by_account_by_exchange_;
 };
 
 } // roq::core::market

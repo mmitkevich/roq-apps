@@ -30,11 +30,7 @@ bool Manager::is_ready(core::MarketIdent market_id) const {
 
             }
         });
-        // FIXME: cache also contains tick_size. Should we wait download end?
-        //ready &= !core::is_empty_value(market.tick_size);
     });
-    // FIXME: 
-    // ready &= this->tick_rules.tick_size.contains(market) && !std::isnan(this->tick_rules.tick_size[market]);
     return ready;
 }
 

@@ -108,22 +108,8 @@ public:
     template<class V, class Fn>
     std::size_t get_values(type_c<V>, Node parent, std::string_view value, Fn&& fn) const;
 
-
-    //void configure(roq::core::IModel& model, Node node) const;
-    //void operator()(roq::core::IModel& model) const;
-
     std::string node_path(TomlNode node) const;
 
-    /*
-    template<class Context, class Fn>
-    void get_markets(Context& context, Fn&& fn) {
-        get_nodes("market", [&](Node node) {
-            auto market_str = get_string(node, "market");
-            auto market = context.get_market_ident(market_str);
-            fn(market, node);
-            log::debug("market {}", context.prn(market));
-        });
-    }*/
 private:
 
     template<class T>

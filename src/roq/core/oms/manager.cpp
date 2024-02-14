@@ -667,7 +667,7 @@ void Manager::operator()(roq::Event<OrderUpdate> const& event) {
 
 bool Manager::resolve_trade_gateway(oms::Book& book) {
     if(book.trade_gateway_name.empty()) {
-        book.trade_gateway_name = core.markets.get_trade_gateway(oms::Market {
+        book.trade_gateway_name = get_trade_gateway(oms::Market {
             .market=book.market,            
             .symbol=book.symbol,
             .exchange=book.exchange,    
@@ -861,16 +861,34 @@ void Manager::operator()(roq::Event<RateLimitTrigger> const& event) {
    }
 }
 
-void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
-    //this->position_snapshot = config.get_value_or(node, "position_snapshot", core::PositionSnapshot::PORTFOLIO);
-    //this->position_source = config.get_value_or(node, "position_source", core::PositionSource::ORDERS);
-    //std::string_view portfolio = config.get_string_or(node, "portfolio", {});
-    // FIXME:
-    // this->portfolio  = portfolio;
+std::string_view Manager::get_trade_gateway(oms::Market const& market) {
+    auto iter_1 = trade_gateway_by_account_by_exchange_.find(market.exchange);
+    if(iter_1 == std::end(trade_gateway_by_account_by_exchange_))
+        return "";
+    auto iter_2 = iter_1->second.find(market.account);
+    if(iter_2 == std::end(iter_1->second))
+        return "";
+    return iter_2->second;
+}
 
+
+void Manager::clear() {
+    trade_gateway_by_account_by_exchange_.clear();
+}
+
+void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
+    clear();
+    
     auto node = root["oms"];
 
     static constexpr core::Integer MIN_REJECT_TIMEOUT_MS = 100;
+
+    config.get_nodes(root, "account", [&](auto node) {
+      auto account = config.get_string(node, "account");
+      auto trade_gateway_name = config.get_string(node, "trade_gateway");
+      auto exchange = config.get_string(node, "exchange");
+      trade_gateway_by_account_by_exchange_[exchange][account] = trade_gateway_name;
+    });
 
     this->reject_timeout_ =  std::chrono::milliseconds { config.get_value_or(node, "reject_timeout", MIN_REJECT_TIMEOUT_MS) };
 
