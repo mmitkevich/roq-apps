@@ -4,8 +4,6 @@
 #include "roq/core/hash.hpp"
 #include "roq/core/order.hpp"
 #include "roq/core/position_source.hpp"
-//#include "umm/prologue.hpp"
-//#include "umm/core/type.hpp"
 #include "roq/core/types.hpp"
 #include "roq/core/oms/manager.hpp"
 #include <chrono>
@@ -490,11 +488,11 @@ void Manager::order_fills(oms::Book& book, roq::Side side, double price, double 
             .portfolio = book.portfolio,
         };
 
-        if(core.portfolios.position_source!=core::PositionSource::ORDERS) {
+        //if(core.portfolios.position_source!=core::PositionSource::ORDERS) {
             // NOTE: since PositionUpdate is asyncronous, we should prevent adding new orders (FIXME: we should be able to cancel though)
-            book.last_position_modify_time = now();
-            book.ban_until = now() + book.post_fill_timeout;
-        }
+        book.last_position_modify_time = now();
+        book.ban_until = now() + book.post_fill_timeout;
+        //}
         // to portfolio::Manager
         handler_(trade);
 
