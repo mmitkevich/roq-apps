@@ -1,3 +1,4 @@
+#pragma once
 #include "roq/core/types.hpp"
 #include "roq/string_types.hpp"
 #include "roq/core/market.hpp"
@@ -19,7 +20,7 @@ struct Info {
     }
 
     // preferred
-    uint32_t mdata_gateway_id = -1;
+    int32_t mdata_gateway_id = -1;
     roq::Source mdata_gateway_name;
     
     // preferred

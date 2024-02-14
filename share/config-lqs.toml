@@ -6,31 +6,38 @@
 #    tick_size       = 0.01
     mdata_gateway   = "deribit"
     trade_gateway   = "deribit"
+#    account         = "REN_DERIBIT"
 
 [oms]
     position_source     = "PORTFOLIO" # "ORDERS"
+
+# specify trade gateway per exchange/account
+[[account]]
+    exchange        = "deribit"
+    account         = "REN_DERIBIT"
+    trade_gateway   = "deribit"
 
 # attach portfolio to accounts
 [[parameter]]
     label = "portfolio"
     account = "REN_DERIBIT"
     exchange = "deribit"
-    value = "P:101"     # this is portfolio name (FIXME: correlate to strategy_id?)
+    value = "LG1"     # specify portfolio LG1 for exchange account REN_DERIBIT
     symbol = ""
 
 [[parameter]]
     label = "enabled"
-    account = "P:101"   # this is portfolio (not account) to liquidate
+    account = "LG1"   # this is portfolio (not account) to liquidate
     exchange = "lqs"    # FIXME: this is the name of the pricer
     value = "true"      # enabled means should liquidate
 
-# underlying symbol for each contract
+# underlying symbol for each contract (setup is going per liquidation portfolio)
 [[parameter]]
     label           = "underlying"
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
     value           = ["lqs:BTC/USD",               "lqs:BTC/USD"]  # exchange:symbol
-    account         = ["P:101"]
+    account         = ["LG1"]
 
 # delta greek
 [[parameter]]
@@ -38,7 +45,7 @@
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
     value           = ["1",                         "1"]
-    account         = ["P:101"]
+    account         = ["LG1"]
 
 # min delta (in USD) for the whole combination
 [[parameter]]
@@ -46,7 +53,7 @@
     exchange        = "lqs"
     symbol          = "BTC/USD"
     value           = "-1000"
-    account         = "P:101"         # portfolio (or strategy id?)
+    account         = "LG1"         # portfolio (or strategy id?)
 
 # max delta (in USD) for the whole combination
 [[parameter]]
@@ -54,7 +61,7 @@
     symbol          = "BTC/USD"
     exchange        = "lqs"
     value           = "1000"
-    account         = "P:101"   
+    account         = "LG1"   
 
 # multiplier contract volume -> delta in USD
 [[parameter]]
@@ -62,28 +69,29 @@
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["1",                     "1"]
-    account         = ["P:101"]
+    account         = ["LG1"]
 
+# specify subaccount to trade legs through
 [[parameter]]
     label           = "account"
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
-    value           = ["A1",                    "A1"]
-    account         = ["P:101"]
+    value           = ["REN_DERIBIT",           "REN_DERIBIT"]
+    account         = ["LG1"]
 
 [[parameter]]
     label           = "buy_volume"
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["100",                   "100"]
-    account         = ["P:101"]
+    account         = ["LG1"]
 
 [[parameter]]
     label           = "sell_volume"
     exchange        = "deribit"    
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["100",                   "100"]
-    account         = ["P:101"]
+    account         = ["LG1"]
 
 # ban future order placements after order has been fully filled (separately each side of the book)
 [[parameter]]
@@ -91,4 +99,4 @@
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     exchange        = "deribit"
     value           = ["100",                  "100"]
-    account         = ["P:101"]
+    account         = ["LG1"]

@@ -15,7 +15,7 @@ struct Gateway {
     operator cache::Gateway&() { return gateway; }
     operator const cache::Gateway&() const { return gateway; }
     roq::Source gateway_name {};
-    uint32_t gateway_id = -1;
+    int32_t gateway_id = -1;
 };
 
 }

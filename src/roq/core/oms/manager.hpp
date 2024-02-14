@@ -68,12 +68,12 @@ public:
 
 //    double get_position(std::string_view account, std::string_view symbol, std::string_view exchange);
 
-    std::pair<oms::Book&, bool> emplace_market(oms::Market const& market);
-    bool get_market(oms::Market const& market, std::invocable<oms::Book&, market::Info const&> auto fn);
-    void get_markets(std::invocable<oms::Book &, market::Info const &> auto fn);
+    std::pair<oms::Book&, bool> emplace_book(oms::Market const& market);
+    bool get_book(oms::Market const& market, std::invocable<oms::Book&, market::Info const&> auto fn);
+    void get_books(std::invocable<oms::Book &, market::Info const &> auto fn);
 
     template<class T, std::invocable<oms::Book&, market::Info const &> Fn>
-    bool get_market(roq::Event<T> const& event, Fn&&fn);
+    bool get_book(roq::Event<T> const& event, Fn&&fn);
 
     // roq::client::Handler
     void operator()(roq::Event<Timer> const& event) override;
@@ -123,7 +123,7 @@ private:
     bool reconcile_positions(oms::Book&);
     void exposure_update(oms::Book& market);
 
-
+    void resolve_trade_gateway(oms::Book& book);
 private:
     std::chrono::nanoseconds reject_timeout_ = std::chrono::seconds {2};
     uint64_t max_order_id = 0;
@@ -142,7 +142,7 @@ private:
 };
 
 template<class T, std::invocable<oms::Book&, market::Info const &> Fn>
-bool core::oms::Manager::get_market(roq::Event<T> const& event,  Fn&&fn) {
+bool core::oms::Manager::get_book(roq::Event<T> const& event,  Fn&&fn) {
     bool found = false;
     T const& u = event.value;
     //        .market = core.get_market_ident(u.symbol. u.exchange),
@@ -150,12 +150,12 @@ bool core::oms::Manager::get_market(roq::Event<T> const& event,  Fn&&fn) {
         .symbol = u.symbol,
         .exchange = u.exchange
     }, [&](market::Info const & info) {
-        found = this->get_market(oms::Market::from(info), fn);
+        found = this->get_book(oms::Market{}.merge(info), fn);
     });
     return found;
 }
 
-bool core::oms::Manager::get_market(oms::Market const& market, std::invocable<oms::Book&, market::Info const &> auto fn) {
+bool core::oms::Manager::get_book(oms::Market const& market, std::invocable<oms::Book&, market::Info const &> auto fn) {
     auto iter = books_.find(market.strategy);
     if(iter == std::end(books_)) {
         return false;
@@ -176,7 +176,7 @@ bool core::oms::Manager::get_market(oms::Market const& market, std::invocable<om
     });
 }
 
-void oms::Manager::get_markets(std::invocable<oms::Book &, market::Info const &> auto fn) {
+void oms::Manager::get_books(std::invocable<oms::Book &, market::Info const &> auto fn) {
     for(auto& [strategy, by_account] : books_) {
         for(auto& [account, by_market] : by_account) {
             for(auto& [market_id, market] : by_market) {

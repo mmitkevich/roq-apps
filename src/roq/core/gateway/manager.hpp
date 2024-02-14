@@ -33,6 +33,14 @@ struct Manager {
         return hash_get_value(gateway_id_by_name_, name, std::forward<Fn>(fn));
     }
 
+    int32_t get_source(std::string_view name) const {
+        auto iter = gateway_id_by_name_.find(name);
+        if(iter==gateway_id_by_name_.end()) {
+            return -1;
+        }
+        return iter->second;
+    }
+    
     std::pair<core::Gateway &, bool> emplace_gateway(roq::MessageInfo const& info);
 
     template<class T>

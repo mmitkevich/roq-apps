@@ -54,6 +54,7 @@ void market::Manager::operator()(const Event<ReferenceData> &event) {
 void market::Manager::clear() {
   market_by_symbol_by_exchange_.clear();
   market_by_id_.clear();
+  trade_gateway_by_account_by_exchange_.clear();
 }
 
 core::MarketIdent market::Manager::get_market_ident(std::string_view symbol, std::string_view exchange) const {
@@ -72,6 +73,12 @@ core::MarketIdent market::Manager::get_market_ident(std::string_view symbol, std
 
 void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
     clear();
+    config.get_nodes(root, "account", [&](auto node) {
+      auto account = config.get_string(node, "account");
+      auto trade_gateway_name = config.get_string(node, "trade_gateway");
+      auto exchange = config.get_string(node, "exchange");
+      trade_gateway_by_account_by_exchange_[exchange][account] = trade_gateway_name;
+    });
     config.get_nodes(root, "market",[&](auto node) {
         using namespace std::literals;
         auto exchange = config.get_string(node, "exchange");
