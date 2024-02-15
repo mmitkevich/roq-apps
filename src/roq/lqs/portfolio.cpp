@@ -48,7 +48,7 @@ void Portfolio::operator()(roq::Parameter const & p) {
         log::debug("lqs add leg {} to underlying {}", leg.market.market, underlying.market.market);
     } else if(p.label == "enabled"sv) {
         enabled = (std::string_view {p.value} == "true"sv);
-    } else  if(p.exchange == lqs::EXCHANGE) {    // underlyings are identified by having 'lqs' exchange
+    } else if(p.exchange == lqs::EXCHANGE) {    // underlyings are identified by having 'lqs' exchange
         auto [underlying, is_new_underlying] = emplace_underlying(p.symbol, p.exchange);
         underlying(p, *this);
     } else { // otherwise it is leg

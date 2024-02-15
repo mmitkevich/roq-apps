@@ -30,19 +30,19 @@ void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
     });
 }
 
-void Manager::operator()(roq::Event<roq::ParametersUpdate> const& event) {
-    for(auto& p: event.value.parameters) {
-        if(p.label == "portfolio"sv) {
-            auto [portfolio, is_new] = emplace_portfolio({
-                .portfolio_name = p.value
-            });
-            //portfolio.account = p.account;
-            //portfolio.exchange = p.exchange;
-            portfolio_by_account_[p.exchange][p.account] = portfolio.portfolio;
-            log::info("account {}@{} -> portfolio.{} {}", p.account, p.exchange, portfolio.portfolio, p.value);
-        }
-    }
-}
+//void Manager::operator()(roq::Event<roq::ParametersUpdate> const& event) {
+//    for(auto& p: event.value.parameters) {
+//        if(p.label == "portfolio"sv) {
+//            auto [portfolio, is_new] = emplace_portfolio({
+//                .portfolio_name = p.value
+//            });
+//            //portfolio.account = p.account;
+//            //portfolio.exchange = p.exchange;
+//            portfolio_by_account_[p.exchange][p.account] = portfolio.portfolio;
+//            log::info("account {}@{} -> portfolio.{} {}", p.account, p.exchange, portfolio.portfolio, p.value);
+//        }
+//    }
+//}
     
 
 // from OMS

@@ -26,6 +26,7 @@ struct Portfolio {
 public:
   lqs::Pricer& pricer;
   bool enabled = false;
+  core::StrategyIdent strategy;
   core::Hash<core::MarketIdent, lqs::Underlying> underlyings;
   core::Hash<core::MarketIdent, lqs::Leg> leg_by_market;
 };

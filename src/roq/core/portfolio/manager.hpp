@@ -30,7 +30,7 @@ struct Manager {
     }
 
     // config::Handler
-    void operator()(roq::Event<roq::ParametersUpdate> const& event);
+    //void operator()(roq::Event<roq::ParametersUpdate> const& event);
 
     // oms::Handler
     void operator()(core::Trade const & trade);
