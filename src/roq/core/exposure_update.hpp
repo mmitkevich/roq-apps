@@ -16,6 +16,7 @@ struct ExposureUpdate {
     std::span<const core::Exposure> exposure;
     core::PortfolioIdent portfolio {};    
     std::string_view portfolio_name;
+    core::StrategyIdent strategy_id {};
 };
 
 }

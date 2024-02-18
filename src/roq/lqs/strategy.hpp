@@ -7,11 +7,11 @@ namespace roq::lqs {
 
 struct Pricer;
 
-struct Portfolio {
+struct Strategy {
 
-  Portfolio(lqs::Pricer& pricer) : pricer(pricer) {}
-  Portfolio(Portfolio const&) = default;
-  Portfolio(Portfolio&&) = default;
+  Strategy(lqs::Pricer& pricer) : pricer(pricer) {}
+  Strategy(Strategy const&) = default;
+  Strategy(Strategy&&) = default;
 
   void operator()(roq::Parameter const & p);
 
@@ -27,13 +27,14 @@ public:
   lqs::Pricer& pricer;
   bool enabled = false;
   core::StrategyIdent strategy;
+  core::PortfolioIdent portfolio;
   core::Hash<core::MarketIdent, lqs::Underlying> underlyings;
   core::Hash<core::MarketIdent, lqs::Leg> leg_by_market;
 };
 
 
 
-inline bool Portfolio::get_leg(core::MarketIdent market, std::invocable<lqs::Leg &> auto fn) {
+inline bool Strategy::get_leg(core::MarketIdent market, std::invocable<lqs::Leg &> auto fn) {
     auto iter = leg_by_market.find(market);
     if(iter == std::end(leg_by_market))
         return false;
@@ -41,12 +42,12 @@ inline bool Portfolio::get_leg(core::MarketIdent market, std::invocable<lqs::Leg
     return true;
 }
 
-inline bool Portfolio::get_underlying(lqs::Leg& leg, std::invocable<lqs::Underlying &> auto fn) {
+inline bool Strategy::get_underlying(lqs::Leg& leg, std::invocable<lqs::Underlying &> auto fn) {
     fn(underlyings[leg.underlying]);
     return true;
 }
 
-inline void Portfolio::get_legs(lqs::Underlying& underlying, std::invocable<Leg&> auto fn) {
+inline void Strategy::get_legs(lqs::Underlying& underlying, std::invocable<Leg&> auto fn) {
   for(auto market: underlying.legs) {
     get_leg(market, fn);
   }

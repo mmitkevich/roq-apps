@@ -5,7 +5,7 @@ set(TARGET_NAME "${PROJECT_NAME}-lqs")
 add_library( "${TARGET_NAME}" STATIC
   "leg.cpp"
   "underlying.cpp"
-  "portfolio.cpp"
+  "strategy.cpp"
   "pricer.cpp"
 )
  

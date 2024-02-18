@@ -15,34 +15,35 @@ Pricer::Pricer(core::Dispatcher &dispatcher, core::Manager &core)
 , core(core)
 {}
 
-std::pair<lqs::Portfolio&, bool> Pricer::emplace_portfolio(std::string_view portfolio_name) {
-    auto [portfolio_1, _] = core.portfolios.emplace_portfolio({.portfolio_name = portfolio_name});
-    auto [iter, is_new] = portfolios.try_emplace(portfolio_1.portfolio, *this);
-    lqs::Portfolio& portfolio = iter->second;
-    return {portfolio, is_new};
+std::pair<lqs::Strategy&, bool> Pricer::emplace_strategy(core::StrategyIdent strategy_id) {
+    //auto [portfolio, is_new_portfolio] = core.portfolios.emplace_portfolio({.portfolio_name = portfolio_name});
+    auto [iter, is_new] = strategies_.try_emplace(strategy_id, *this);
+    lqs::Strategy& strategy = iter->second;
+    return {strategy, is_new};
 }
 
 void Pricer::operator()(const roq::Event<roq::ParametersUpdate> & e) {
     for(const auto& p: e.value.parameters) {
-        log::debug("lqs parameter label {} exchange {} symbol {} portfolio {} value {}", p.label, p.exchange, p.symbol, p.account, p.value);
-        core::MarketIdent market_id = core.markets.get_market_ident(p.symbol, p.exchange);
-        auto [portfolio, is_new_portfolio] = emplace_portfolio(p.account);
-        portfolio(p);
+        log::debug("lqs parameter label {} exchange {} symbol {} portfolio {} strategy {} value {}", 
+                                p.label, p.exchange, p.symbol, p.account, p.strategy_id, p.value);
+        //core::MarketIdent market_id = core.markets.get_market_ident(p.symbol, p.exchange);
+        auto [strategy, is_new] = emplace_strategy(p.strategy_id);
+        strategy(p);
     }
 }
 
 void Pricer::operator()(const roq::Event<core::ExposureUpdate> &e) {
     const auto& u = e.value;
-    get_portfolio(u.portfolio, [&](lqs::Portfolio& portfolio) {
+    get_strategy(u.strategy_id, [&](lqs::Strategy& s) {
         for(const auto& exposure: u.exposure) {
-            auto [this_leg, is_new_leg] = portfolio.emplace_leg(exposure.symbol, exposure.exchange);
-            this_leg(exposure, portfolio);
-            portfolio.get_underlying(this_leg, [&](lqs::Underlying & underlying) {
-                underlying.compute(portfolio);            
-                this_leg.compute(underlying, portfolio);
+            auto [this_leg, is_new_leg] = s.emplace_leg(exposure.symbol, exposure.exchange);
+            this_leg(exposure, s);
+            s.get_underlying(this_leg, [&](lqs::Underlying & underlying) {
+                underlying.compute(s);            
+                this_leg.compute(underlying, s);
                 // all legs affected by change in delta
-                portfolio.get_legs(underlying, [&](lqs::Leg& leg) {
-                    leg.compute(underlying, portfolio);
+                s.get_legs(underlying, [&](lqs::Leg& leg) {
+                    leg.compute(underlying, s);
                     dispatch(leg);
                 });
             });
@@ -52,16 +53,16 @@ void Pricer::operator()(const roq::Event<core::ExposureUpdate> &e) {
 
 void Pricer::operator()(const roq::Event<core::Quotes> &e) {
     core::Quotes const& u = e.value;
-    get_portfolios([&](lqs::Portfolio& portfolio) {
+    get_strategies([&](lqs::Strategy& s) {
         // broadcast to all portfolios
         bool result = true;
-        result &= portfolio.get_leg(u.market, [&](lqs::Leg & leg) { 
+        result &= s.get_leg(u.market, [&](lqs::Leg & leg) { 
             result &= core.best_quotes.get_quotes(u.market, [&] (core::BestQuotes const& market_quotes) {
                 leg.market_quotes = market_quotes;
             });
-            result &= portfolio.get_underlying(leg, [&] (lqs::Underlying & underlying ) {
-                underlying.compute(portfolio);
-                leg.compute(underlying, portfolio);
+            result &= s.get_underlying(leg, [&] (lqs::Underlying & underlying ) {
+                underlying.compute(s);
+                leg.compute(underlying, s);
                 dispatch(leg);
             });
         });

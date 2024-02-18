@@ -7,7 +7,7 @@
 
 #include "roq/lqs/leg.hpp"
 #include "roq/lqs/underlying.hpp"
-#include "roq/lqs/portfolio.hpp"
+#include "roq/lqs/strategy.hpp"
 
 namespace roq::lqs {
 
@@ -23,30 +23,30 @@ struct Pricer : core::Handler {
   void operator()(const roq::Event<core::Quotes> &e) override;
   void operator()(const roq::Event<core::ExposureUpdate> &) override;
   
-  std::pair<lqs::Portfolio&,bool> emplace_portfolio(std::string_view portfolio_name);
-  bool get_portfolio(core::PortfolioIdent portfolio, std::invocable<lqs::Portfolio&> auto fn);
-  void get_portfolios(std::invocable<lqs::Portfolio&> auto fn);
+  std::pair<lqs::Strategy&,bool> emplace_strategy(core::StrategyIdent strategy_id);
+  bool get_strategy(core::PortfolioIdent portfolio, std::invocable<lqs::Strategy&> auto fn);
+  void get_strategies(std::invocable<lqs::Strategy&> auto fn);
 
   core::Dispatcher &dispatcher;
   core::Manager &core;
 private:
   void dispatch(lqs::Leg const& leg);
 private:  
-  core::Hash<core::PortfolioIdent, lqs::Portfolio> portfolios;
+  core::Hash<core::StrategyIdent, lqs::Strategy> strategies_;
 };
 
 
-inline bool Pricer::get_portfolio(core::PortfolioIdent portfolio, std::invocable<lqs::Portfolio&> auto fn) {
-  auto iter = portfolios.find(portfolio);
-  if(iter==std::end(portfolios))
+inline bool Pricer::get_strategy(core::StrategyIdent strategy_id, std::invocable<lqs::Strategy&> auto fn) {
+  auto iter = strategies_.find(strategy_id);
+  if(iter==std::end(strategies_))
     return false;
   fn(iter->second);
   return true;
 }
 
-inline void Pricer::get_portfolios(std::invocable<lqs::Portfolio&> auto fn) {
-  for(auto&[id, portfolio]: portfolios) {
-    fn(portfolio);
+inline void Pricer::get_strategies(std::invocable<lqs::Strategy&> auto fn) {
+  for(auto&[id, strategy]: strategies_) {
+    fn(strategy);
   }
 }
 

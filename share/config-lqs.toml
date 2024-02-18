@@ -5,107 +5,112 @@
     symbol          = ["BTC-PERPETUAL", "BTC-29MAR24"]
     exchange        = "deribit"
     mdata_gateway   = "deribit"
-    trade_gateway   = "deribit"
 
 [oms]
     # core::PositionSource::PORTFOLIO takes position from roq::PositionUpdate
     # core::PositionSource::ORDERS takes initial snapshot from roq::PositionUpdate, and updates position using roq::OrderUpdate (when fills or partial fills are detected)
     position_source     = "PORTFOLIO" # "ORDERS"
 
-# specify portfolio and strategy and trade gateway to each subaccount
+# each account inside each exchange is mapped to named portfolio and specific trade gateway
 [[account]]
     exchange        = "deribit"
     account         = "REN_DERIBIT"
     trade_gateway   = "deribit"
     portfolio       = "LG100"
-    strategy        = 100               # N strategy .. 1 portfolio
 
-# Parameters could be stored in sqlite and passed from gateway
+# each strategy operates inside named portfolio
 [[parameter]]
-    label           = "enabled"
-    account         = "LG1"         # this is portfolio (not account) to liquidate
-    exchange        = "lqs"         # FIXME: this is the name of the pricer
-    value           = "true"        # false = do not do any trading for the portfolio
+    strategy        = "100"
+    label           = "portfolio"
+    value           = "LG100"
 
-# underlying symbol for each contract (setup is going per liquidation portfolio)
+# map each strategy instance to the portfolio, used to track positions
+
 [[parameter]]
-    label           = "underlying"
-    exchange        = "deribit"
+    strategy        = "100"
+    label           = "lqs:enabled"
+    value           = "true"        # false = do not do any trading for this strategy
+
+# underlying symbol for each contract.
+[[parameter]]
+    strategy        = "100"
+    label           = "lqs:underlying"
+    exchange        = "deribit"        
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
     value           = ["lqs:BTC/USD",               "lqs:BTC/USD"]  # exchange:symbol
-    account         = ["LG100"]
 
-# delta greek
+# delta greek (price sensitivity to the underlying price)
 [[parameter]]
-    label           = "delta_greek"
+    strategy        = "100"
+    label           = "lqs:delta_greek"
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
     value           = ["1",                         "1"]
-    account         = ["LG100"]
 
 # min delta (in USD) for the whole combination
 [[parameter]]
-    label           = "delta_min"
-    exchange        = "lqs"
-    symbol          = "BTC/USD"
+    strategy        = "100"
+    label           = "lqs:delta_min"
+    exchange        = "lqs"                             # here exchanges is namespace for symbols published by the lqs service
+    symbol          = "BTC/USD"    
     value           = "-1000"
-    account         = "LG100"         # portfolio (or strategy id?)
 
 # max delta (in USD) for the whole combination
 [[parameter]]
-    label           = "delta_max"
+    strategy        = "100"
+    label           = "lqs:delta_max"
+    exchange        = "lqs"    
     symbol          = "BTC/USD"
-    exchange        = "lqs"
     value           = "1000"
-    account         = "LG100"                                         # here means 'portfolio'
 
 # multiplier contract volume -> delta in USD
 [[parameter]]
-    label           = "delta_by_volume"
+    strategy        = "100"
+    label           = "lqs:delta_by_volume"
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["1",                     "1"]
-    account         = ["LG100"]                                      # here means 'portfolio'
 
 # specify subaccount to trade legs through
 [[parameter]]
-    label           = "account"
+    strategy        = "100"
+    label           = "lqs:account"
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["REN_DERIBIT",           "REN_DERIBIT"]
-    account         = ["LG100"]                                       # here means 'portfolio'
-    strategy        = "100"
+
 [[parameter]]
-    label           = "buy_volume"
+    strategy        = "100"
+    label           = "lqs:buy_volume"
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["100",                   "100"]
-    account         = ["LG1"]                                      # here means 'portfolio'
 
 [[parameter]]
-    label           = "sell_volume"
+    strategy        = "100"
+    label           = "lqs:sell_volume"
     exchange        = "deribit"    
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["100",                   "100"]
-    account         = ["LG1"]                                       # here means 'portfolio'
 
 [[parameter]]
-    label           = "price_threshold"
+    strategy        = "100"
+    label           = "lqs:price_threshold"
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["100",                   "100"]
 
 [[parameter]]
-    label           = "price_units"
+    strategy        = "100"
+    label           = "lqs:price_units"
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["BP",                    "BP"]
-    account         = ["LG1"]
 
 # ban future order placements after order has been fully filled (separately each side of the book)
 [[parameter]]
-    label           = "post_fill_timeout"
+    strategy        = "100"
+    label           = lqs:"post_fill_timeout"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     exchange        = "deribit"
     value           = ["100",                  "100"]
-    account         = ["LG1"]

@@ -14,35 +14,37 @@ using namespace std::literals;
 void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
     this->position_source = config.get_value_or(root["oms"], "position_source", core::PositionSource::ORDERS);
     
-    config.get_nodes(root,"portfolio", [&](config::TomlNode node) {
-        auto [portfolio, is_new] = emplace_portfolio({
-            .portfolio_name = config.get_string(node, "portfolio"),
-        });
-        log::info("configure portfolio.{} {}", portfolio.portfolio, portfolio.portfolio_name);
-    });
+    //config.get_nodes(root,"portfolio", [&](config::TomlNode node) {
+    //    auto [portfolio, is_new] = emplace_portfolio({
+    //        .portfolio_name = config.get_string(node, "portfolio"),
+    //    });
+    //    log::info("configure portfolio.{} {}", portfolio.portfolio, portfolio.portfolio_name);
+    //});
+
     config.get_nodes(root, "account", [&](auto node) {
         roq::Exchange exchange = config.get_string_or(node, "exchange", {});
         roq::Account account = config.get_string_or(node, "account", {});
         std::string portfolio_name = config.get_string_or(node, "portfolio", {});
-        core::PortfolioIdent portfolio = get_portfolio_ident(portfolio_name);
-        portfolio_by_account_[exchange][account] = portfolio;
-        log::info("configure account {}@{} -> portfolio.{}", account, exchange, portfolio);
+        auto [portfolio, is_new] = emplace_portfolio({
+            .portfolio_name = portfolio_name
+        });
+        portfolio_by_account_[exchange][account] = portfolio.portfolio;
+        log::info("configure account {}@{} -> portfolio.{} {} is_new {}", account, exchange, portfolio.portfolio, portfolio.portfolio_name, is_new);
     });
 }
 
-//void Manager::operator()(roq::Event<roq::ParametersUpdate> const& event) {
-//    for(auto& p: event.value.parameters) {
-//        if(p.label == "portfolio"sv) {
-//            auto [portfolio, is_new] = emplace_portfolio({
-//                .portfolio_name = p.value
-//            });
-//            //portfolio.account = p.account;
-//            //portfolio.exchange = p.exchange;
-//            portfolio_by_account_[p.exchange][p.account] = portfolio.portfolio;
-//            log::info("account {}@{} -> portfolio.{} {}", p.account, p.exchange, portfolio.portfolio, p.value);
-//        }
-//    }
-//}
+void Manager::operator()(roq::Event<roq::ParametersUpdate> const& event) {
+   for(auto& p: event.value.parameters) {
+       if(p.label == "portfolio"sv) {
+           auto [portfolio, is_new] = emplace_portfolio({
+               .portfolio_name = p.value
+           });
+           assert(p.strategy_id);
+           portfolio_by_strategy_[p.strategy_id] = portfolio.portfolio;
+           log::info("configure strategy {} -> portfolio.{} {} is_new {}", p.strategy_id, portfolio.portfolio, portfolio.portfolio_name, is_new);
+       }
+   }
+}
     
 
 // from OMS

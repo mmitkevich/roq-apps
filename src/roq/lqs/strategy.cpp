@@ -1,11 +1,11 @@
-#include "roq/lqs/portfolio.hpp"
+#include "roq/lqs/strategy.hpp"
 #include "roq/lqs/pricer.hpp"
 #include "roq/core/utils/string_utils.hpp"
 
 namespace roq::lqs {
 using namespace std::literals;
 
-std::pair<lqs::Underlying&, bool> Portfolio::emplace_underlying(std::string_view symbol, std::string_view exchange) {
+std::pair<lqs::Underlying&, bool> Strategy::emplace_underlying(std::string_view symbol, std::string_view exchange) {
     auto [market, is_new_market] = pricer.core.markets.emplace_market(core::Market {
         .symbol = symbol,
         .exchange = exchange
@@ -17,7 +17,7 @@ std::pair<lqs::Underlying&, bool> Portfolio::emplace_underlying(std::string_view
     return {iter->second, is_new};
 }
   
-std::pair<lqs::Leg&, bool> Portfolio::emplace_leg(std::string_view symbol, std::string_view exchange) {
+std::pair<lqs::Leg&, bool> Strategy::emplace_leg(std::string_view symbol, std::string_view exchange) {
     auto [market, is_new_market] = pricer.core.markets.emplace_market(core::Market {.symbol=symbol, .exchange=exchange});
     auto [iter, is_new_leg] = leg_by_market.try_emplace(market.market, lqs::Leg {
         .market = {
@@ -30,7 +30,7 @@ std::pair<lqs::Leg&, bool> Portfolio::emplace_leg(std::string_view symbol, std::
     return {iter->second, is_new_leg};
 }
 
-void Portfolio::operator()(roq::Parameter const & p) {
+void Strategy::operator()(roq::Parameter const & p) {
     if(p.label == "underlying"sv) {
         auto [leg, is_new_leg] = emplace_leg(p.symbol, p.exchange);
         auto [exchange, symbol] = core::utils::split_prefix(p.value, ':');

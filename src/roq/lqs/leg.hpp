@@ -11,7 +11,7 @@ namespace roq::lqs {
 
 struct Pricer;
 struct Underlying;
-struct Portfolio;
+struct Strategy;
 
 using LegIdent = uint32_t;
 
@@ -43,11 +43,11 @@ struct Leg {
 
   core::Duration ban_fill;    // don't place new orders after order has been filled in full for at least post_filled_delay
 
-  void operator()(const roq::Parameter& p, lqs::Portfolio& potfolio);
-  void operator()(const core::Exposure& e, lqs::Portfolio& potfolio);
+  void operator()(const roq::Parameter& p, lqs::Strategy& s);
+  void operator()(const core::Exposure& e, lqs::Strategy& s);
 
   bool check_market_quotes(core::BestQuotes& m);
-  void compute(lqs::Underlying const& underlying, lqs::Portfolio const& portfolio);
+  void compute(lqs::Underlying const& underlying, lqs::Strategy const& portfolio);
 };
 
 } // roq::lqs
