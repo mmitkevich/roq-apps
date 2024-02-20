@@ -5,7 +5,7 @@
 #include "roq/logging.hpp"
 #include "roq/core/market/manager.hpp"
 #include "roq/lqs/underlying.hpp"
-
+#include "roq/core/string_utils.hpp"
 namespace roq::lqs {
 
 using namespace std::literals;
@@ -17,15 +17,20 @@ Pricer::Pricer(core::Dispatcher &dispatcher, core::Manager &core)
 
 std::pair<lqs::Strategy&, bool> Pricer::emplace_strategy(core::StrategyIdent strategy_id) {
     //auto [portfolio, is_new_portfolio] = core.portfolios.emplace_portfolio({.portfolio_name = portfolio_name});
-    auto [iter, is_new] = strategies_.try_emplace(strategy_id, *this);
+    auto [iter, is_new] = strategies_.try_emplace(strategy_id, strategy_id, *this);
     lqs::Strategy& strategy = iter->second;
+    log::debug("lqs emplace_strategy {} is_new {}", strategy_id, is_new);
     return {strategy, is_new};
 }
 
 void Pricer::operator()(const roq::Event<roq::ParametersUpdate> & e) {
-    for(const auto& p: e.value.parameters) {
-        log::debug("lqs parameter label {} exchange {} symbol {} portfolio {} strategy {} value {}", 
+    for(const roq::Parameter& p: e.value.parameters) {
+        auto [prefix, label] = core::split_prefix(p.label,':');
+        if(prefix!="lqs"sv)
+            continue;
+        log::debug("lqs parameters_update label {} exchange {} symbol {} portfolio {} strategy {} value {}", 
                                 p.label, p.exchange, p.symbol, p.account, p.strategy_id, p.value);
+        assert(p.strategy_id);
         //core::MarketIdent market_id = core.markets.get_market_ident(p.symbol, p.exchange);
         auto [strategy, is_new] = emplace_strategy(p.strategy_id);
         strategy(p);
@@ -44,7 +49,7 @@ void Pricer::operator()(const roq::Event<core::ExposureUpdate> &e) {
                 // all legs affected by change in delta
                 s.get_legs(underlying, [&](lqs::Leg& leg) {
                     leg.compute(underlying, s);
-                    dispatch(leg);
+                    dispatch(leg, s);
                 });
             });
         }
@@ -63,7 +68,7 @@ void Pricer::operator()(const roq::Event<core::Quotes> &e) {
             result &= s.get_underlying(leg, [&] (lqs::Underlying & underlying ) {
                 underlying.compute(s);
                 leg.compute(underlying, s);
-                dispatch(leg);
+                dispatch(leg, s);
             });
         });
     });
@@ -71,13 +76,14 @@ void Pricer::operator()(const roq::Event<core::Quotes> &e) {
 }
 
 
-void Pricer::dispatch(lqs::Leg const& leg) {
+void Pricer::dispatch(lqs::Leg const& leg, lqs::Strategy const& s) {
     //roq::MessageInfo info{};
     core::TargetQuotes target_quotes {
         .market = leg.market.market,
         .symbol = leg.market.symbol,        
         .exchange = leg.market.exchange,        
         .account = leg.account,
+        .strategy = s.strategy,
         .buy = std::span { &leg.exec_quotes.buy, 1},
         .sell = std::span { &leg.exec_quotes.sell, 1},
     };

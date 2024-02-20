@@ -1,5 +1,5 @@
 #include "roq/spreader/spread.hpp"
-#include "roq/core/utils/string_utils.hpp"
+#include "roq/core/string_utils.hpp"
 #include "roq/spreader/pricer.hpp"
 
 namespace roq::spreader {
@@ -25,7 +25,7 @@ void Spread::operator()(const roq::Event<roq::ParametersUpdate> & event, spreade
             .symbol = p.symbol,
             .exchange = p.exchange
         };
-        auto [label, index] = core::utils::split_suffix_uint32(p.value,':');
+        auto [label, index] = core::split_suffix_uint32(p.value,':');
         if(label=="leg"sv) {
             market.symbol = p.value;
         }

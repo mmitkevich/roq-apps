@@ -1,5 +1,5 @@
 #include "roq/core/price.hpp"
-#include "roq/core/utils/string_utils.hpp"
+#include "roq/core/string_utils.hpp"
 #include <cctype>
 #include <charconv>
 #include <roq/exceptions.hpp>
@@ -20,7 +20,7 @@ core::Shift Shift::parse(std::string_view s, core::ShiftUnits dflt/* = ShiftUnit
     if (ec != std::errc()) {
         throw roq::RuntimeError("Invalid Shift {}", s);
     }
-    auto units = core::utils::trim_left(std::string_view(p, s.data()+s.size()-p), " "sv);
+    auto units = core::trim_left(std::string_view(p, s.data()+s.size()-p), " "sv);
     if(units=="BP"sv) {
         result.units = ShiftUnits::BP;
     } else if(units=="TICK"sv) {

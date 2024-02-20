@@ -88,7 +88,7 @@ struct Strategy final
     void operator()(const Event<core::ExposureUpdate>& event);
 
     void operator()(const Event<core::Quotes>& event);
-
+    
 public:
     client::Dispatcher& dispatcher_;
     std::string strategy_name;

@@ -17,6 +17,7 @@ struct Query {
     std::string_view symbol;
     std::string_view exchange;
     std::string_view account;
+    core::StrategyIdent strategy_id;
 
     bool operator()(const roq::Parameter& item) const;
 };

@@ -5,6 +5,7 @@
 #include <roq/message_info.hpp>
 #include <roq/parameter.hpp>
 #include <roq/parameters_update.hpp>
+#include "roq/core/string_utils.hpp"
 
 namespace roq::core::config {
 
@@ -19,6 +20,8 @@ bool Query::operator()(roq::Parameter const& item) const {
         return false;
     if(!exchange.empty() && item.exchange!=exchange)
         return false;
+    if(strategy_id && item.strategy_id!=strategy_id)
+        return false;
     return true;
 }
 
@@ -29,7 +32,8 @@ void Manager::load(std::string_view url) {
     toml.get_nodes("parameter", [&](auto node) {
         roq::Parameter p;
         p.label = toml.get_string(node, "label"sv);
-        p.exchange = toml.get_string(node, "exchange"sv);
+        p.exchange = toml.get_string_or(node, "exchange"sv, "");
+        p.strategy_id = core::parse_uint32(toml.get_string_or(node, "strategy"sv, "0"));
         auto add_all_symbols = [&]() {
             toml.get_pairs(type_c<std::string>{}, node, "symbol"sv, "value"sv, [&](auto symbol, auto value) {
                 p.symbol = symbol;
@@ -76,6 +80,7 @@ void Manager::operator()(roq::Event<roq::ParametersUpdate> const & event) {
             .symbol = u.symbol,
             .exchange = u.exchange,
             .account = u.account,            
+            .strategy_id = u.strategy_id
         };
         for(auto & p: parameters) {
             if(query(p)) {

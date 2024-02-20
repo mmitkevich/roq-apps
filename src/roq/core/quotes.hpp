@@ -13,6 +13,7 @@ struct Quotes  {
     std::string_view exchange {};
     std::string_view account {};
     core::PortfolioIdent portfolio {};
+    core::StrategyIdent strategy {};    // FIXME: portfolios look like indexed by strategy id always.
     std::span<const ExecQuote> buy = {};
     std::span<const ExecQuote> sell = {};
 
@@ -66,8 +67,9 @@ struct fmt::formatter<roq::core::Quotes> {
       }
       return fmt ::format_to(
           context.out(),
-          "market {} buy_price {} sell_price {} buy_volume {} sell_volume {}"sv,
-          _.market,
-          buy_price,sell_price,buy_volume,sell_volume);
+          "market.{} {}@{} buy_price {} sell_price {} buy_volume {} sell_volume {} account {} strategy.{} portfolio.{}"sv,
+          _.market, _.symbol, _.exchange,
+          buy_price, sell_price, buy_volume, sell_volume,
+          _.account, _.strategy, _.portfolio);
     }
 };

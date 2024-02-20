@@ -45,7 +45,8 @@ struct Book {
     core::TimePoint last_position_modify_time;
     // end reconcile
 public:
-  std::pair<oms::Level &, bool> emplace_level(Side side, core::Price price, core::Double new_tick_size);
+  void set_tick_size(core::Double new_tick_size);
+  std::pair<oms::Level &, bool> emplace_level(Side side, core::Price price);
 
   core::Hash<LevelIdent, oms::Level> &get_levels(Side side);
 

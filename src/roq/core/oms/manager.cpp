@@ -38,7 +38,7 @@ Manager::Manager(oms::Handler& handler, client::Dispatcher& dispatcher, core::Ma
 
 
 void Manager::operator()(core::TargetQuotes const & target_quotes) {
-    log::info<2>("TargetQuotes {}", target_quotes);    
+    log::info<2>("oms TargetQuotes {}", target_quotes);    
     assert(!target_quotes.account.empty());
     
     core::Market market {
@@ -49,8 +49,20 @@ void Manager::operator()(core::TargetQuotes const & target_quotes) {
     };
 
     auto [info, _] = core.markets.emplace_market(market);
+
+    // resolve empty portfolio into one associated with account (if any)
+
+    //core::PortfolioIdent portfolio = target_quotes.portfolio;
+    //if(!portfolio) {
+    //    core.portfolios.get_portfolio_by_account(target_quotes.account, target_quotes.exchange, [&](core::Portfolio const& p) {
+    //        portfolio = p.portfolio;
+    //    });
+    //}
+
     auto market_oms = oms::Market { 
         .account = target_quotes.account,
+        .portfolio = target_quotes.portfolio,
+        .strategy = target_quotes.strategy,
     }.merge(info);
 
     auto [book, is_new] = emplace_book(market_oms);
@@ -64,7 +76,7 @@ void Manager::operator()(core::TargetQuotes const & target_quotes) {
     }
     for(auto& quote: target_quotes.buy) {
         if(!is_empty_value(quote)) {
-            auto [level,is_new] = book.emplace_level(Side::BUY, quote.price, info.tick_size);
+            auto [level,is_new] = book.emplace_level(Side::BUY, quote.price);
             level.target_quantity = quote.volume;
             level.exec_inst = quote.exec_inst;
         }
@@ -75,7 +87,7 @@ void Manager::operator()(core::TargetQuotes const & target_quotes) {
     }
     for(auto& quote: target_quotes.sell) {
         if(!is_empty_value(quote)) {
-            auto [level,is_new] = book.emplace_level(Side::SELL, quote.price, info.tick_size);
+            auto [level,is_new] = book.emplace_level(Side::SELL, quote.price);
             level.target_quantity = quote.volume;
             level.exec_inst = quote.exec_inst;
         }
@@ -128,11 +140,11 @@ void Manager::process(oms::Book& book, core::market::Info const& info) {
     std::chrono::nanoseconds now = this->now();
     auto mask = roq::Mask{roq::SupportType::CREATE_ORDER, roq::SupportType::CANCEL_ORDER};
     
-    bool trade_gateway_resolve_result = resolve_trade_gateway(book);
+    bool trade_gateway_resolved = resolve_trade_gateway(book);
 
-    bool ready = core.gateways.is_ready(mask, book.trade_gateway_id, book.account) && trade_gateway_resolve_result;
+    bool ready = core.gateways.is_ready(mask, book.trade_gateway_id, book.account) && trade_gateway_resolved;
     log::info<2>("OMS process now {} symbol {} exchange {} account {} ban {} ready {} trade_gateway.{} {} tick_size {}",
-         now, book.symbol, book.exchange, book.account, book.ban_until.count() ? (book.ban_until-now).count()/1E9:NaN, ready, book.trade_gateway_id, book.trade_gateway_name, book.tick_size);
+         now, book.symbol, book.exchange, book.account, book.ban_until.count() ? (book.ban_until-now).count()/1E9:NaN, ready, book.trade_gateway_id, book.trade_gateway_name, info.tick_size);
     
     if(!ready) {
         return;
@@ -141,6 +153,8 @@ void Manager::process(oms::Book& book, core::market::Info const& info) {
     if(std::isnan(info.tick_size)) {
         return;
     }
+
+    book.set_tick_size(info.tick_size);
     
     if(now < book.ban_until) {
         return;
@@ -168,7 +182,7 @@ void Manager::process(oms::Book& book, core::market::Info const& info) {
             book.pending[order.side==Side::SELL]++;
 
         //assert(utils::compare(order.expected.quantity,0)==std::strong_ordering::greater);
-        auto [level,is_new_level] = book.emplace_level(order.side, order.price, info.tick_size);
+        auto [level,is_new_level] = book.emplace_level(order.side, order.price);
         assert(!std::isnan(level.expected_quantity));          
         level.expected_quantity += order.expected.quantity;
         level.confirmed_quantity += order.confirmed.quantity;
@@ -192,7 +206,7 @@ void Manager::process(oms::Book& book, core::market::Info const& info) {
     }
     std::size_t orders_count = book.orders.size();
     for(auto& [order_id, order] : book.orders) {
-        auto [level,is_new_level] = book.emplace_level(order.side, order.price, info.tick_size);
+        auto [level,is_new_level] = book.emplace_level(order.side, order.price);
         if(utils::compare(level.expected_quantity, level.target_quantity)==std::strong_ordering::greater) {
             bool flag = can_modify(book, info, order);
             log::info<2>("OMS can_modify {} order_id={}.{}.{} side={} req={}  price={}  quantity={}"
@@ -700,7 +714,6 @@ std::pair<oms::Book&, bool> Manager::emplace_book(oms::Market const & market) {
         book.account = market.account;
         book.strategy = market.strategy;
         book.trade_gateway_name = market.trade_gateway_name;
-        resolve_trade_gateway(book);
         book.last_position_modify_time = now();
         // FIXME: no accounts ?
         

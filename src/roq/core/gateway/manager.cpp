@@ -71,6 +71,7 @@ std::pair<core::Gateway &, bool> gateway::Manager::emplace_gateway(roq::MessageI
     core::Gateway& gateway = gateway_by_id_[info.source];
     gateway.gateway_id = info.source;
     gateway.gateway_name = info.source_name;
+    gateway_id_by_name_[gateway.gateway_name] = gateway.gateway_id;
     log::info<2>("gateway::Manager::emplace_gateway gateway_id={} gateway_name={}", gateway.gateway_id, gateway.gateway_name);
     return {gateway, true};
 }

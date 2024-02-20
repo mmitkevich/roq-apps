@@ -1,6 +1,6 @@
 #include "roq/lqs/strategy.hpp"
 #include "roq/lqs/pricer.hpp"
-#include "roq/core/utils/string_utils.hpp"
+#include "roq/core/string_utils.hpp"
 
 namespace roq::lqs {
 using namespace std::literals;
@@ -31,9 +31,10 @@ std::pair<lqs::Leg&, bool> Strategy::emplace_leg(std::string_view symbol, std::s
 }
 
 void Strategy::operator()(roq::Parameter const & p) {
-    if(p.label == "underlying"sv) {
+    auto [prefix, label] = core::split_prefix(p.label, ':');
+    if(label == "underlying"sv) {
         auto [leg, is_new_leg] = emplace_leg(p.symbol, p.exchange);
-        auto [exchange, symbol] = core::utils::split_prefix(p.value, ':');
+        auto [exchange, symbol] = core::split_prefix(p.value, ':');
         auto [underlying, is_new_underlying] = emplace_underlying(symbol, lqs::EXCHANGE);
         if(leg.underlying) {
             auto iter = underlyings.find(leg.underlying);
@@ -46,7 +47,7 @@ void Strategy::operator()(roq::Parameter const & p) {
         leg.underlying = underlying.market.market;
         underlying.legs.push_back(leg.market.market);
         log::debug("lqs add leg {} to underlying {}", leg.market.market, underlying.market.market);
-    } else if(p.label == "enabled"sv) {
+    } else if(label == "enabled"sv) {
         enabled = (std::string_view {p.value} == "true"sv);
     } else if(p.exchange == lqs::EXCHANGE) {    // underlyings are identified by having 'lqs' exchange
         auto [underlying, is_new_underlying] = emplace_underlying(p.symbol, p.exchange);

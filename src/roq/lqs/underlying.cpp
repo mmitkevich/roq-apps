@@ -1,12 +1,14 @@
 #include "roq/lqs/underlying.hpp"
 #include "roq/lqs/pricer.hpp"
 #include <algorithm>
+#include "roq/core/string_utils.hpp"
 
 namespace roq::lqs {
 
 using namespace std::literals;
 
 void Underlying::operator()(const roq::Parameter & p, lqs::Strategy& s) {
+    auto [prefix, label] = core::split_prefix(p.label,':');
     if(p.label=="delta_min"sv) {
         delta_min = core::Double::parse(p.value);
     } else if(p.label=="delta_max"sv) {

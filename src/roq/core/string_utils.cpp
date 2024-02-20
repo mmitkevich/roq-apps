@@ -5,7 +5,7 @@
 #include <ranges>
 #include <roq/exceptions.hpp>
 
-namespace roq::core::utils {
+namespace roq::core {
 
 std::vector < std::string_view> split_sep(std::string_view str, char sep) {
     std::vector<std::string_view> result;
@@ -43,7 +43,7 @@ std::string to_upper(std::string_view s) {
 }
 
 
-inline std::uint32_t parse_uint32(std::string_view s) {
+std::uint32_t parse_uint32(std::string_view s) {
     uint32_t v;
     auto [p, ec] = std::from_chars(s.data(), s.data() + s.size(), v);
     if (ec == std::errc()) {
@@ -58,8 +58,8 @@ inline std::uint32_t parse_uint32(std::string_view s) {
 
 std::pair<std::string_view, std::uint32_t> split_suffix_uint32(std::string_view input, char sep) {
   auto [value, suffix] = split_suffix(input, sep);
-  uint32_t index = suffix.size() > 0 ?  utils::parse_uint32(suffix) : 0;
+  uint32_t index = suffix.size() > 0 ?  core::parse_uint32(suffix) : 0;
   return {value, index};
 }
 
-} // roq::core::utils
+} // roq::core

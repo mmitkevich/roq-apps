@@ -4,21 +4,23 @@
 #include <magic_enum.hpp>
 #include "roq/lqs/pricer.hpp"
 #include "roq/lqs/underlying.hpp"
+#include "roq/core/string_utils.hpp"
 
 namespace roq::lqs {
 
 using namespace std::literals;
 
 void Leg::operator()(const roq::Parameter & p, lqs::Strategy& s) {
-    if(p.label=="delta_by_volume"sv) {
+    auto [prefix, label] = core::split_prefix(p.label, ':');    
+    if(label=="delta_by_volume"sv) {
         delta_by_volume = core::Double::parse(p.value);
-    } else if(p.label=="buy_volume"sv) {
+    } else if(label=="buy_volume"sv) {
         buy_volume = core::Double::parse(p.value);
-    } else if(p.label=="sell_volume"sv) {
+    } else if(label=="sell_volume"sv) {
         sell_volume = core::Double::parse(p.value);
-    } else if(p.label=="passive_mode"sv) {
+    } else if(label=="passive_mode"sv) {
         passive_mode = magic_enum::enum_cast<lqs::PassiveMode>(p.value).value_or(lqs::PassiveMode::UNDEFINED);
-    } else if(p.label=="account"sv) {
+    } else if(label=="account"sv) {
         account = std::string_view {p.value};
     }
 }

@@ -15,7 +15,7 @@
 #include "roq/dag/factory.hpp"
 #include "roq/dag/node.hpp"
 //#include "roq/core/dispatcher.hpp"
-#include "roq/core/utils/string_utils.hpp"
+#include "roq/core/string_utils.hpp"
 #include "roq/mask.hpp"
 
 namespace roq::dag {
@@ -50,9 +50,9 @@ void Pricer::operator()(const roq::Event<roq::ParametersUpdate>& e) {
         // label = ref.weight mdata exec compute.parameter
         //for(const auto tok : std::views::split(std::string_view{p.label}, '.')) {
         //    auto token = std::string_view { tok.data(), tok.size() };
-        auto[label, suffix] = core::utils::split_suffix(p.label, ':');
+        auto[label, suffix] = core::split_suffix(p.label, ':');
         if(label == "mdata"sv) {
-            auto [exchange, symbol] = core::utils::split_prefix(p.value, ':');
+            auto [exchange, symbol] = core::split_prefix(p.value, ':');
             set_mdata(node.node, {
                 .symbol = symbol,
                 .exchange = exchange
@@ -63,7 +63,7 @@ void Pricer::operator()(const roq::Event<roq::ParametersUpdate>& e) {
             set_ref(node.node, p.value, suffix);
             // TOOD: add refs
         } else if(label == "pipeline"sv) {
-            auto vec = core::utils::split_sep(p.value, ' ');
+            auto vec = core::split_sep(p.value, ' ');
             node.set_pipeline(vec);
         } else {
             node.update(std::span {&p, 1});
@@ -171,7 +171,7 @@ bool Pricer::set_mdata(core::NodeIdent node_id, core::Market const& market_key) 
 
 bool Pricer::set_ref(core::NodeIdent node_id, std::string_view ref_node_name, std::string_view flags_sv) {
     auto [ref_node, is_new] = emplace_node({.name = ref_node_name});
-    std::string flags_str = core::utils::to_upper(flags_sv);
+    std::string flags_str = core::to_upper(flags_sv);
     //TODO: parse FLAG1|FLAG2|FLAG3 mask
     std::optional<dag::NodeFlags> flags_opt = magic_enum::enum_cast<dag::NodeFlags>(flags_str);
     if(flags_opt.has_value()) {

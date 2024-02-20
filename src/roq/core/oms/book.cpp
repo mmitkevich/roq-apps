@@ -6,12 +6,16 @@
 
 namespace roq::core::oms {
 
-std::pair<oms::Level&, bool> Book::emplace_level(Side side, core::Price price, core::Double new_tick_size) {
-    assert(!std::isnan(price));
-    if(tick_size.empty()) {
+void Book::set_tick_size(core::Double new_tick_size) {
+  if(tick_size.empty()) {
       this->tick_size = new_tick_size;
     }
     assert(this->tick_size.empty() || this->tick_size == new_tick_size);
+}
+
+std::pair<oms::Level&, bool> Book::emplace_level(Side side, core::Price price) {
+    assert(!std::isnan(price));
+    assert(!tick_size.empty());
     LevelIdent index = std::roundl(price/tick_size);
     auto &levels = this->get_levels(side);
     auto iter = levels.find(index);

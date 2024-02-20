@@ -5,7 +5,7 @@
 #include <string>
 #include <cstdint>
 
-namespace roq::core::utils {
+namespace roq::core {
 
 template<typename T, std::enable_if_t< std::is_same<T, std::string_view>::value || !std::is_rvalue_reference_v<T&&>, int > = 0 >
 std::string_view trim_left( T&& data, std::string_view trimChars )
@@ -23,6 +23,6 @@ std::pair<std::string_view, std::string_view> split_suffix(std::string_view inpu
 std::pair<std::string_view, std::uint32_t> split_suffix_uint32(std::string_view input, char sep);
 std::vector<std::string_view> split_sep(std::string_view str, char sep);
 
-inline std::uint32_t parse_uint32(std::string_view s);
+std::uint32_t parse_uint32(std::string_view s);
 
-} // roq::core::utils
+} // roq::core

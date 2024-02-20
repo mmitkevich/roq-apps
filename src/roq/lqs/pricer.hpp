@@ -30,7 +30,7 @@ struct Pricer : core::Handler {
   core::Dispatcher &dispatcher;
   core::Manager &core;
 private:
-  void dispatch(lqs::Leg const& leg);
+  void dispatch(lqs::Leg const& leg, lqs::Strategy const& s);
 private:  
   core::Hash<core::StrategyIdent, lqs::Strategy> strategies_;
 };

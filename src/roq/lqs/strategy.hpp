@@ -9,7 +9,10 @@ struct Pricer;
 
 struct Strategy {
 
-  Strategy(lqs::Pricer& pricer) : pricer(pricer) {}
+  Strategy(core::StrategyIdent strategy_id, lqs::Pricer& pricer) 
+  : strategy(strategy_id)
+  , pricer(pricer) {}
+
   Strategy(Strategy const&) = default;
   Strategy(Strategy&&) = default;
 
