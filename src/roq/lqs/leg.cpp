@@ -54,6 +54,11 @@ void Leg::compute(lqs::Underlying const& u, lqs::Strategy const & portfolio) {
         return;
     }
 
+    if(!portfolio.enabled) {
+        exec_quotes.clear();
+        return;
+    }
+
     // exposure = signed leg position
     core::Volume current_position = p.buy.volume - p.sell.volume;
 
@@ -70,15 +75,23 @@ void Leg::compute(lqs::Underlying const& u, lqs::Strategy const & portfolio) {
     q.buy.volume = q.buy.volume.min( delta_plus / delta_by_volume );
     q.sell.volume = q.sell.volume.min( delta_minus /delta_by_volume );
 
-    if(!portfolio.enabled) {
-        q.buy.volume = q.sell.volume = 0;
+    switch(passive_mode) {
+        case PassiveMode::CROSS:
+            // take market agressively
+            if(q.buy.volume>0)
+                q.buy.price = m.sell.price;
+            if(q.sell.volume>0)
+                q.sell.price = m.buy.price;
+            break;
+        case PassiveMode::JOIN:
+            // take market agressively
+            if(q.buy.volume>0)
+                q.buy.price = m.buy.price;
+            if(q.sell.volume>0)
+                q.sell.price = m.sell.price;
+            break;
+        default: assert(false);
     }
-    
-    // take market agressively
-    if(q.buy.volume>0)
-        q.buy.price = m.sell.price;
-    if(q.sell.volume>0)
-        q.sell.price = m.buy.price;
 }
 
 } // roq::lqs

@@ -47,7 +47,16 @@
     label           = "lqs:underlying"
     exchange        = "deribit"        
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
-    value           = ["lqs:BTC/USD",               "lqs:BTC/USD"]  # exchange:symbol
+    value           = ["lqs:BTC/USD",               "lqs:BTC/USD"]      # exchange:symbol
+
+# underlying symbol for each contract.
+[[parameter]]
+    strategy        = "100"
+    label           = "lqs:passive_mode"
+    exchange        = "deribit"        
+    symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
+    value           = ["JOIN",                      "JOIN"]             # exchange:symbol
+
 
 # delta greek (price sensitivity to the underlying price)
 [[parameter]]

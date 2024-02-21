@@ -18,7 +18,7 @@ using LegIdent = uint32_t;
 enum PassiveMode {
   UNDEFINED,
   CROSS,
-  JOIN
+  JOIN,
 };
 
 struct Leg {
@@ -30,7 +30,6 @@ struct Leg {
   };
   core::Volume target_position = {0};
   lqs::PassiveMode passive_mode = PassiveMode::CROSS;
-
   //core::Volume exposure; // = position.buy.volume - position.sell.volume
 
   core::Double delta_greek = 1.0;         // of leg price to underlying price, e.g. 1
