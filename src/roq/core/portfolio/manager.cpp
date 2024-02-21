@@ -32,7 +32,7 @@ void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
 void Manager::operator()(roq::Event<roq::ParametersUpdate> const& event) {
     for(auto& p: event.value.parameters) {
         auto [prefix, label] = core::split_prefix(p.label, ':');
-        if(prefix!="oms"sv)
+        if(prefix!="core"sv)
             continue;
         if(label == "portfolio"sv) {
             assert(p.strategy_id!=0);

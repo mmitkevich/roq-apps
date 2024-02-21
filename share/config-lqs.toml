@@ -26,12 +26,12 @@
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     exchange        = "deribit"
     account         = "REN_DERIBIT"
-    value           = ["5000",                  "5000"]
+    value           = ["2000",                  "2000"]
 
 # each strategy operates inside named portfolio
 [[parameter]]
     strategy        = "100"
-    label           = "oms:portfolio"
+    label           = "core:portfolio"
     value           = "LG100"
 
 # map each strategy instance to the portfolio, used to track positions

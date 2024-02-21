@@ -719,24 +719,39 @@ bool Manager::resolve_trade_gateway(oms::Book& book) {
     return book.trade_gateway_id>=0;
 }
 
-std::pair<oms::Book&, bool> Manager::emplace_book(oms::Market const & market) {    
-    auto& by_account = books_[market.strategy];
-    auto& by_market = by_account[market.account];
-    auto iter = by_market.find(market.market);
+std::pair<oms::Book&, bool> Manager::emplace_book(oms::Market const & key) {    
+    assert(key.strategy);
+    assert(!key.account.empty());
+    auto& by_account = books_[key.strategy];
+    auto& by_market = by_account[key.account];
+    auto iter = by_market.find(key.market);
     if(iter!=std::end(by_market)) {
         return {iter->second, false};
     } else {
-        assert(market.market);
-        assert(!market.exchange.empty());
-        assert(!market.symbol.empty());
-        auto [iter_1, is_new] = by_market.try_emplace(market.market);
+        core::MarketIdent market = key.market;
+        if(!market) {
+            assert(!key.exchange.empty());
+            assert(!key.symbol.empty());
+            auto [info, _] = core.markets.emplace_market({
+                .symbol=key.symbol,
+                .exchange=key.exchange
+            });
+            market = info.market;
+        }
+        auto [iter_1, is_new] = by_market.try_emplace(market);
         oms::Book& book = iter_1->second;
-        book.market = market.market;        
-        book.exchange = market.exchange;
-        book.symbol = market.symbol;
-        book.account = market.account;
-        book.strategy = market.strategy;
-        book.trade_gateway_name = market.trade_gateway_name;
+        book.market = market;
+        book.exchange = key.exchange;
+        book.symbol = key.symbol;
+        book.account = key.account;
+        book.strategy = key.strategy;
+        if(!key.trade_gateway_name.empty()) {
+            book.trade_gateway_name = key.trade_gateway_name;
+        } else {
+            book.trade_gateway_name = get_trade_gateway(key);
+        }
+        assert(!book.trade_gateway_name.empty());
+
         book.last_position_modify_time = now();
         // FIXME: no accounts ?
         
@@ -935,28 +950,6 @@ void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
     });
 
     this->reject_timeout_ =  std::chrono::milliseconds { config.get_value_or(node, "reject_timeout", MIN_REJECT_TIMEOUT_MS) };
-
-    config.get_nodes(root, "market",[&](auto node) {
-        using namespace std::literals;
-        auto exchange = config.get_string(node, "exchange");
-        //auto market_str = config.get_string(node, "market");
-        auto trade_gateway_name = config.get_string_or(node, "trade_gateway", "");
-        auto account = config.get_string_or(node, "account", "");
-        config.get_values(type_c<std::string>{}, node, "symbol"sv, [&](auto i, auto symbol) {
-            //core::MarketIdent market = core.get_market_ident(symbol, exchange);
-            auto [info, is_new_1] = core.markets.emplace_market({
-                .symbol = symbol,
-                .exchange = exchange,
-            });
-            log::info<1>("symbol {}, exchange {}, market {} trade_gateway '{}' account '{}'", 
-                symbol, exchange, info.market, 
-                trade_gateway_name, account);
-            auto [book, is_new] = emplace_book(oms::Market {
-                .account = account
-            }.merge(info));
-            book.trade_gateway_name = trade_gateway_name;
-        });
-    });    
 }
 
 
