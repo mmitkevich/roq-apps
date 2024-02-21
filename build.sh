@@ -32,11 +32,9 @@ cmake -H. -Bbuild/$build -DCMAKE_INSTALL_PREFIX=$ROQ_CONDA\
 	-DCMAKE_EXPORT_COMPILE_COMMANDS=YES\
 	-DCMAKE_CXX_FLAGS_DEBUG="-O0 -g"\
 		|| exit 1
-    #-DUMM_CONFIG_TOML=ON\
-	#-DUMM_USE_ABSL=ON\
 
 echo "running make..."
 cd build/$build && make install -s -j2 VERBOSE=$VERBOSE || exit 2
 touch compile_commands.json
 cat compile_commands.json > ../../../compile_commands.json && sed -i -e ':a;N;$!ba;s/\]\n\n\[/,/g' ../../../compile_commands.json
-echo "built roq-mmaker"
+echo "built roq-apps"

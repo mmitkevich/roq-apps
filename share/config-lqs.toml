@@ -55,7 +55,7 @@
     label           = "lqs:passive_mode"
     exchange        = "deribit"        
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
-    value           = ["JOIN",                      "JOIN"]             # exchange:symbol
+    value           = ["CROSS",                      "CROSS"]             # CROSS, JOIN
 
 
 # delta greek (price sensitivity to the underlying price)
