@@ -17,8 +17,11 @@ Pricer::Pricer(core::Dispatcher &dispatcher, core::Manager &core)
 
 std::pair<lqs::Strategy&, bool> Pricer::emplace_strategy(core::StrategyIdent strategy_id) {
     //auto [portfolio, is_new_portfolio] = core.portfolios.emplace_portfolio({.portfolio_name = portfolio_name});
-    auto [iter, is_new] = strategies_.try_emplace(strategy_id, strategy_id, *this);
+    auto [iter, is_new] = strategies_.try_emplace(strategy_id, *this);
     lqs::Strategy& strategy = iter->second;
+    // NOTE: portfolio id == strategy id
+    strategy.strategy = strategy_id;
+    strategy.portfolio = strategy_id;
     log::debug("lqs emplace_strategy {} is_new {}", strategy_id, is_new);
     return {strategy, is_new};
 }
@@ -39,7 +42,8 @@ void Pricer::operator()(const roq::Event<roq::ParametersUpdate> & e) {
 
 void Pricer::operator()(const roq::Event<core::ExposureUpdate> &e) {
     const auto& u = e.value;
-    get_strategy(u.strategy_id, [&](lqs::Strategy& s) {
+    core::StrategyIdent strategy_id = u.portfolio;  // NOTE: portfolio id IS strategy id
+    get_strategy(strategy_id, [&](lqs::Strategy& s) {
         for(const auto& exposure: u.exposure) {
             auto [this_leg, is_new_leg] = s.emplace_leg(exposure.symbol, exposure.exchange);
             this_leg(exposure, s);
@@ -83,6 +87,7 @@ void Pricer::dispatch(lqs::Leg const& leg, lqs::Strategy const& s) {
         .symbol = leg.market.symbol,        
         .exchange = leg.market.exchange,        
         .account = leg.account,
+        .portfolio = s.portfolio,        
         .strategy = s.strategy,
         .buy = std::span { &leg.exec_quotes.buy, 1},
         .sell = std::span { &leg.exec_quotes.sell, 1},

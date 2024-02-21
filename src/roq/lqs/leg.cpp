@@ -64,8 +64,11 @@ void Leg::compute(lqs::Underlying const& u, lqs::Strategy const & portfolio) {
     q.sell.volume = sell_volume.min(exposure.max(0));
 
     // avoid delta leaving delta_range
-    q.buy.volume = q.buy.volume.min( (u.delta_max-u.delta).max(0)/delta_by_volume );
-    q.sell.volume = q.sell.volume.min( (u.delta-u.delta_min).max(0)/delta_by_volume );
+    core::Double delta_plus = (u.delta_max-u.delta).max(0); // how much we can add to the delta
+    core::Double delta_minus = (u.delta-u.delta_min).max(0); // how much we can subtract from the delta
+    
+    q.buy.volume = q.buy.volume.min( delta_plus / delta_by_volume );
+    q.sell.volume = q.sell.volume.min( delta_minus /delta_by_volume );
 
     if(!portfolio.enabled) {
         q.buy.volume = q.sell.volume = 0;

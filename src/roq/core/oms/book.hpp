@@ -8,6 +8,7 @@
 #include "roq/core/oms/market.hpp"
 #include "roq/core/oms/level.hpp"
 #include <chrono>
+#include <roq/parameter.hpp>
 
 namespace roq::core::oms {
 
@@ -49,6 +50,8 @@ public:
   std::pair<oms::Level &, bool> emplace_level(Side side, core::Price price);
 
   core::Hash<LevelIdent, oms::Level> &get_levels(Side side);
+
+  void operator()(roq::Parameter const& p);
 
   // order&, is_new
   std::pair<oms::Order &, bool> emplace_order(OrderIdent order_id);

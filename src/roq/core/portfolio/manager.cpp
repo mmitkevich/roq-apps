@@ -6,6 +6,7 @@
 #include "roq/logging.hpp"
 #include <roq/string_types.hpp>
 #include <roq/core/config/toml_file.hpp>
+#include "roq/core/string_utils.hpp"
 
 namespace roq::core::portfolio {
 
@@ -14,18 +15,13 @@ using namespace std::literals;
 void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
     this->position_source = config.get_value_or(root["oms"], "position_source", core::PositionSource::ORDERS);
     
-    //config.get_nodes(root,"portfolio", [&](config::TomlNode node) {
-    //    auto [portfolio, is_new] = emplace_portfolio({
-    //        .portfolio_name = config.get_string(node, "portfolio"),
-    //    });
-    //    log::info("configure portfolio.{} {}", portfolio.portfolio, portfolio.portfolio_name);
-    //});
-
     config.get_nodes(root, "account", [&](auto node) {
         roq::Exchange exchange = config.get_string_or(node, "exchange", {});
         roq::Account account = config.get_string_or(node, "account", {});
+        core::StrategyIdent strategy_id = core::parse_uint32(config.get_string_or(node, "strategy", "0"));   // NOTE: portfolio_id IS ALWAYS SAME AS strategy_id
         std::string portfolio_name = config.get_string_or(node, "portfolio", {});
         auto [portfolio, is_new] = emplace_portfolio({
+            .portfolio = strategy_id,   // NOTE
             .portfolio_name = portfolio_name
         });
         portfolio_by_account_[exchange][account] = portfolio.portfolio;
@@ -34,16 +30,21 @@ void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
 }
 
 void Manager::operator()(roq::Event<roq::ParametersUpdate> const& event) {
-   for(auto& p: event.value.parameters) {
-       if(p.label == "portfolio"sv) {
-           auto [portfolio, is_new] = emplace_portfolio({
-               .portfolio_name = p.value
-           });
-           assert(p.strategy_id);
-           portfolio_by_strategy_[p.strategy_id] = portfolio.portfolio;
-           log::info("configure strategy {} -> portfolio.{} {} is_new {}", p.strategy_id, portfolio.portfolio, portfolio.portfolio_name, is_new);
-       }
-   }
+    for(auto& p: event.value.parameters) {
+        auto [prefix, label] = core::split_prefix(p.label, ':');
+        if(prefix!="oms"sv)
+            continue;
+        if(label == "portfolio"sv) {
+            assert(p.strategy_id!=0);
+            auto [portfolio, is_new] = emplace_portfolio({
+                .portfolio = p.strategy_id,
+                .portfolio_name = p.value
+            });
+            // NOTE: always same for now
+            //portfolio_by_strategy_[p.strategy_id] = portfolio.portfolio;
+            log::info("configure strategy {} -> portfolio.{} {} is_new {}", p.strategy_id, portfolio.portfolio, portfolio.portfolio_name, is_new);
+        }
+    }
 }
     
 
@@ -131,21 +132,34 @@ void Manager::operator()(const roq::Event<roq::PositionUpdate>& event) {
 
 
 std::pair<core::Portfolio &, bool> Manager::emplace_portfolio(core::PortfolioKey key) {
-    if (key.portfolio != 0) {
+    core::PortfolioIdent portfolio_id = key.portfolio;
+    // lookup by id (fast)
+    if (portfolio_id != 0) {
         auto iter = portfolios_.find(key.portfolio);
         if (iter != std::end(portfolios_)) {
           return {iter->second, false};
         }
     }
+    // lookup by name
     auto iter = portfolio_by_name_.find(key.portfolio_name);
     if (iter != std::end(portfolio_by_name_)) {
-        core::PortfolioIdent id = iter->second;
-        auto [iter_2, is_new] = portfolios_.try_emplace(id);
+        portfolio_id = iter->second;
+        assert(portfolio_id);
+        auto [iter_2, is_new] = portfolios_.try_emplace(portfolio_id);
         return {iter_2->second, is_new};
     }
-    auto [iter_2, is_new] = portfolios_.try_emplace(++last_portfolio_id);
-    iter_2->second.portfolio = last_portfolio_id;
-    portfolio_by_name_.try_emplace(key.portfolio_name, last_portfolio_id);
+
+    // not found: insert
+
+    if(portfolio_id==0) {
+        portfolio_id = ++last_portfolio_id;
+    } else {
+        last_portfolio_id = std::max(last_portfolio_id, portfolio_id);  // ensure we know max id
+    }
+
+    auto [iter_2, is_new] = portfolios_.try_emplace(portfolio_id);
+    iter_2->second.portfolio = portfolio_id;
+    portfolio_by_name_.try_emplace(key.portfolio_name, portfolio_id);
     auto& portfolio = iter_2->second;
     portfolio.portfolio_name = key.portfolio_name;
     return {iter_2->second, is_new};

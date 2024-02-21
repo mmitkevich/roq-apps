@@ -3,8 +3,10 @@
 #include "roq/numbers.hpp"
 #include "roq/utils/compare.hpp"
 #include <roq/logging.hpp>
+#include "roq/core/string_utils.hpp"
 
 namespace roq::core::oms {
+using namespace std::literals;
 
 void Book::set_tick_size(core::Double new_tick_size) {
   if(tick_size.empty()) {
@@ -51,6 +53,14 @@ std::pair<oms::Order &, bool> Book::emplace_order(OrderIdent order_id) {
     return {order, true};
   } else {
     return {iter->second, false};
+  }
+}
+
+void Book::operator()(roq::Parameter const& p) {
+  auto [prefix, label] = core::split_prefix(p.label,':');
+  if(label=="post_fill_timeout"sv) {            
+    assert(!p.account.empty());
+    post_fill_timeout = std::chrono::milliseconds { core::parse_uint32(p.value) };
   }
 }
 

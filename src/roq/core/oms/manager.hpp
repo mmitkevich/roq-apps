@@ -88,6 +88,7 @@ public:
     void operator()(Event<DownloadEnd> const& event) override;
     void operator()(Event<RateLimitTrigger> const& event) override;
     
+    void operator()(Event<ParametersUpdate> const& event) override;
     // roq::pricer::Handler
     void operator()(core::TargetQuotes const& target_quotes) override;    
 public:
@@ -142,7 +143,7 @@ private:
     oms::Handler& handler_;
 };
 
-template<class T, std::invocable<oms::Book&, market::Info const &> Fn>
+/*template<class T, std::invocable<oms::Book&, market::Info const &> Fn>
 bool core::oms::Manager::get_book(roq::Event<T> const& event,  Fn&&fn) {
     bool found = false;
     T const& u = event.value;
@@ -154,7 +155,7 @@ bool core::oms::Manager::get_book(roq::Event<T> const& event,  Fn&&fn) {
         found = this->get_book(oms::Market{}.merge(info), fn);
     });
     return found;
-}
+}*/
 
 bool core::oms::Manager::get_book(oms::Market const& key, std::invocable<oms::Book&, market::Info const &> auto fn) {
     auto iter = books_.find(key.strategy);

@@ -14,7 +14,7 @@ struct Underlying {
   core::Market market;
 
   core::Double delta;
-  core::Double delta_min, delta_max;
+  core::Double delta_min = -INFINITY, delta_max = +INFINITY;
 
   std::vector<core::MarketIdent> legs;
 

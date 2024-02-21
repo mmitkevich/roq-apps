@@ -42,8 +42,8 @@ void Strategy::operator()(const Event<TopOfBook> &event) {
     if(!core.is_ready(market))
       return;
     
-    core.markets.get_market(market, [&](const core::market::Info& minfo) {
-      if(minfo.best_quotes_source==core::BestQuotesSource::TOP_OF_BOOK) {
+    core.markets.get_market(market, [&](const core::market::Info& info) {
+      if(info.best_quotes_source==core::BestQuotesSource::TOP_OF_BOOK) {
           auto [best_quotes,is_new] = core.best_quotes.emplace_quotes(market); 
           
           best_quotes.buy.price = u.layer.bid_price;
@@ -128,6 +128,8 @@ void Strategy::operator()(core::Trade const & trade) {
 // route portfolios notification into pricer
 void Strategy::operator()(core::ExposureUpdate const& u) {
     
+    log::info<2>("OMS exposure  {}", u);
+
     MessageInfo info;
     roq::Event event {info, u};
     

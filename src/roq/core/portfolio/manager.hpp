@@ -99,7 +99,7 @@ struct Manager {
     core::Hash<core::PortfolioIdent, core::Portfolio> portfolios_;
     core::Hash<roq::Account, core::PortfolioIdent> portfolio_by_name_;
     core::Hash<roq::Exchange, core::Hash<roq::Account, core::PortfolioIdent>> portfolio_by_account_;
-    core::Hash<core::StrategyIdent, core::PortfolioIdent> portfolio_by_strategy_;
+    //core::Hash<roq::StrategyIdent, core::PortfolioIdent> portfolio_by_strategy_;  // for now portfolio identifier == strategy identifier always.
 };
 
 

@@ -23,6 +23,7 @@
 #include "roq/core/clock.hpp"
 #include "roq/core/flags/flags.hpp"
 #include "roq/logging.hpp"
+#include "roq/core/string_utils.hpp"
 
 namespace roq::core::oms {
 
@@ -36,6 +37,25 @@ Manager::Manager(oms::Handler& handler, client::Dispatcher& dispatcher, core::Ma
     log::debug<2>("oms::Manager this={}", (void*)this);
 }
 
+
+void Manager::operator()(Event<ParametersUpdate> const& event) {
+    
+    for(roq::Parameter const& p: event.value.parameters) {
+        auto [prefix, label] = core::split_prefix(p.label, ':');
+        if(prefix != "oms"sv)
+            continue;
+        auto key = oms::Market { 
+            .market = core.markets.get_market_ident(p.symbol, p.exchange),
+            .symbol = p.symbol,
+            .exchange = p.exchange,            
+            .account = p.account,
+            .portfolio = p.strategy_id, // FIXME: portfolio_id == strategy_id
+            .strategy = p.strategy_id,
+        };
+        auto [book, is_new] = emplace_book(key);        
+        book(p);
+    }
+}
 
 void Manager::operator()(core::TargetQuotes const & target_quotes) {
     log::info<2>("oms TargetQuotes {}", target_quotes);    
@@ -59,13 +79,13 @@ void Manager::operator()(core::TargetQuotes const & target_quotes) {
     //    });
     //}
 
-    auto market_oms = oms::Market { 
+    auto key = oms::Market { 
         .account = target_quotes.account,
         .portfolio = target_quotes.portfolio,
         .strategy = target_quotes.strategy,
     }.merge(info);
 
-    auto [book, is_new] = emplace_book(market_oms);
+    auto [book, is_new] = emplace_book(key);
 
     assert(book.exchange == target_quotes.exchange);
     assert(book.symbol == target_quotes.symbol);
@@ -331,13 +351,16 @@ oms::Order& Manager::create_order(oms::Book& book, const core::TargetOrder& targ
         .execution_instructions = execution_instructions,                
         .quantity = target.quantity,        
         .price = target.price, 
-        .routing_id = routing_id_v
+        .routing_id = routing_id_v,
+        .strategy_id = book.strategy,        
     };
+
     market_by_order_[order_id] = oms::Market {
         .market = book.market,
         .symbol = book.symbol,
         .exchange = book.exchange,
         .account = book.account,
+        .strategy = book.strategy,
         .trade_gateway_name = book.trade_gateway_name
     };
 
@@ -675,7 +698,7 @@ void Manager::operator()(roq::Event<OrderUpdate> const& event) {
         }
         process(book, info);
     })) {
-        log::info<1>("oms order_update not_found market {}@{} account {} strategy {}", u.symbol, u.exchange, u.account, u.strategy_id);
+        log::info<1>("oms order_update not_found key {}", key);
     }
 }
 
@@ -775,8 +798,8 @@ void Manager::operator()(roq::Event<OrderAck> const& event) {
                 u.request_type, u.order_id, u.version, u.side, u.request_status, u.symbol, u.exchange, market.market);            
         }
     })) {
-        log::info<1>("OMS order_ack book not_found {} order_id={}.{} side={}, status={} symbol={} exchange={}", 
-            u.request_type, u.order_id, u.version, u.side, u.request_status, u.symbol, u.exchange);            
+        log::info<1>("OMS order_ack book not_found {} order_id={}.{} side={}, status={} key {}", 
+            u.request_type, u.order_id, u.version, u.side, u.request_status, key);            
     }
 }
 
@@ -785,19 +808,27 @@ void Manager::operator()(Event<PositionUpdate> const & event) {
     Base::operator()(event);
     auto& u = event.value;    
     log::info<2>("PositionUpdate {}", event);    
-    get_book(event,[&](oms::Book& book, core::market::Info const& info) {
-        auto new_position = u.long_quantity - u.short_quantity;
-        book.position_by_account = new_position; 
-        auto gateway_id = event.message_info.source;
-        bool is_downloading = core.gateways.is_downloading(gateway_id);    
-        if(!is_downloading && core.portfolios.position_source==core::PositionSource::PORTFOLIO) {
-            book.position_by_account = new_position;
-            book.last_position_modify_time = now();
-            log::info<1>("OMS position_update downloading {} account {} position_by_orders {} position_by_account {} symbol {} exchange {} market {}",
-                is_downloading, book.account, book.position_by_orders, book.position_by_account,
-                book.symbol, book.exchange, book.market);
+    core.portfolios.get_portfolio_by_account(u.account, u.exchange, [&](core::Portfolio& p) {
+        oms::Market key = {
+            .symbol = u.symbol,
+            .exchange = u.exchange,
+            .account = u.account,
+            .strategy = p.portfolio, //NOTE: portfolio_id == strategy_id
+        };
+        get_book(key,[&](oms::Book& book, core::market::Info const& info) {
+            auto new_position = u.long_quantity - u.short_quantity;
+            book.position_by_account = new_position; 
+            auto gateway_id = event.message_info.source;
+            bool is_downloading = core.gateways.is_downloading(gateway_id);    
+            if(!is_downloading && core.portfolios.position_source==core::PositionSource::PORTFOLIO) {
+                book.position_by_account = new_position;
+                book.last_position_modify_time = now();
+                log::info<1>("OMS position_update downloading {} account {} position_by_orders {} position_by_account {} symbol {} exchange {} market {}",
+                    is_downloading, book.account, book.position_by_orders, book.position_by_account,
+                    book.symbol, book.exchange, book.market);
 
-        }
+            }
+        });
     });
 }
 

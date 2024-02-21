@@ -9,9 +9,8 @@ struct Pricer;
 
 struct Strategy {
 
-  Strategy(core::StrategyIdent strategy_id, lqs::Pricer& pricer) 
-  : strategy(strategy_id)
-  , pricer(pricer) {}
+  Strategy(lqs::Pricer& pricer) 
+  : pricer(pricer) {}
 
   Strategy(Strategy const&) = default;
   Strategy(Strategy&&) = default;
@@ -30,7 +29,7 @@ public:
   lqs::Pricer& pricer;
   bool enabled = false;
   core::StrategyIdent strategy;
-  core::PortfolioIdent portfolio;
+  core::PortfolioIdent portfolio; // NOTE: for now portfolio == strategy always
   core::Hash<core::MarketIdent, lqs::Underlying> underlyings;
   core::Hash<core::MarketIdent, lqs::Leg> leg_by_market;
 };

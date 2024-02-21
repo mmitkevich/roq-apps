@@ -35,3 +35,7 @@ struct Market {
 };
 
 }
+
+
+ROQ_CORE_FMT_DECL(roq::core::oms::Market, "market.{} {}@{} account {} portfolio.{} {} strategy {} trade_gateway_name {}", 
+    _.market, _.symbol, _.exchange, _.account, _.portfolio, _.portfolio_name, _.strategy, _.trade_gateway_name);
