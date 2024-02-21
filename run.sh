@@ -32,6 +32,7 @@ function cmd {
 	echo "cmd: $CMD"
 	$CMD
 }
+GATEWAYS=${GATEWAYS:-"deribit"}
 GWS=""
 for GW in $GATEWAYS; do
  GWS="$GWS $ROQ_ROOT/run/$GW-$ROQ_MODE.sock"

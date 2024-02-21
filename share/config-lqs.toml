@@ -26,7 +26,7 @@
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     exchange        = "deribit"
     account         = "REN_DERIBIT"
-    value           = ["2000",                  "2000"]
+    value           = ["2000",                  "4000"]
 
 # each strategy operates inside named portfolio
 [[parameter]]
@@ -88,9 +88,9 @@
     label           = "lqs:delta_by_volume"
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
-    value           = ["1",                     "1"]
+    value           = ["10",                     "10"]
 
-# specify subaccount to trade legs through
+# specify account to trade legs through
 [[parameter]]
     strategy        = "100"
     label           = "lqs:account"
@@ -112,6 +112,8 @@
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["10",                   "10"]
 
+
+### not-implemented yet
 [[parameter]]
     strategy        = "100"
     label           = "lqs:price_threshold"
