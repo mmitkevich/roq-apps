@@ -116,6 +116,12 @@ void Strategy::operator()(const Event<MarketByPriceUpdate>& event) {
     //    publisher_->dispatch(best_price_event);
 }
 
+void Strategy::operator()(const Event<DownloadEnd>& event) {
+  Base::operator()(event);
+  // send config file parameters (TODO: this should push into gateway instead!)
+  config.dispatch(*this);
+}
+
 void Strategy::operator()(const Event<core::Quotes>& event) {
     (*pricer)(event);
 }

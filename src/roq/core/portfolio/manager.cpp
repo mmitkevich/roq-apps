@@ -18,10 +18,10 @@ void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
     config.get_nodes(root, "account", [&](auto node) {
         roq::Exchange exchange = config.get_string_or(node, "exchange", {});
         roq::Account account = config.get_string_or(node, "account", {});
-        core::StrategyIdent strategy_id = core::parse_uint32(config.get_string_or(node, "strategy", "0"));   // NOTE: portfolio_id IS ALWAYS SAME AS strategy_id
+        core::StrategyIdent portfolio_id = core::parse_uint32(config.get_string_or(node, "portfolio"sv, "0"));   // NOTE: portfolio_id IS ALWAYS SAME AS strategy_id
         std::string portfolio_name = config.get_string_or(node, "portfolio", {});
         auto [portfolio, is_new] = emplace_portfolio({
-            .portfolio = strategy_id,   // NOTE
+            .portfolio = portfolio_id,
             .portfolio_name = portfolio_name
         });
         portfolio_by_account_[exchange][account] = portfolio.portfolio;
@@ -34,7 +34,7 @@ void Manager::operator()(roq::Event<roq::ParametersUpdate> const& event) {
         auto [prefix, label] = core::split_prefix(p.label, ':');
         if(prefix!="core"sv)
             continue;
-        if(label == "portfolio"sv) {
+        if(label == "portfolio_name"sv) {
             assert(p.strategy_id!=0);
             auto [portfolio, is_new] = emplace_portfolio({
                 .portfolio = p.strategy_id,

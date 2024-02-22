@@ -67,7 +67,9 @@ struct Strategy final
     
     /// portfolio::Handler
     void operator()(core::ExposureUpdate const& u) override;
-
+  
+    void operator()(const Event<DownloadEnd>& event) override;
+    
     // route events
     template<class T>
     void dispatch(const roq::Event<T> &event) {
