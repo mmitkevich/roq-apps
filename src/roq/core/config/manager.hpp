@@ -5,6 +5,8 @@
 #include <roq/parameters_update.hpp>
 #include <roq/string_types.hpp>
 #include <roq/client/config.hpp>
+#include "roq/core/config/client.hpp"
+#include "roq/io/context.hpp"
 
 namespace roq::core::config {
 
@@ -37,8 +39,11 @@ struct Manager : client::Config {
 
     std::vector<roq::Parameter> parameters;
 
+    std::unique_ptr<config::Client> client_;
+
     Manager() = default;
-    
+    Manager(io::Context& io_context);
+
     void operator()(Query const& query, std::invocable<roq::Parameter const&> auto&& fn) const {
         for(auto& item : parameters) {
           if(query(item))
@@ -49,7 +54,7 @@ struct Manager : client::Config {
     template<class Strategy>
     void configure(Strategy& strategy) {
           strategy.configure(toml, toml.get_root());
-          this->dispatch(strategy);
+          //this->dispatch(strategy);
     }
 
     void dispatch(client::Config::Handler& handler) const override;

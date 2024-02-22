@@ -11,6 +11,10 @@ namespace roq::core::config {
 
 using namespace std::literals;
 
+Manager::Manager(io::Context& io_context) {
+    client_ = std::make_unique<config::Client>(io_context);
+}
+
 bool Query::operator()(roq::Parameter const& item) const {
     if(!label.empty() && item.label!=label)
         return false;

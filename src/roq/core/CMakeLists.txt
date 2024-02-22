@@ -61,6 +61,8 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
   fmt::fmt 
   roq-flags::roq-flags
   roq-logging::roq-logging-flags
+  roq-io::roq-io
+  roq-web::roq-web
   )
 
 target_compile_features("${TARGET_NAME}" PUBLIC cxx_std_20)
