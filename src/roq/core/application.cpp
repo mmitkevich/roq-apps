@@ -23,17 +23,15 @@ namespace core {
 
 std::unique_ptr<core::Handler> factory(core::Strategy& s);
 
-Application::Application(args::Parser const &parser, logging::Settings const &settings, Info const &info)
-: Service(parser, settings, info) {
-  context = io::engine::ContextFactory::create_libevent();
-  config = std::make_unique<config::Manager>(*context);
-}
 
 int Application::main(args::Parser const &parser) {
   
   strategy_name = Flags::strategy();
   auto config_file = Flags::config_file();
   
+  context = io::engine::ContextFactory::create_libevent();
+  config = std::make_unique<config::Manager>(*context);
+
   log::info<1>("using strategy={} config_file={}", strategy_name, config_file);
 
   (*config).load(config_file);

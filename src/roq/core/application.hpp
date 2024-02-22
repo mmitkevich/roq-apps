@@ -12,12 +12,11 @@
 namespace roq::core {
 
 struct Application final : roq::Service {
-    
+    using Service::Service;
+
     std::string strategy_name;
     std::unique_ptr<io::Context> context;
     std::unique_ptr<config::Manager> config;
-
-    Application(args::Parser const &, logging::Settings const &, Info const &);
 
     void operator()(roq::Event<roq::ParametersUpdate> const & event);
 

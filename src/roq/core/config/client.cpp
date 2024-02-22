@@ -6,6 +6,7 @@ using namespace std::literals;
 
 Client::Client(io::Context& io_context, web::rest::Client::Config const config/*={}*/)
 {
+  assert(&io_context);
   rest_ = web::rest::Client::create(*this, io_context, config);
 }
 
