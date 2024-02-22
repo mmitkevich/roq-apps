@@ -26,11 +26,10 @@ struct Pricer : core::Handler {
   std::pair<lqs::Strategy&,bool> emplace_strategy(core::StrategyIdent strategy_id);
   bool get_strategy(core::PortfolioIdent portfolio, std::invocable<lqs::Strategy&> auto fn);
   void get_strategies(std::invocable<lqs::Strategy&> auto fn);
+  void dispatch(lqs::Leg const& leg, lqs::Strategy const& strategy);
 
   core::Dispatcher &dispatcher;
   core::Manager &core;
-private:
-  void dispatch(lqs::Leg const& leg, lqs::Strategy const& s);
 private:  
   core::Hash<core::StrategyIdent, lqs::Strategy> strategies_;
 };

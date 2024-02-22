@@ -47,48 +47,38 @@ void Pricer::operator()(const roq::Event<core::ExposureUpdate> &e) {
         for(const auto& exposure: u.exposure) {
             auto [this_leg, is_new_leg] = s.emplace_leg(exposure.symbol, exposure.exchange);
             this_leg(exposure, s);
-            s.get_underlying(this_leg, [&](lqs::Underlying & underlying) {
-                underlying.compute(s);            
-                this_leg.compute(underlying, s);
-                // all legs affected by change in delta
-                s.get_legs(underlying, [&](lqs::Leg& leg) {
-                    leg.compute(underlying, s);
-                    dispatch(leg, s);
-                });
-            });
+            s.compute(this_leg);
         }
     });
 }
 
 void Pricer::operator()(const roq::Event<core::Quotes> &e) {
     core::Quotes const& u = e.value;
+    bool result = true;
     get_strategies([&](lqs::Strategy& s) {
-        // broadcast to all portfolios
-        bool result = true;
-        result &= s.get_leg(u.market, [&](lqs::Leg & leg) { 
+        // broadcast to all strategies
+        result &= s.get_leg(u.market, [&](lqs::Leg & this_leg) {
             result &= core.best_quotes.get_quotes(u.market, [&] (core::BestQuotes const& market_quotes) {
-                leg.market_quotes = market_quotes;
+                this_leg.market_quotes = market_quotes;
             });
-            result &= s.get_underlying(leg, [&] (lqs::Underlying & underlying ) {
-                underlying.compute(s);
-                leg.compute(underlying, s);
-                dispatch(leg, s);
-            });
+            // delegate to the strategy to compute things after this_leg changed
+            result &= s.compute(this_leg);
         });
     });
     // return result;
 }
 
 
-void Pricer::dispatch(lqs::Leg const& leg, lqs::Strategy const& s) {
+// called by strategy when leg changed
+void Pricer::dispatch(lqs::Leg const& leg, lqs::Strategy const& strategy) {
     //roq::MessageInfo info{};
     core::TargetQuotes target_quotes {
         .market = leg.market.market,
         .symbol = leg.market.symbol,        
         .exchange = leg.market.exchange,        
         .account = leg.account,
-        .portfolio = s.portfolio,        
-        .strategy = s.strategy,
+        .portfolio = strategy.portfolio,        
+        .strategy = strategy.strategy,
         .buy = std::span { &leg.exec_quotes.buy, 1},
         .sell = std::span { &leg.exec_quotes.sell, 1},
     };

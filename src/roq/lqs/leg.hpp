@@ -46,7 +46,7 @@ struct Leg {
   void operator()(const core::Exposure& e, lqs::Strategy& s);
 
   bool check_market_quotes(core::BestQuotes& m);
-  void compute(lqs::Underlying const& underlying, lqs::Strategy const& portfolio);
+  void compute(lqs::Strategy const& strategy, lqs::Underlying const* underlying_opt=nullptr);
 };
 
 } // roq::lqs

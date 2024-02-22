@@ -58,4 +58,25 @@ void Strategy::operator()(roq::Parameter const & p) {
     }
 }
 
+
+bool Strategy::compute(lqs::Leg& this_leg) {
+    if(!get_underlying(this_leg, [&](lqs::Underlying& u) {
+        // has underlying
+        u.compute(*this);            
+        this_leg.compute(*this, &u);
+        // all legs affected by change in delta
+        get_legs(u, [&](lqs::Leg& leg) {
+            leg.compute(*this, &u);
+            pricer.dispatch(leg, *this);
+        });
+        return true;
+    })) {
+        // no underlying
+        this_leg.compute(*this);
+        pricer.dispatch(this_leg, *this);
+        return true;
+    }
+    return false;
+}
+
 } // roq::lqs
