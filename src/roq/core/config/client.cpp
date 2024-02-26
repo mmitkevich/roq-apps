@@ -83,11 +83,15 @@ void Client::operator()(roq::ParametersUpdate const& u) {
       //http::Accept accept;
       //http::ContentType content_type;
       //std::string_view headers;
-      //std::string_view body;G
-      //io::QualityOfService quality_of_service = {};
+      .quality_of_service = io::QualityOfService::IMMEDIATE,                                                            
   };
   log::debug("PUT {} {}", request.path, uri_);
-  (*rest_)(request_id, request, [&](auto&&...args) { (*this)(std::forward<decltype(args)>(args)...); });
+
+  // I can't PUT here sicne connection is not ready. So I need to queue. Lot of boilerplate
+  if((*rest_).can_try()) {
+    (*rest_)(request_id, request, [&](auto&&...args) { (*this)(std::forward<decltype(args)>(args)...); });
+    (*rest_).refresh({});
+  }
 }
 
 
@@ -98,5 +102,21 @@ void Client::operator()(roq::Event<roq::ParametersUpdate> const& event) {
 void Client::operator()(std::string_view const &request_id, web::rest::Response const &response) {
   log::debug("request {} response {}",request_id, response);
 }
+
+
+void Client::operator()(Event<Timer> const& event) {
+  if((*rest_).can_try()) {
+    (*rest_).refresh({});
+  }
+}
+
+void Client::start() {
+  (*rest_).start();
+}
+
+void Client::stop() {
+  (*rest_).stop();
+}
+
 
 } // roq::core::config

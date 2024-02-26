@@ -40,7 +40,8 @@ struct Manager : client::Config {
 
     Manager() = default;
     Manager(io::Context& io_context);
-
+    ~Manager();
+    
     void operator()(Query const& query, std::invocable<roq::Parameter const&> auto&& fn) const {
         for(auto& item : parameters) {
           if(query(item))
@@ -63,6 +64,8 @@ struct Manager : client::Config {
 
     // from strategy to override
     void operator()(Event<ParametersUpdate> const& event);
+
+    void operator()(Event<Timer> const& event);
 };
 
 

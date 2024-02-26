@@ -39,7 +39,12 @@ struct Client final : web::rest::BasicClientHandler < config::Handler  > {
 
   void operator()(std::string_view const &request_id, super::Response const &response);
 
+  void operator()(Event<Timer> const& event);
+
+  void start();
+  void stop();
 private:
+  
   std::unique_ptr<super::Client> rest_;
   Config config;
   roq::String<4096> uri_;
