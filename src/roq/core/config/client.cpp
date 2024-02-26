@@ -85,12 +85,14 @@ void Client::operator()(roq::ParametersUpdate const& u) {
       //std::string_view headers;
       .quality_of_service = io::QualityOfService::IMMEDIATE,                                                            
   };
-  log::debug("PUT {} {}", request.path, uri_);
 
   // I can't PUT here sicne connection is not ready. So I need to queue. Lot of boilerplate
   if((*rest_).can_try()) {
+    log::debug("PUT {} {}", request.path, uri_);    
     (*rest_)(request_id, request, [&](auto&&...args) { (*this)(std::forward<decltype(args)>(args)...); });
     (*rest_).refresh({});
+  } else {
+    log::debug("NOT READY {} {}", request.path, uri_);    
   }
 }
 
