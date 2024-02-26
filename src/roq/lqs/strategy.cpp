@@ -18,7 +18,7 @@ std::pair<lqs::Underlying&, bool> Strategy::emplace_underlying(core::Market cons
   
 std::pair<lqs::Leg&, bool> Strategy::emplace_leg(core::Market const& key) {
     auto [info, is_new_info] = pricer.core.markets.emplace_market(key);
-    auto [iter, is_new] = leg_by_market.try_emplace(key.market, lqs::Leg {
+    auto [iter, is_new] = leg_by_market.try_emplace(info.market, lqs::Leg {
         .market = {
             .market = info.market,
             .symbol = info.symbol,
@@ -26,7 +26,11 @@ std::pair<lqs::Leg&, bool> Strategy::emplace_leg(core::Market const& key) {
         },
         .underlying = static_cast<core::MarketIdent>(-1),
     });
-    return {iter->second, is_new};
+    lqs::Leg &leg = iter->second;
+    if(is_new) {
+        log::debug("lqs emplace_leg {} portfolio {}", leg.market, portfolio);
+    }
+    return {leg, is_new};
 }
 
 bool Strategy::operator()(roq::Parameter const & p) {
@@ -100,24 +104,28 @@ bool Strategy::compute(lqs::Leg& this_leg) {
 bool Strategy::operator()(core::Quotes const& u) {
     bool result = true;
 
-    auto fn = [&](lqs::Leg & this_leg) {
+    //auto fn = 
+    if(!get_leg(u.market, [&](lqs::Leg & this_leg) {
         auto& best_quotes = pricer.core.best_quotes;
         result &= best_quotes.get_quotes(u.market, [&] (core::BestQuotes const& market_quotes) {
-            this_leg.market_quotes = market_quotes;
+            this_leg.market_quotes = market_quotes;            
+            log::debug("lqs quotes market {} market_quotes {}", this_leg.market, this_leg.market_quotes);
         });
         // delegate to the strategy to compute things after this_leg changed
         result &= compute(this_leg);
-    };
-    if(auto_legs) {
-        auto [leg, is_new] = emplace_leg(core::Market {
-            .market = u.market,
-            .symbol = u.symbol,
-            .exchange = u.exchange,
-        });
-        fn(leg);
-    } else {
-        result &= get_leg(u.market, std::move(fn));
+    })) {
+        log::debug("lqs quotes market {} not found", u.market);
     }
+    //if(auto_legs) {
+    //    auto [leg, is_new] = emplace_leg(core::Market {
+    //        .market = u.market,
+    //        .symbol = u.symbol,
+    //        .exchange = u.exchange,
+    //    });
+    //    fn(leg);
+    //} else {
+    //    result &= get_leg(u.market, std::move(fn));
+    //}
     return result;
 }
 
@@ -128,6 +136,11 @@ bool Strategy::operator()(core::Exposure const& e) {
         .exchange = e.exchange,
     };
     auto [this_leg, is_new_leg] = emplace_leg(key);
+    if(is_new_leg) {
+        assert(!e.account.empty());
+        this_leg.account = e.account;        
+        log::debug("emplace_leg market.{} {}@{} account {}", this_leg.market.market, this_leg.market.symbol, this_leg.market.exchange, this_leg.account);
+    }
     this_leg(e, *this);
     compute(this_leg);
     return true;

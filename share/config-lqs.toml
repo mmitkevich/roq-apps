@@ -2,7 +2,7 @@
 
 # specify mdata and trade gateways for symbols, see market::Info
 [[market]]
-    symbol          = ["BTC-PERPETUAL", "BTC-29MAR24"]
+    symbol          = ["BTC-PERPETUAL", "BTC-29MAR24", "BTC-1MAR24"]
     exchange        = "deribit"
     mdata_gateway   = "deribit"
 
@@ -95,22 +95,22 @@
     strategy        = "100"
     label           = "lqs:account"
     exchange        = "deribit"
-    symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
-    value           = ["REN_DERIBIT",           "REN_DERIBIT"]
+    symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24",      "BTC-1MAR24"]
+    value           = ["REN_DERIBIT",           "REN_DERIBIT",      "REN_DERIBIT"]
 
 [[parameter]]
     strategy        = "100"
     label           = "lqs:buy_volume"
     exchange        = "deribit"
-    symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
-    value           = ["10",                   "10"]
+    symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24",      "BTC-1MAR24"]
+    value           = ["10",                   "10",                "10"]
 
 [[parameter]]
     strategy        = "100"
     label           = "lqs:sell_volume"
     exchange        = "deribit"    
-    symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
-    value           = ["10",                   "10"]
+    symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24",      "BTC-1MAR"]
+    value           = ["10",                   "10",                "10"]
 
 
 ### not-implemented yet

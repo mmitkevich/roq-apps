@@ -78,9 +78,12 @@ void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
         auto mdata_gateway_name = config.get_string_or(node, "mdata_gateway", "");
         config.get_values(type_c<std::string>{}, node, "symbol"sv, [&](auto i, auto symbol) {
             core::MarketIdent market = this->get_market_ident(symbol, exchange);
-            log::info<1>("symbol {}, exchange {}, market {} mdata_gateway '{}'", 
+            bool is_regex = symbol.find('*')!=std::string_view::npos;
+            log::info<1>("symbol {}, exchange {}, market {} mdata_gateway '{}' is_regex {}", 
                 symbol, exchange, market, 
-                mdata_gateway_name);
+                mdata_gateway_name, is_regex);
+            if(is_regex)
+              return;
             auto [item, is_new] = emplace_market({.market=market, .symbol=symbol, .exchange=exchange});
             item.pub_price_source = config.get_value_or(node, "pub_price_source", core::BestQuotesSource::UNDEFINED);
             item.best_quotes_source = config.get_value_or(node, "best_quotes_source", core::BestQuotesSource::MARKET_BY_PRICE);

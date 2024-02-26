@@ -103,6 +103,7 @@ void Manager::operator()(const roq::Event<roq::PositionUpdate>& event) {
         .market = market.market,
         .symbol = market.symbol,        
         .exchange = market.exchange,        
+        .account = u.account,        
 //        .portfolio = portfolio.portfolio,
 //        .portfolio_name = portfolio.portfolio_name,
     };

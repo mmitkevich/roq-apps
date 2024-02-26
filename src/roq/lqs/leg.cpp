@@ -22,6 +22,7 @@ void Leg::operator()(const roq::Parameter & p, lqs::Strategy& s) {
         passive_mode = magic_enum::enum_cast<lqs::PassiveMode>(p.value).value_or(lqs::PassiveMode::UNDEFINED);
     } else if(label=="account"sv) {
         account = std::string_view {p.value};
+        assert(!account.empty());
     }
 }
 

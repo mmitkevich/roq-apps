@@ -22,7 +22,9 @@ std::pair<lqs::Strategy&, bool> Pricer::emplace_strategy(core::StrategyIdent str
     // NOTE: portfolio id == strategy id
     strategy.strategy = strategy_id;
     strategy.portfolio = strategy_id;
-    log::debug("lqs emplace_strategy {} is_new {}", strategy_id, is_new);
+    if(is_new) {
+        log::debug("lqs emplace_strategy {} is_new {}", strategy_id, is_new);
+    }
     return {strategy, is_new};
 }
 

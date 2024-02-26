@@ -30,7 +30,7 @@ struct Strategy {
 public:
   lqs::Pricer& pricer;
   bool enabled = false;
-  bool auto_legs = false;
+  //bool auto_legs = true;  // legs would be created upon receiving exposure
   core::StrategyIdent strategy;
   core::PortfolioIdent portfolio; // NOTE: for now portfolio == strategy always
   core::Hash<core::MarketIdent, lqs::Underlying> underlyings;
