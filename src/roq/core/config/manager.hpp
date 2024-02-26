@@ -33,6 +33,7 @@ struct Manager : client::Config {
     std::string url;
     bool is_downloading = false;
     roq::User user;
+    std::chrono::nanoseconds start_time_ {};
 
     std::vector<roq::Parameter> parameters;
 
@@ -41,7 +42,7 @@ struct Manager : client::Config {
     Manager() = default;
     Manager(io::Context& io_context);
     ~Manager();
-    
+
     void operator()(Query const& query, std::invocable<roq::Parameter const&> auto&& fn) const {
         for(auto& item : parameters) {
           if(query(item))

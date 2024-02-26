@@ -107,9 +107,10 @@ void Client::operator()(std::string_view const &request_id, web::rest::Response 
 
 
 void Client::operator()(Event<Timer> const& event) {
-  if((*rest_).can_try()) {
+//  if((*rest_).can_try()) {
     (*rest_).refresh({});
-  }
+//  }
+
 }
 
 void Client::start() {

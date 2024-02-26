@@ -69,11 +69,16 @@ struct Strategy final
     void operator()(core::ExposureUpdate const& u) override;
   
     void operator()(const Event<DownloadEnd>& event) override;
-    
+
     // route events
     template<class T>
     void dispatch(const roq::Event<T> &event) {
         Base::dispatch(event);
+        
+        if constexpr(std::is_invocable_v<decltype(config), decltype(event)>) {
+          config(event);
+        }
+
         if constexpr(std::is_invocable_v<decltype(core), decltype(event)>) {
           core(event);
         }

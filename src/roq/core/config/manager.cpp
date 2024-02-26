@@ -63,9 +63,6 @@ void Manager::load(std::string_view url) {
         //p.symbol = toml.get_string(node, "symbol"sv);
         //p.value = toml.get_string(node, "value"sv);
     });
-
-    // to gateway/sqlite
-    dispatch(*client_);
 }
 
 void Manager::dispatch(config::Handler& handler) {
@@ -134,6 +131,15 @@ void Manager::dispatch(client::Config::Handler& handler) const {
 }
 
 void Manager::operator()(Event<Timer> const& event) {
+    if(start_time_==std::chrono::nanoseconds{}) {
+        start_time_ = event.value.now;
+    } else {
+        if(event.value.now-start_time_ > std::chrono::seconds{1}) {
+            // hopefully connected here
+            // to gateway/sqlite
+            dispatch(*client_);
+        }
+    }
     (*client_)(event);
 }
 
