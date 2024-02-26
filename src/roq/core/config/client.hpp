@@ -3,10 +3,12 @@
 #pragma once
 
 #include "roq/web/rest/client.hpp"
+#include "roq/core/config/handler.hpp"
 
 namespace roq::web::rest {
 
-  struct BasicClientHandler :  web::rest::Client::Handler {
+template<class...B>
+struct BasicClientHandler :  web::rest::Client::Handler, B... {
       using Client = web::rest::Client;
       using Connected  = typename Client::Connected;
       using Disconnected = typename Client::Disconnected;
@@ -24,17 +26,24 @@ namespace roq::web::rest {
 
 namespace roq::core::config {
 
-struct Client final : web::rest::BasicClientHandler {
-  using super = web::rest::BasicClientHandler;
+struct Client final : web::rest::BasicClientHandler < config::Handler  > {
+  using super = web::rest::BasicClientHandler < config::Handler >;
+  using Config = super::Client::Config;
+  using URI = io::web::URI;
 
-  Client(io::Context& io_context, super::Client::Config const config = {});  
+  Client(io::Context& io_context, std::string_view const &uri);  
 
   void operator()(roq::ParametersUpdate const& u);
+
+  virtual void operator()(Event<ParametersUpdate> const& event);
 
   void operator()(std::string_view const &request_id, super::Response const &response);
 
 private:
   std::unique_ptr<super::Client> rest_;
+  Config config;
+  roq::String<4096> uri_;
+  uint32_t last_request_id;
 };
 
 }  // namespace roq

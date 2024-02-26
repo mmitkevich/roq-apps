@@ -54,7 +54,7 @@
     strategy        = "100"
     label           = "lqs:passive_mode"
     exchange        = "deribit"        
-    #symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
+    symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
     value           = "CROSS" # ["CROSS",                      "CROSS"]             # CROSS, JOIN
 
 

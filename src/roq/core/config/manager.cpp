@@ -11,9 +11,6 @@ namespace roq::core::config {
 
 using namespace std::literals;
 
-Manager::Manager(io::Context& io_context) {
-    client_ = std::make_unique<config::Client>(io_context);
-}
 
 bool Query::operator()(roq::Parameter const& item) const {
     if(!label.empty() && item.label!=label)
@@ -27,6 +24,10 @@ bool Query::operator()(roq::Parameter const& item) const {
     if(strategy_id && item.strategy_id!=strategy_id)
         return false;
     return true;
+}
+
+Manager::Manager(io::Context& io_context) {
+    client_ = std::make_unique<config::Client>(io_context, "http://localhost:9402"sv );
 }
 
 void Manager::load(std::string_view url) {
@@ -57,6 +58,9 @@ void Manager::load(std::string_view url) {
         //p.symbol = toml.get_string(node, "symbol"sv);
         //p.value = toml.get_string(node, "value"sv);
     });
+
+    // to gateway/sqlite
+    dispatch(*client_);
 }
 
 void Manager::dispatch(config::Handler& handler) {

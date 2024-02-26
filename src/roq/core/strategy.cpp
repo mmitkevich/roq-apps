@@ -29,6 +29,7 @@ Strategy::Strategy(client::Dispatcher& dispatcher, core::config::Manager& config
   pricer = factory(*this);
   config.configure(*this);
   core.portfolios.set_handler(this);
+
 }
 
 Strategy::~Strategy() {}
@@ -119,7 +120,9 @@ void Strategy::operator()(const Event<MarketByPriceUpdate>& event) {
 void Strategy::operator()(const Event<DownloadEnd>& event) {
   Base::operator()(event);
   // send config file parameters (TODO: this should push into gateway instead!)
+  #ifdef ROQ_NO_TOML_SQL
   config.dispatch(*this);
+  #endif
 }
 
 void Strategy::operator()(const Event<core::Quotes>& event) {

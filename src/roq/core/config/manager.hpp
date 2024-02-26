@@ -7,12 +7,9 @@
 #include <roq/client/config.hpp>
 #include "roq/core/config/client.hpp"
 #include "roq/io/context.hpp"
+#include "roq/core/config/handler.hpp"
 
 namespace roq::core::config {
-
-struct Handler {
-    virtual void operator()(Event<ParametersUpdate> const& event) = 0;
-};
 
 struct Query {
     std::string_view label;    
