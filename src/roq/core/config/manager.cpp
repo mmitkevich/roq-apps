@@ -27,12 +27,12 @@ bool Query::operator()(roq::Parameter const& item) const {
 }
 
 Manager::Manager(io::Context& io_context) {
-    client_ = std::make_unique<config::Client>(io_context, "http://localhost:9402"sv );
-    (*client_).start();
+    //client_ = std::make_unique<config::Client>(io_context, "http://localhost:9402"sv );
+    //(*client_).start();
 }
 
 Manager::~Manager() {
-    (*client_).stop();
+    //(*client_).stop();
 }
 
 void Manager::load(std::string_view url) {
@@ -137,10 +137,13 @@ void Manager::operator()(Event<Timer> const& event) {
         if(event.value.now-start_time_ > std::chrono::seconds{1}) {
             // hopefully connected here
             // to gateway/sqlite
-            dispatch(*client_);
+            
+            // FIXME: didn't work (can_try always return false)
+
+            //dispatch(*client_);
         }
     }
-    (*client_)(event);
+    //(*client_)(event);
 }
 
 } // roq::config

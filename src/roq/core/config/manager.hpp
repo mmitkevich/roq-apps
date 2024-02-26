@@ -53,7 +53,8 @@ struct Manager : client::Config {
     template<class Strategy>
     void configure(Strategy& strategy) {
           strategy.configure(toml, toml.get_root());
-          //this->dispatch(strategy);
+          // FIXME: 
+          this->dispatch(strategy);
     }
 
     void dispatch(client::Config::Handler& handler) const override;
