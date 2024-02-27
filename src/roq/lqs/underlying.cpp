@@ -10,9 +10,10 @@ using namespace std::literals;
 
 void Underlying::operator()(const roq::Parameter & p, lqs::Strategy& s) {
     auto [prefix, label] = core::split_prefix(p.label,':');
-    if(label=="delta_min"sv) {
+    auto [prefx_2, label_2] = core::split_prefix(label, ':');
+    if(label_2=="delta_min"sv) {
         delta_min = core::Double::parse(p.value);
-    } else if(label=="delta_max"sv) {
+    } else if(label_2=="delta_max"sv) {
         delta_max = core::Double::parse(p.value);
     }
 }

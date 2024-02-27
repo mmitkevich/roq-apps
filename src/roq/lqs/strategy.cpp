@@ -37,6 +37,8 @@ bool Strategy::operator()(roq::Parameter const & p) {
     bool result = true;
 
     auto [prefix, label] = core::split_prefix(p.label, ':');
+    auto [prefix_2, label_2] = core::split_prefix(label, ':');
+
     core::Market key {
         .symbol = p.symbol,
         .exchange = p.exchange
@@ -61,7 +63,7 @@ bool Strategy::operator()(roq::Parameter const & p) {
         log::debug("lqs add leg {} to underlying {}", leg.market.market, underlying.market.market);
     } else if(label == "enabled"sv) {
         enabled = (std::string_view {p.value} == "true"sv);
-    } else if(p.exchange == lqs::EXCHANGE) {    // underlyings are identified by having 'lqs' exchange
+    } else if(prefix_2 == "underlying"sv) {    // underlyings are identified by having 'lqs' exchange
         auto [underlying, is_new_underlying] = emplace_underlying(key);
         underlying(p, *this);
     } else { // otherwise it is leg

@@ -88,22 +88,22 @@
     label           = "lqs:slippage"
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
-    value           = ["100",                         "100"]
+    value           = ["100",                         "100"] # in B.P.
 
 # min delta (in USD) for the whole combination
 [[parameter]]
     strategy        = "100"
-    label           = "lqs:delta_min"
-    exchange        = "lqs"                             # here exchanges is namespace for symbols published by the lqs service
-    symbol          = "BTC/USD"    
+    label           = "lqs:underlying:delta_min"
+    exchange        = "deribit"                             # here exchanges is namespace for symbols published by the lqs service
+    symbol          = "BTC_USDT"    
     value           = "-1000"
 
 # max delta (in USD) for the whole combination
 [[parameter]]
     strategy        = "100"
-    label           = "lqs:delta_max"
-    exchange        = "lqs"    
-    symbol          = "BTC/USD"
+    label           = "lqs:underlying:delta_max"
+    exchange        = "deribit"    
+    symbol          = "BTC_USDT"
     value           = "1000"
 
 # multiplier contract volume -> delta in USD
@@ -127,14 +127,14 @@
     label           = "lqs:buy_volume"
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24",      "BTC-1MAR24"]
-    value           = ["10",                   "10",                "10"]
+    value           = ["100",                   "100",                "100"]
 
 [[parameter]]
     strategy        = "100"
     label           = "lqs:sell_volume"
     exchange        = "deribit"    
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24",      "BTC-1MAR"]
-    value           = ["10",                   "10",                "10"]
+    value           = ["100",                   "100",                "100"]
 
 
 ### not-implemented yet
