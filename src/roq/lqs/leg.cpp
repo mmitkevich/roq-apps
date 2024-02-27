@@ -11,8 +11,8 @@ namespace roq::lqs {
 
 using namespace std::literals;
 
-void Leg::operator()(const roq::Parameter & p, lqs::Strategy& s) {
-    auto [prefix, label] = core::split_prefix(p.label, ':');
+void Leg::operator()(const roq::Parameter & p, lqs::Strategy& s, std::string_view label) {
+    //auto [prefix, label] = core::split_prefix(p.label, ':');
 
     if(label=="delta_by_volume"sv) {
         delta_by_volume = core::Double::parse(p.value);

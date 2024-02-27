@@ -47,7 +47,7 @@ struct Leg {
 
   core::Duration ban_fill;    // don't place new orders after order has been filled in full for at least post_filled_delay
 
-  void operator()(const roq::Parameter& p, lqs::Strategy& s);
+  void operator()(const roq::Parameter& p, lqs::Strategy& s, std::string_view label);
   void operator()(const core::Exposure& e, lqs::Strategy& s);
 
   bool check_market_quotes(core::BestQuotes& m);

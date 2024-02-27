@@ -33,11 +33,11 @@ std::pair<lqs::Leg&, bool> Strategy::emplace_leg(core::Market const& key) {
     return {leg, is_new};
 }
 
-bool Strategy::operator()(roq::Parameter const & p) {
+bool Strategy::operator()(roq::Parameter const & p, std::string_view label) {
     bool result = true;
 
-    auto [prefix, label] = core::split_prefix(p.label, ':');
-    auto [prefix_2, label_2] = core::split_prefix(label, ':');
+    //auto [prefix, label] = core::split_prefix(p.label, ':');
+    auto [prefix, sublabel] = core::split_prefix(label, ':');
 
     core::Market key {
         .symbol = p.symbol,
@@ -63,19 +63,19 @@ bool Strategy::operator()(roq::Parameter const & p) {
         log::debug("lqs add leg {} to underlying {}", leg.market.market, underlying.market.market);
     } else if(label == "enabled"sv) {
         enabled = (std::string_view {p.value} == "true"sv);
-    } else if(prefix_2 == "underlying"sv) {    // underlyings are identified by having 'lqs' exchange
+    } else if(prefix == "underlying"sv) {    // underlyings are identified by having 'lqs' exchange
         auto [underlying, is_new_underlying] = emplace_underlying(key);
-        underlying(p, *this);
+        underlying(p, *this, sublabel);
     } else { // otherwise it is leg
         if(!p.symbol.empty()) {
             // concrete leg - may emplace
             assert(!p.exchange.empty());
             auto [leg, is_new_leg] = emplace_leg(key);
-            leg(p, *this);
+            leg(p, *this, label);
         } else {
             // broadcast to all legs
             get_legs([&](lqs::Leg& leg) {
-                leg(p, *this);
+                leg(p, *this, label);
             });
         }
     }

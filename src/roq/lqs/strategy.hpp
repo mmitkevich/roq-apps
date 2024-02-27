@@ -15,7 +15,7 @@ struct Strategy {
   Strategy(Strategy const&) = default;
   Strategy(Strategy&&) = default;
 
-  bool operator()(roq::Parameter const & p);
+  bool operator()(roq::Parameter const & p, std::string_view label);
   bool operator()(core::Quotes const& u);
   bool operator()(core::Exposure const& e);
 

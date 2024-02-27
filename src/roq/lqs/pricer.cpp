@@ -37,11 +37,11 @@ void Pricer::operator()(const roq::Event<roq::ParametersUpdate> & e) {
                                 p.label, p.exchange, p.symbol, p.account, p.strategy_id, p.value);
         if(p.strategy_id) {
             auto [strategy, is_new] = emplace_strategy(p.strategy_id);
-            strategy(p);
+            strategy(p, label);
         } else {
             // broadcast to all the strategeis
             get_strategies([&](lqs::Strategy& strategy) {
-                strategy(p);
+                strategy(p, label);
             });
         }
     }

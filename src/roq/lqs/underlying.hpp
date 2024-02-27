@@ -24,7 +24,7 @@ struct Underlying {
 
   void remove_leg(core::MarketIdent leg);
 
-  void operator()(const roq::Parameter& p, lqs::Strategy& s);
+  void operator()(const roq::Parameter& p, lqs::Strategy& s, std::string_view label);
 
   void compute(lqs::Strategy& s);
 };
