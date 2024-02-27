@@ -23,6 +23,7 @@ struct Strategy {
   std::pair<lqs::Leg&, bool> emplace_leg(core::Market const& key);
   
   bool get_underlying(lqs::Leg& leg, std::invocable<lqs::Underlying &> auto fn);
+  bool get_underlying(core::MarketIdent underlying, std::invocable<lqs::Underlying &> auto fn);
   bool get_leg(core::MarketIdent market, std::invocable<lqs::Leg &> auto fn);
   void get_legs(lqs::Underlying& underlying, std::invocable<Leg&> auto fn);
   void get_legs(std::invocable<Leg&> auto fn);
@@ -50,7 +51,12 @@ inline bool Strategy::get_leg(core::MarketIdent market, std::invocable<lqs::Leg 
 inline bool Strategy::get_underlying(lqs::Leg& leg, std::invocable<lqs::Underlying &> auto fn) {
     if(!leg.underlying)
       return false;
-    auto iter = underlyings.find(leg.underlying);
+    return get_underlying(leg.underlying, fn);
+}
+
+inline bool Strategy::get_underlying(core::MarketIdent underlying, std::invocable<lqs::Underlying &> auto fn) {
+  assert(underlying);
+  auto iter = underlyings.find(underlying);
     if(iter==std::end(underlyings))
       return false;
     fn(iter->second);

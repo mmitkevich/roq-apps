@@ -46,7 +46,7 @@ bool Strategy::operator()(roq::Parameter const & p) {
         auto [exchange, symbol] = core::split_prefix(p.value, ':');
         auto [underlying, is_new_underlying] = emplace_underlying(core::Market{
             .symbol = symbol,
-            .exchange = lqs::EXCHANGE
+            .exchange = exchange
         });
         if(leg.underlying) {
             auto iter = underlyings.find(leg.underlying);
@@ -102,30 +102,25 @@ bool Strategy::compute(lqs::Leg& this_leg) {
 }
 
 bool Strategy::operator()(core::Quotes const& u) {
-    bool result = true;
+    bool result = false;
+    auto& best_quotes = pricer.core.best_quotes;
 
-    //auto fn = 
-    if(!get_leg(u.market, [&](lqs::Leg & this_leg) {
-        auto& best_quotes = pricer.core.best_quotes;
+    result |= get_leg(u.market, [&](lqs::Leg & this_leg) {
         result &= best_quotes.get_quotes(u.market, [&] (core::BestQuotes const& market_quotes) {
             this_leg.market_quotes = market_quotes;            
-            log::debug("lqs quotes market {} market_quotes {}", this_leg.market, this_leg.market_quotes);
+            log::debug("lqs quotes leg {} market_quotes {}", this_leg.market, this_leg.market_quotes);
         });
         // delegate to the strategy to compute things after this_leg changed
         result &= compute(this_leg);
-    })) {
-        log::debug("lqs quotes market {} not found", u.market);
-    }
-    //if(auto_legs) {
-    //    auto [leg, is_new] = emplace_leg(core::Market {
-    //        .market = u.market,
-    //        .symbol = u.symbol,
-    //        .exchange = u.exchange,
-    //    });
-    //    fn(leg);
-    //} else {
-    //    result &= get_leg(u.market, std::move(fn));
-    //}
+    });
+
+    result |= get_underlying(u.market, [&](lqs::Underlying & underlying) {
+        result &= best_quotes.get_quotes(u.market, [&] (core::BestQuotes const& market_quotes) {
+            underlying.market_quotes = market_quotes;            
+            log::debug("lqs quotes underlying {} market_quotes {}", underlying.market, underlying.market_quotes);
+        });
+    });
+
     return result;
 }
 

@@ -2,7 +2,7 @@
 
 # specify mdata and trade gateways for symbols, see market::Info
 [[market]]
-    symbol          = ["BTC-PERPETUAL", "BTC-29MAR24", "BTC-.*"]
+    symbol          = ["BTC-PERPETUAL", "BTC-29MAR24", "BTC_USDT"]
     exchange        = "deribit"
     mdata_gateway   = "deribit"
 
@@ -14,14 +14,14 @@
 #  map account to portfolio (all account trades are collected into portfolio automatically using PositionUpdate or PositionUpdate + Orders)
 [[account]]
     exchange        = "deribit"
-    account         = "REN_DERIBIT" # mp client1 subaccount
+    account         = "REN_DERIBIT" # client1
     trade_gateway   = "deribit"
     portfolio       = "100"         # identifier of the portfolio, same as strategy_id for now
     portfolio_name  = "LG100"
 
 [[account]]
     exchange        = "deribit"
-    account         = "BRO_DERIBIT" # mp client2 subaccount
+    account         = "BRO_DERIBIT" # client2
     trade_gateway   = "deribit"
     portfolio       = "100"         # identifier of the portfolio, same as strategy_id for now
     portfolio_name  = "LG100"
@@ -55,14 +55,14 @@
     label           = "lqs:underlying"
     exchange        = "deribit"        
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
-    value           = ["lqs:BTC/USD",               "lqs:BTC/USD"]      # exchange:symbol
+    value           = ["deribit:BTC_USDT",          "deribit:BTC_USDT"]      # exchange:symbol
 
 [[parameter]]
     strategy        = "100"
     label           = "lqs:contract_style"
     exchange        = "deribit"        
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
-    value           = ["INVERSE",                   "LINEAR"]      # exchange:symbol
+    value           = ["INVERSE",                   "INVERSE"]      # exchange:symbol
 
 
 # underlying symbol for each contract.
