@@ -34,6 +34,14 @@ ABSL_FLAG(
   "erase_all_orders_on_gateway_not_ready"
 );
 
+ABSL_FLAG(
+  bool,
+  use_toml_parameters,
+  false,
+  "use_toml_parameters"
+);
+
+
 namespace roq {
 namespace core {
 
@@ -55,6 +63,11 @@ int Flags::publisher_id() {
 
 bool Flags::erase_all_orders_on_gateway_not_ready() {
   static const bool result = absl::GetFlag(FLAGS_erase_all_orders_on_gateway_not_ready);
+  return result;
+}
+
+bool Flags::use_toml_parameters() {
+   static const bool result = absl::GetFlag(FLAGS_use_toml_parameters);
   return result;
 }
 

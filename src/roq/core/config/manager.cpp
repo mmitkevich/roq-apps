@@ -6,6 +6,7 @@
 #include <roq/parameter.hpp>
 #include <roq/parameters_update.hpp>
 #include "roq/core/string_utils.hpp"
+#include "roq/core/flags/flags.hpp"
 
 namespace roq::core::config {
 
@@ -38,6 +39,9 @@ Manager::~Manager() {
 void Manager::load(std::string_view url) {
     this->url = std::string {url};
     toml = TomlFile { this->url };
+
+    if(!core::Flags::use_toml_parameters())
+        return;
 
     toml.get_nodes("parameter", [&](auto node) {
         roq::Parameter p;
