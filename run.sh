@@ -16,7 +16,7 @@ shift
 #;;
 #esac
 #done
-ROQ_CONDA=${ROQ_CONDA:-$CONDA_PREFIX}
+ROQ_CONDA=${ROQ_CONDA:-${CONDA_PREFIX:-"$HOME/roq-conda"}}
 echo "ROQ_CONDA=$ROQ_CONDA"
 if [ ! -d $ROQ_CONDA ]; then
 echo "please install roq first"
@@ -26,7 +26,8 @@ ROQ_NAME=${ROQ_NAME:-"mmaker"}
 ROQ_MODE=${ROQ_MODE:-"demo"}
 ROQ_ROOT=${ROQ_ROOT:-"$HOME/roq-setup"}
 
-. $ROQ_CONDA/bin/activate
+#source $ROQ_CONDA/bin/activate
+
 function cmd {
 	CMD="$@"
 	echo "cmd: $CMD"
@@ -37,4 +38,4 @@ GWS=""
 for GW in $GATEWAYS; do
  GWS="$GWS $ROQ_ROOT/run/$GW-$ROQ_MODE.sock"
 done
-cmd $ROQ_CONDA/bin/roqa --name=$ROQ_NAME --config_file=$PWD/share/config-$APP.toml --strategy=$APP --log_path=$ROQ_ROOT/var/log/$APP-$ROQ_MODE.log $GWS
+cmd $ROQ_CONDA/bin/roqa --name=$ROQ_NAME --config_file=$PWD/share/config-$APP.toml --strategy=$APP --log_path=$ROQ_ROOT/var/log/$APP-$ROQ_MODE.log $GWS $@

@@ -37,7 +37,7 @@ ABSL_FLAG(
 ABSL_FLAG(
   bool,
   use_toml_parameters,
-  false,
+  true,
   "use_toml_parameters"
 );
 

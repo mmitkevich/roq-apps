@@ -13,11 +13,12 @@ Client::Client(io::Context& io_context, std::string_view const &uri)
     .uris = std::span{&parsed_uri,1},
     .validate_certificate = false,                
     .connection = web::http::Connection::KEEP_ALIVE,  
-    .user_agent = ROQ_PACKAGE_NAME,    
+    .allow_pipelining = false,                 
     .request_timeout = std::chrono::milliseconds{100},      
+    .user_agent = ROQ_PACKAGE_NAME,        
     .decode_buffer_size = 10 * 1024 * 1024,                                                                           
     .encode_buffer_size = 10 * 1024 * 1024,                 
-    .allow_pipelining = false,                 
+
   };
   /*
 

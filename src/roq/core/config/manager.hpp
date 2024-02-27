@@ -5,9 +5,10 @@
 #include <roq/parameters_update.hpp>
 #include <roq/string_types.hpp>
 #include <roq/client/config.hpp>
-#include "roq/core/config/client.hpp"
+//#include "roq/core/config/client.hpp"
 #include "roq/io/context.hpp"
 #include "roq/core/config/handler.hpp"
+#include "roq/timer.hpp"
 
 namespace roq::core::config {
 
@@ -37,7 +38,7 @@ struct Manager : client::Config {
 
     std::vector<roq::Parameter> parameters;
 
-    std::unique_ptr<config::Client> client_;
+    //std::unique_ptr<config::Client> client_;
 
     Manager() = default;
     Manager(io::Context& io_context);
@@ -67,7 +68,7 @@ struct Manager : client::Config {
     // from strategy to override
     void operator()(Event<ParametersUpdate> const& event);
 
-    void operator()(Event<Timer> const& event);
+    void operator()(Event<roq::Timer> const& event);
 };
 
 

@@ -23,7 +23,7 @@ core::Double Underlying::get_delta_by_volume(const lqs::Leg& leg, lqs::Strategy&
     switch(leg.contract_style) {
         case core::ContractStyle::LINEAR:return leg.delta_by_volume * spot_price;
         case core::ContractStyle::INVERSE: return leg.delta_by_volume;
-        default: assert(false); return {};
+        default: return leg.delta_by_volume;// FIXME: assert(false)
     }
     // market_uqotes object is filled with underluying market price
 }
