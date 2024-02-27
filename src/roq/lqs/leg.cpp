@@ -5,6 +5,7 @@
 #include "roq/lqs/pricer.hpp"
 #include "roq/lqs/underlying.hpp"
 #include "roq/core/string_utils.hpp"
+#include "roq/core/contract_style.hpp"
 
 namespace roq::lqs {
 
@@ -23,6 +24,10 @@ void Leg::operator()(const roq::Parameter & p, lqs::Strategy& s) {
     } else if(label=="account"sv) {
         account = std::string_view {p.value};
         assert(!account.empty());
+    } else if(label=="slippage"sv) {
+        slippage = core::Double::parse(p.value);
+    } else if(label=="contract_style"sv) {
+        contract_style = magic_enum::enum_cast<core::ContractStyle>(p.value).value_or(core::ContractStyle::UNDEFINED);
     }
 }
 

@@ -3,9 +3,9 @@
 #include "roq/core/types.hpp"
 #include "roq/core/best_quotes.hpp"
 #include "roq/core/market.hpp"
-#include "roq/lqs/underlying.hpp"
+//#include "roq/lqs/underlying.hpp"
 #include <roq/parameter.hpp>
-
+#include "roq/core/contract_style.hpp"
 
 namespace roq::lqs {
 
@@ -21,9 +21,13 @@ enum PassiveMode {
   JOIN,
 };
 
+
 struct Leg {
   core::Market market;  
   core::MarketIdent underlying;
+  
+  core::ContractStyle contract_style;
+
   core::BestQuotes position {
     .buy = { .volume = 0},
     .sell = { .volume = 0}
@@ -39,6 +43,7 @@ struct Leg {
   core::Double slippage;
   core::Double delta_by_volume = 1.0;
   roq::Account account;
+  // BLA-BLA
 
   core::Duration ban_fill;    // don't place new orders after order has been filled in full for at least post_filled_delay
 

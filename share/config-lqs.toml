@@ -2,7 +2,7 @@
 
 # specify mdata and trade gateways for symbols, see market::Info
 [[market]]
-    symbol          = ["BTC-PERPETUAL", "BTC-29MAR24", "BTC-1MAR24"]
+    symbol          = ["BTC-PERPETUAL", "BTC-29MAR24", "BTC-.*"]
     exchange        = "deribit"
     mdata_gateway   = "deribit"
 
@@ -14,16 +14,24 @@
 #  map account to portfolio (all account trades are collected into portfolio automatically using PositionUpdate or PositionUpdate + Orders)
 [[account]]
     exchange        = "deribit"
-    account         = "REN_DERIBIT"
+    account         = "REN_DERIBIT" # mp client1 subaccount
     trade_gateway   = "deribit"
     portfolio       = "100"         # identifier of the portfolio, same as strategy_id for now
     portfolio_name  = "LG100"
+
+[[account]]
+    exchange        = "deribit"
+    account         = "BRO_DERIBIT" # mp client2 subaccount
+    trade_gateway   = "deribit"
+    portfolio       = "100"         # identifier of the portfolio, same as strategy_id for now
+    portfolio_name  = "LG100"
+
 
 # ban future order placements after order has been fully filled (separately each side of the book)
 [[parameter]]
     strategy        = "100"
     label           = "oms:post_fill_timeout"
-    symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
+    symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24" ]
     exchange        = "deribit"
     account         = "REN_DERIBIT"
     value           = ["2000",                  "4000"]
@@ -49,6 +57,14 @@
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
     value           = ["lqs:BTC/USD",               "lqs:BTC/USD"]      # exchange:symbol
 
+[[parameter]]
+    strategy        = "100"
+    label           = "lqs:contract_style"
+    exchange        = "deribit"        
+    symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
+    value           = ["INVERSE",                   "LINEAR"]      # exchange:symbol
+
+
 # underlying symbol for each contract.
 [[parameter]]
     strategy        = "100"
@@ -65,6 +81,14 @@
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
     value           = ["1",                         "1"]
+
+# min delta (in USD) for the whole combination
+[[parameter]]
+    strategy        = "100"
+    label           = "lqs:slippage"
+    exchange        = "deribit"
+    symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
+    value           = ["100",                         "100"]
 
 # min delta (in USD) for the whole combination
 [[parameter]]

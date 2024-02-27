@@ -85,7 +85,7 @@ bool Strategy::compute(lqs::Leg& this_leg) {
     if(!get_underlying(this_leg, [&](lqs::Underlying& u) {
         // has underlying
         u.compute(*this);            
-        this_leg.compute(*this, &u);
+        //FIXME: this_leg.compute(*this, &u);
         // all legs affected by change in delta
         get_legs(u, [&](lqs::Leg& leg) {
             leg.compute(*this, &u);

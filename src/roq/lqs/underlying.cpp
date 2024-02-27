@@ -2,6 +2,7 @@
 #include "roq/lqs/pricer.hpp"
 #include <algorithm>
 #include "roq/core/string_utils.hpp"
+#include "roq/core/contract_style.hpp"
 
 namespace roq::lqs {
 
@@ -16,11 +17,20 @@ void Underlying::operator()(const roq::Parameter & p, lqs::Strategy& s) {
     }
 }
 
+core::Double Underlying::get_delta_by_volume(const lqs::Leg& leg, lqs::Strategy& s) {
+    core::Price spot_price = (market_quotes.buy.price+market_quotes.sell.price)/2;
+    switch(leg.contract_style) {
+        case core::ContractStyle::LINEAR:return leg.delta_by_volume * spot_price;
+        case core::ContractStyle::INVERSE: return leg.delta_by_volume;
+        default: assert(false); return {};
+    }
+    // market_uqotes object is filled with underluying market price
+}
 
 void Underlying::compute(lqs::Strategy& s) {
     delta = 0;
     s.get_legs(*this, [&](lqs::Leg const& leg) {
-        delta += (leg.position.buy.volume - leg.position.sell.volume) * leg.delta_by_volume;
+        delta += (leg.position.buy.volume - leg.position.sell.volume) * get_delta_by_volume(leg, s);
     });
 }
 
