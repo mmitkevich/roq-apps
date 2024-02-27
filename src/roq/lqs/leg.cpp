@@ -21,7 +21,7 @@ void Leg::operator()(const roq::Parameter & p, lqs::Strategy& s, std::string_vie
     } else if(label=="sell_volume"sv) {
         sell_volume = core::Double::parse(p.value);
     } else if(label=="passive_mode"sv) {
-        passive_mode = magic_enum::enum_cast<lqs::PassiveMode>(p.value).value_or(lqs::PassiveMode::UNDEFINED);
+        passive_mode = magic_enum::enum_cast<core::PassiveMode>(p.value).value_or(core::PassiveMode::UNDEFINED);
     } else if(label=="account"sv) {
         account = std::string_view {p.value};
         assert(!account.empty());
@@ -85,14 +85,14 @@ void Leg::compute(lqs::Strategy const & strategy, lqs::Underlying const* underly
     }
 
     switch(passive_mode) {
-        case PassiveMode::CROSS:
+        case core::PassiveMode::CROSS:
             // take market agressively
             if(q.buy.volume>0)
                 q.buy.price = m.sell.price;
             if(q.sell.volume>0)
                 q.sell.price = m.buy.price;
             break;
-        case PassiveMode::JOIN:
+        case core::PassiveMode::JOIN:
             // take market agressively
             if(q.buy.volume>0)
                 q.buy.price = m.buy.price;

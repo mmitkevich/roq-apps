@@ -6,6 +6,7 @@
 //#include "roq/lqs/underlying.hpp"
 #include <roq/parameter.hpp>
 #include "roq/core/contract_style.hpp"
+#include "roq/core/passive_mode.hpp"
 
 namespace roq::lqs {
 
@@ -14,12 +15,6 @@ struct Underlying;
 struct Strategy;
 
 using LegIdent = uint32_t;
-
-enum PassiveMode {
-  UNDEFINED,
-  CROSS,
-  JOIN,
-};
 
 
 struct Leg {
@@ -33,7 +28,7 @@ struct Leg {
     .sell = { .volume = 0}
   };
   core::Volume target_position = {0};
-  lqs::PassiveMode passive_mode = PassiveMode::CROSS;
+  core::PassiveMode passive_mode = core::PassiveMode::CROSS;
   //core::Volume exposure; // = position.buy.volume - position.sell.volume
 
   core::Double delta_greek = 1.0;         // of leg price to underlying price, e.g. 1
