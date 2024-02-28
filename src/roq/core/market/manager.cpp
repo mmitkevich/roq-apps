@@ -86,7 +86,7 @@ void Manager::configure(const config::TomlFile& config, config::TomlNode root) {
               return;
             auto [item, is_new] = emplace_market({.market=market, .symbol=symbol, .exchange=exchange});
             item.pub_price_source = config.get_value_or(node, "pub_price_source", core::BestQuotesSource::UNDEFINED);
-            item.best_quotes_source = config.get_value_or(node, "best_quotes_source", core::BestQuotesSource::MARKET_BY_PRICE);
+            item.best_quotes_source = config.get_value_or(node, "best_quotes_source", core::BestQuotesSource::TOP_OF_BOOK);
             item.lot_size = config.get_value_or(node, "lot_size", core::Volume{1.0});
             item.mdata_gateway_name = mdata_gateway_name;
             item.depth_num_levels = config.get_value_or(node, "depth_num_levels", core::Integer{0});

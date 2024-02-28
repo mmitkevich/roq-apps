@@ -76,8 +76,8 @@ struct Manager : core::BasicDispatch<market::Manager> {
 public:
     core::MarketIdent last_market_id = 0;
 private:
-    absl::flat_hash_map<std::string_view/*roq::Exchange*/, absl::flat_hash_map<std::string_view/*roq::Symbol*/, core::MarketIdent> > market_by_symbol_by_exchange_;
-    absl::node_hash_map<core::MarketIdent, core::market::Info> market_by_id_;
+    core::Hash<std::string_view/*roq::Exchange*/, core::Hash<std::string_view/*roq::Symbol*/, core::MarketIdent> > market_by_symbol_by_exchange_;
+    core::Map<core::MarketIdent, core::market::Info> market_by_id_;
 };
 
 } // roq::core::market

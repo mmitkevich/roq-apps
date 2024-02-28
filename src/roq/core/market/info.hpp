@@ -28,7 +28,7 @@ struct Info {
     //roq::Source trade_gateway_name;
 
     core::BestQuotesSource pub_price_source;
-    core::BestQuotesSource best_quotes_source = core::BestQuotesSource::MARKET_BY_PRICE;
+    core::BestQuotesSource best_quotes_source = core::BestQuotesSource::TOP_OF_BOOK; //core::BestQuotesSource::MARKET_BY_PRICE;
     
     core::Volume lot_size = 1;
     

@@ -132,8 +132,8 @@ private:
     std::array<char, 32> routing_id;
     core::Hash<uint64_t, oms::Market> market_by_order_;
     core::Hash<core::StrategyIdent, core::Hash<roq::Account, core::Hash<core::MarketIdent, oms::Book> > > books_;
-        absl::flat_hash_map<roq::Exchange, absl::flat_hash_map<roq::Account, roq::Source>> trade_gateway_by_account_by_exchange_;
-    //absl::flat_hash_map<roq::Exchange, roq::Account> account_by_exchange_;
+        core::Hash<roq::Exchange, core::Hash<roq::Account, roq::Source>> trade_gateway_by_account_by_exchange_;
+    //core::Hash<roq::Exchange, roq::Account> account_by_exchange_;
     //int source_id = 0;
     std::chrono::nanoseconds now_{};
     std::chrono::nanoseconds last_process_{};

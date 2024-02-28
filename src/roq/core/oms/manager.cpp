@@ -70,6 +70,11 @@ void Manager::operator()(core::TargetQuotes const & target_quotes) {
 
     auto [info, _] = core.markets.emplace_market(market);
 
+    // FIXME: this should not be problem, we should get rid on tick_size dependency (sorted map?)
+    if(std::isnan(info.tick_size)) {
+        return;
+    }
+
     // resolve empty portfolio into one associated with account (if any)
 
     //core::PortfolioIdent portfolio = target_quotes.portfolio;
@@ -293,7 +298,10 @@ void Manager::process(oms::Book& book, core::market::Info const& info) {
                 roq::utils::compare(level.expected_quantity, 0.) == std::strong_ordering::equal && 
                 roq::utils::compare(level.confirmed_quantity, 0.) == std::strong_ordering::equal) {
                 auto price = level.price;
-                levels.erase(it++);
+                
+                //FIXME: abseil stle 
+                //levels.erase(it++);
+                it = levels.erase(it);
                 log::info<2>("OMS erase_level {} price={} count={}", side, price, levels.size());
             } else {
                 it++;
