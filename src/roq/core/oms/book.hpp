@@ -45,6 +45,7 @@ struct Book {
     double position_by_account = 0;
     core::TimePoint last_position_modify_time;
     // end reconcile
+    bool ban_modify = false;
 public:
   void set_tick_size(core::Double new_tick_size);
   std::pair<oms::Level &, bool> emplace_level(Side side, core::Price price);

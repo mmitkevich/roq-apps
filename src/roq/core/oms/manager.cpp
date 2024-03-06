@@ -152,12 +152,17 @@ bool Manager::can_cancel(oms::Book& book, core::market::Info const& info, oms::O
 
 /// can_modify_price, can_modify_volume
 std::pair<bool,bool> Manager::can_modify(oms::Book& book, core::market::Info const& info, oms::Order& order) {
-    //return false;
+    if(book.ban_modify)
+        return {false,false};
     //if(!order.is_confirmed())
     if(!order.confirmed.version)    
         return {false,false};   // still pending    
     if(order.is_pending())
         return {false, false};   // something in-flight (modify chaining...)
+
+    if(!core.gateways.is_ready(roq::Mask{roq::SupportType::MODIFY_ORDER}, book.trade_gateway_id, book.account))
+        return {false,false};
+
     return {true,true};
 }
 
