@@ -71,7 +71,7 @@
     label           = "lqs:passive_mode"
     exchange        = "deribit"        
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
-    value           = "CROSS" # ["CROSS",                      "CROSS"]             # CROSS, JOIN
+    value           = "JOIN" # ["CROSS",                      "CROSS"]             # CROSS, JOIN
 
 
 # delta greek (price sensitivity to the underlying price)
@@ -96,7 +96,7 @@
     label           = "lqs:underlying:delta_min"
     exchange        = "deribit"                             # here exchanges is namespace for symbols published by the lqs service
     symbol          = "BTC_USDT"    
-    value           = "-1000"
+    value           = "-100"
 
 # max delta (in USD) for the whole combination
 [[parameter]]
@@ -104,7 +104,7 @@
     label           = "lqs:underlying:delta_max"
     exchange        = "deribit"    
     symbol          = "BTC_USDT"
-    value           = "1000"
+    value           = "100"
 
 # multiplier contract volume -> delta in USD
 [[parameter]]
@@ -127,14 +127,14 @@
     label           = "lqs:buy_volume"
     exchange        = "deribit"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24",      "BTC-1MAR24"]
-    value           = ["15000",                   "100",                "100"]
+    value           = ["10",                   "10",                "10"]
 
 [[parameter]]
     strategy        = "100"
     label           = "lqs:sell_volume"
     exchange        = "deribit"    
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24",      "BTC-1MAR"]
-    value           = ["15000",                   "100",                "100"]
+    value           = ["10",                   "10",                "10"]
 
 
 ### not-implemented yet

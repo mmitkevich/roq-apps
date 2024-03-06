@@ -13,8 +13,7 @@ using OrderIdent = core::OrderIdent;
 struct Order {
     OrderIdent order_id {0};
     Side side = Side::UNDEFINED;
-    double price = NaN;
-    double quantity = NaN;
+
     double traded_quantity = NaN;
     double remaining_quantity = NaN;
 

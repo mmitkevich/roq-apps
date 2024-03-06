@@ -113,7 +113,7 @@ private:
     bool is_throttled(oms::Book& market, roq::RequestType req);
     bool can_create(oms::Book& market, market::Info const& info, const core::TargetOrder & target_order);
     bool can_cancel(oms::Book& market, market::Info const& info, oms::Order& order);
-    bool can_modify(oms::Book& market, market::Info const& info, oms::Order& order);
+    std::pair<bool,bool> can_modify(oms::Book& market, market::Info const& info, oms::Order& order);
 
     oms::Order& create_order(oms::Book& market, const core::TargetOrder& target);
     void modify_order(oms::Book& market, oms::Order& order, const core::TargetOrder& target);

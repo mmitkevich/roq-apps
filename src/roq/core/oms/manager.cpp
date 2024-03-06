@@ -91,6 +91,7 @@ void Manager::operator()(core::TargetQuotes const & target_quotes) {
     }.merge(info);
 
     auto [book, is_new] = emplace_book(key);
+    book.set_tick_size(info.tick_size);
 
     assert(book.exchange == target_quotes.exchange);
     assert(book.symbol == target_quotes.symbol);
@@ -149,14 +150,15 @@ bool Manager::can_cancel(oms::Book& book, core::market::Info const& info, oms::O
     return true;
 }
 
-bool Manager::can_modify(oms::Book& book, core::market::Info const& info, oms::Order& order) {
-    return false;
+/// can_modify_price, can_modify_volume
+std::pair<bool,bool> Manager::can_modify(oms::Book& book, core::market::Info const& info, oms::Order& order) {
+    //return false;
     //if(!order.is_confirmed())
     if(!order.confirmed.version)    
-        return false;   // still pending    
+        return {false,false};   // still pending    
     if(order.is_pending())
-        return false;   // something in-flight
-    return true;
+        return {false, false};   // something in-flight (modify chaining...)
+    return {true,true};
 }
 
 void Manager::process(oms::Book& book, core::market::Info const& info) {
@@ -195,6 +197,8 @@ void Manager::process(oms::Book& book, core::market::Info const& info) {
         }
     }
 
+again:
+
     book.pending = {0,0};
     
     for(auto& [order_id, order] : book.orders) {
@@ -207,7 +211,7 @@ void Manager::process(oms::Book& book, core::market::Info const& info) {
             book.pending[order.side==Side::SELL]++;
 
         //assert(utils::compare(order.expected.quantity,0)==std::strong_ordering::greater);
-        auto [level,is_new_level] = book.emplace_level(order.side, order.price);
+        auto [level,is_new_level] = book.emplace_level(order.side, order.expected.price);
         assert(!std::isnan(level.expected_quantity));          
         level.expected_quantity += order.expected.quantity;
         level.confirmed_quantity += order.confirmed.quantity;
@@ -231,39 +235,58 @@ void Manager::process(oms::Book& book, core::market::Info const& info) {
     }
     std::size_t orders_count = book.orders.size();
     for(auto& [order_id, order] : book.orders) {
-        auto [level,is_new_level] = book.emplace_level(order.side, order.price);
+        auto [level,is_new_level] = book.emplace_level(order.side, order.expected.price);
         if(utils::compare(level.expected_quantity, level.target_quantity)==std::strong_ordering::greater) {
-            bool flag = can_modify(book, info, order);
-            log::info<2>("OMS can_modify {} order_id={}.{}.{} side={} req={}  price={}  quantity={}"
-            " c.req={}, c.status.{} c.price={}  c.quantity={} external_id={}"
-            " symbol={} exchange={} market={}", flag,
-            order.order_id, order.pending.version, order.confirmed.version,order.side,order.pending.type, order.pending.price,order.pending.quantity,
-            order.confirmed.type, order.confirmed.status, order.confirmed.price, order.confirmed.quantity,
+            auto [can_modify_price, can_modify_volume] = can_modify(book, info, order);
+            auto can_cancel_flag = can_cancel(book, info, order);
+            log::info<2>("OMS can_modify (price {} qty {}) can_cancel {} "
+            " order_id={}.{}.{} side={} req={}  price={}  quantity={}"
+            " c.req={}, c.status.{} c.price={}  c.quantity={} "
+            " p.req={}, p.status.{} p.price={}  p.quantity={} "
+            " external_id={} "
+            " symbol={} exchange={} market={}", 
+            can_modify_price, can_modify_volume, can_cancel_flag,
+            order.order_id, order.pending.version, order.confirmed.version,
+            order.side,order.pending.type, order.pending.price,order.pending.quantity,
+            order.confirmed.type, order.confirmed.status, order.confirmed.price, order.confirmed.quantity, 
+            order.pending.type, order.pending.status, order.pending.price, order.pending.quantity, 
             order.external_order_id, book.symbol, book.exchange, book.market);
 
-            if(flag) {
+            if(can_modify_price || can_modify_volume) {
                 const auto& levels = book.get_levels(order.side);                
                 for(const auto& [new_price_index, new_level]:  levels) {
                     assert(!std::isnan(new_level.target_quantity));
                     assert(!std::isnan(new_level.expected_quantity));                    
                     assert(!std::isnan(order.confirmed.quantity));
-                    if(utils::compare(new_level.target_quantity,new_level.expected_quantity+order.confirmed.quantity)!=std::strong_ordering::less) {
-                        ///
-                        modify_order(book, order, core::TargetOrder {
-                            .quantity = order.confirmed.quantity,    // can_modify_qty?new_level.target_quantity-new_level.expected_quantity : order.confirmed.quantity
-                            .price = new_level.price,
-                        });
-                        goto orders_continue;
+                    if(!can_modify_price && utils::compare(new_level.price, order.expected.price)!=std::strong_ordering::equal)
+                        continue;
+                    if(!can_modify_volume) {
+                        if(utils::compare(new_level.target_quantity,new_level.expected_quantity+order.confirmed.quantity)!=std::strong_ordering::less) {
+                            /// just move as a whole to location with enough target quantity hole
+                            modify_order(book, order, core::TargetOrder {
+                                .quantity = order.confirmed.quantity,    // can_modify_qty?new_level.target_quantity-new_level.expected_quantity : order.confirmed.quantity
+                                .price = new_level.price,
+                            });
+                            goto again; // FIXME: should update expected vol here instead of recalculating all levels
+                        }
+                    } else {
+                        if(utils::compare(new_level.target_quantity,new_level.expected_quantity)==std::strong_ordering::greater) {
+                            /// just move as a whole to location with  target quantity hole changing the volume accordingly
+                            modify_order(book, order, core::TargetOrder {
+                                .quantity = new_level.target_quantity - new_level.expected_quantity,
+                                .price = new_level.price,
+                            });
+                            goto again; // FIXME: should update expected vol here instead of recalculating all levels
+                        }
                     }
                 }
             }
-            if(can_cancel(book, info, order)) {
+            if(can_cancel_flag) {
                 this->cancel_order(book, order);
-                goto orders_continue;
+                goto again; // FIXME: should update expected vol here instead of recalculating all levels
             }
             // can't do anything with this order (yet)
         }
-        orders_continue:;
     }
     for(auto side: std::array {Side::BUY, Side::SELL}) {
         auto& levels = book.get_levels(side);//(side==Side::BUY) ? bids : asks;
@@ -319,8 +342,8 @@ oms::Order& Manager::create_order(oms::Book& book, const core::TargetOrder& targ
     auto& order = book.orders[order_id] = oms::Order {
         .order_id = order_id,
         .side = target.side,
-        .price = target.price,
-        .quantity = target.quantity,
+        //.price = target.price,
+        //.quantity = target.quantity,
         .traded_quantity = 0,
         .remaining_quantity = target.quantity,
         .pending = {
@@ -399,7 +422,7 @@ void Manager::modify_order(oms::Book& book, oms::Order& order, const core::Targe
     
     log::info<1>("OMS modify_order {{ order_id={}.{}/{}, side={} price={}->{} qty={}->{} external_id={} market={} symbol={} exchange={} account={} }}", 
         modify_order.order_id, modify_order.version, modify_order.conditional_on_version, 
-        order.side, order.price, modify_order.price, order.quantity, 
+        order.side, order.confirmed.price, modify_order.price, order.expected.quantity, 
         modify_order.quantity, order.external_order_id, 
         book.market, book.symbol, book.exchange, book.account);
     
@@ -414,7 +437,7 @@ void Manager::cancel_order(oms::Book& book, oms::Order& order) {
     assert(book.orders.find(order.order_id)!=std::end(book.orders));
     ++order.pending.version;
     order.pending.type = RequestType::CANCEL_ORDER;
-    order.pending.price = order.price;
+    order.pending.price = order.expected.price;
     order.pending.quantity = 0;
 
     auto cancel_order = CancelOrder {
@@ -426,7 +449,7 @@ void Manager::cancel_order(oms::Book& book, oms::Order& order) {
     
     log::info<1>("OMS cancel_order {{ order_id={}.{}/{}, side={} price={} qty={} external_id={} market={} symbol={} exchange={} account={} }}", 
         cancel_order.order_id, cancel_order.version, cancel_order.conditional_on_version, 
-        order.side, order.price, order.quantity, order.external_order_id, book.market, book.symbol, book.exchange, book.account);
+        order.side, order.expected.price, order.expected.quantity, order.external_order_id, book.market, book.symbol, book.exchange, book.account);
     
     order.expected = order.pending;
 
@@ -624,7 +647,7 @@ void Manager::operator()(roq::Event<GatewayStatus> const& event) {
 void Manager::erase_all_orders(oms::Book& book) {
     for(auto& [order_id, order]: book.orders) {
         log::info<1>("OMS erase_all_orders order_id={}.{} side={} price={} remaining_quantity={} status={} symbol={} exchange={} market={}", 
-            order_id, order.pending.version, order.side, order.price, order.quantity,
+            order_id, order.pending.version, order.side, order.expected.price, order.expected.quantity,
             order.confirmed.status, 
             book.symbol, book.exchange, book.market);    
         market_by_order_.erase(order_id);
@@ -639,7 +662,7 @@ bool Manager::erase_order(oms::Book& book, uint64_t order_id) {
         return false;
     auto& order = iter->second;
     log::info<1>("OMS erase_order order_id={}.{} side={} price={} remaining_quantity={} status={} symbol={} exchange={} market={}", 
-        order_id, order.pending.version, order.side, order.price, order.quantity, 
+        order_id, order.pending.version, order.side, order.expected.price, order.expected.quantity, 
         order.confirmed.status, 
         book.symbol, book.exchange, book.market);
     book.orders.erase(iter);
@@ -668,7 +691,7 @@ void Manager::operator()(roq::Event<OrderUpdate> const& event) {
         } else if(is_new_order) {
             order.side = u.side;
             order.order_id = u.order_id;
-            order.price = u.price;
+            //order.price = u.price;
             order.remaining_quantity = u.remaining_quantity;
             order.traded_quantity = u.traded_quantity;
             order.confirmed.type = RequestType::CREATE_ORDER;
