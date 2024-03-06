@@ -36,6 +36,22 @@
     account         = "REN_DERIBIT"
     value           = ["2000",                  "4000"]
 
+[[parameter]]
+    strategy        = "100"
+    label           = "oms:post_cancel_timeout"
+    symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24" ]
+    exchange        = "deribit"
+    account         = "REN_DERIBIT"
+    value           = ["200",                  "200"]
+
+[[parameter]]
+    strategy        = "100"
+    label           = "oms:ban_modify"
+    symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24" ]
+    exchange        = "deribit"
+    account         = "REN_DERIBIT"
+    value           = "true"
+
 # each strategy operates inside named portfolio
 [[parameter]]
     strategy        = "100"

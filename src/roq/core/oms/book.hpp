@@ -35,7 +35,8 @@ struct Book {
     int32_t trade_gateway_id = (int32_t)-1;
     roq::Source trade_gateway_name;
     
-    core::Duration post_fill_timeout = std::chrono::milliseconds{100};
+    core::Duration post_fill_timeout = std::chrono::milliseconds{0};
+    core::Duration post_cancel_timeout = std::chrono::milliseconds{0};
     core::TimePoint ban_until {};
     
     std::array<uint16_t,2> pending = {0,0};

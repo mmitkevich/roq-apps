@@ -220,10 +220,14 @@ again:
         assert(!std::isnan(level.expected_quantity));          
         level.expected_quantity += order.expected.quantity;
         level.confirmed_quantity += order.confirmed.quantity;
-        log::info<2>("OMS order_state order_id={}.{}.{} side={} req={}  price={}  quantity={}"
-            " c.status.{} c.price={}  c.quantity={} external_id={}"
+        log::info<2>("OMS order_state order_id={}.{}.{} side={} "
+             " price={} quantity={} " 
+            " p.req={} p.price={}  p.quantity={} "
+            " c.status.{} c.price={} c.quantity={} external_id={}"
             " symbol={} exchange={} market={}",
-            order.order_id, order.pending.version, order.confirmed.version,order.side,order.pending.type, order.pending.price,order.pending.quantity,
+            order.order_id, order.pending.version, order.confirmed.version,order.side,
+            order.expected.price,order.expected.quantity,
+            order.pending.type, order.pending.price,order.pending.quantity,
             order.confirmed.status, order.confirmed.price, order.confirmed.quantity,
             order.external_order_id, book.symbol, book.exchange, book.market);
     }
@@ -564,7 +568,9 @@ void Manager::order_fills(oms::Book& book, roq::Side side, double price, double 
         //if(core.portfolios.position_source!=core::PositionSource::ORDERS) {
             // NOTE: since PositionUpdate is asyncronous, we should prevent adding new orders (FIXME: we should be able to cancel though)
         book.last_position_modify_time = now();
-        book.ban_until = now() + book.post_fill_timeout;
+        if(book.post_fill_timeout!=core::Duration{}) {
+            book.ban_until = now() + book.post_fill_timeout;
+        }
         //}
         // to portfolio::Manager
         handler_(trade);
@@ -594,7 +600,7 @@ void Manager::order_complete(oms::Book& market, oms::Order& order, const OrderUp
     order_fills(market, u.side, u.last_traded_price, fill_size);
 }
 
-void Manager::order_canceled(oms::Book& market, oms::Order& order, const OrderUpdate& u) {
+void Manager::order_canceled(oms::Book& book, oms::Order& order, const OrderUpdate& u) {
     assert(order.order_id == u.order_id);
     order.confirmed.status = u.order_status;
     order.confirmed.type = RequestType::UNDEFINED;
@@ -607,7 +613,10 @@ void Manager::order_canceled(oms::Book& market, oms::Order& order, const OrderUp
     order.expected = order.confirmed;
     assert(!std::isnan(order.expected.quantity));    
     auto order_id = order.order_id;
-    erase_order(market, order_id);
+    erase_order(book, order_id);
+    if(book.post_cancel_timeout!=core::Duration{}) {
+        book.ban_until = now() + book.post_cancel_timeout;
+    }
 }
 
 void Manager::operator()(roq::Event<Timer> const& event) {
@@ -703,9 +712,9 @@ void Manager::operator()(roq::Event<OrderUpdate> const& event) {
             order.confirmed.version = u.max_accepted_version;
             order.confirmed.status = u.order_status;
             order.confirmed.price = u.price;
-            order.confirmed.quantity = u.remaining_quantity;
+            order.confirmed.quantity = u.remaining_quantity;q
             order.external_order_id = u.external_order_id;
-            order.pending.version = u.max_accepted_version;
+            order.pending.version = u.max_response_version;
             order.pending.type = RequestType::UNDEFINED;
             order.expected = order.confirmed;
             market_by_order_[order.order_id] = oms::Market {

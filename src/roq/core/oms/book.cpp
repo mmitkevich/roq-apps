@@ -61,6 +61,11 @@ void Book::operator()(roq::Parameter const& p) {
   if(label=="post_fill_timeout"sv) {            
     assert(!p.account.empty());
     post_fill_timeout = std::chrono::milliseconds { core::parse_uint32(p.value) };
+  } else if(label=="post_cancel_timeout"sv) {
+    assert(!p.account.empty());
+    post_cancel_timeout = std::chrono::milliseconds { core::parse_uint32(p.value) };
+  } else if(label=="ban_modify"sv) {
+    ban_modify = (p.value == "true"sv);
   }
 }
 
