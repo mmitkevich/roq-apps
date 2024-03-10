@@ -62,7 +62,7 @@ def get_parameters(args):
             args_2["label"] = label
             df = get_parameters(argparse.Namespace(**args_2))
             dfs.append(df)
-        return pd.concat(dfs,axis=0)
+        return pd.concat(dfs,axis=0) if len(dfs)>0 else None
     else:
         df = pd.DataFrame(data=resp.json())
         return df
@@ -71,7 +71,7 @@ def put_parameters(args):
     KEYS={"label","symbol","exchange","account","strategy_id","value"}
     data = {k:v for k,v in vars(args).items() if k in KEYS and v is not None}        
     url = "{}?user={}".format(PARAMETERS_URL,args.user)
-    logging.debug("parameters put user={} data=<<{}>>".format(args.user, data))
+    logging.info("parameters put user={} data=<<{}>>".format(args.user, data))
     resp = requests.put(url, data=json.dumps(data))
     logging.debug("parameters put result {}".format(resp.status_code))
 
@@ -82,8 +82,10 @@ def import_parameters(args):
         data = tomli.load(f)
     for ps in data["parameter"]:
         for p in unpack_parameters(ps):
-            #logging.info("p={}".format(p))
+            logging.info("p={}".format(p))
             args_2 = vars(args)
+            if 'strategy' in p:
+                p['strategy_id']=int(p['strategy'])
             args_2.update(p)
             put_parameters(argparse.Namespace(**args_2))
 

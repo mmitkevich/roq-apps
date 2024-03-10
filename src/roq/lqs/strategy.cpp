@@ -68,15 +68,17 @@ bool Strategy::operator()(roq::Parameter const & p, std::string_view label) {
         auto [underlying, is_new_underlying] = emplace_underlying(key);
         underlying(p, *this, sublabel);
     } else { // otherwise it is leg
-        if(!p.symbol.empty()) {
+        if(!p.symbol.empty() && !p.exchange.empty()) {
             // concrete leg - may emplace
             assert(!p.exchange.empty());
             auto [leg, is_new_leg] = emplace_leg(key);
             leg(p, *this, label);
+            compute(leg);
         } else {
             // broadcast to all legs
             get_legs([&](lqs::Leg& leg) {
                 leg(p, *this, label);
+                compute(leg);
             });
         }
     }
@@ -162,6 +164,10 @@ bool Strategy::operator()(core::Exposure const& e) {
     return true;
 }
 
+bool Strategy::operator()(roq::DownloadBegin const& u) {
+    return true;
+}
+
 bool Strategy::operator()(roq::DownloadEnd const& u) {
     if(!u.account.empty())
         return false;
@@ -170,6 +176,7 @@ bool Strategy::operator()(roq::DownloadEnd const& u) {
         auto [info, is_new_info] = pricer.core.markets.emplace_market(leg.market);
         leg.tick_size = info.tick_size;    
         log::debug("lqs download_end market {} tick_size {}", leg.market, leg.tick_size);
+        compute(leg);
     });
     return true;
 }

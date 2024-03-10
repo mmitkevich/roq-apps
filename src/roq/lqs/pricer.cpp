@@ -73,6 +73,12 @@ void Pricer::operator()(const roq::Event<core::Quotes> &e) {
     // return result;
 }
 
+void Pricer::operator()(const roq::Event<roq::DownloadBegin> &e) {
+    get_strategies([&](lqs::Strategy& s) {
+        s(e.value);
+    });
+}
+
 void Pricer::operator()(const roq::Event<roq::DownloadEnd> &e) {
     get_strategies([&](lqs::Strategy& s) {
         s(e.value);
@@ -81,7 +87,15 @@ void Pricer::operator()(const roq::Event<roq::DownloadEnd> &e) {
 
 // called by strategy when leg changed
 void Pricer::dispatch(lqs::Leg const& leg, lqs::Strategy const& strategy) {
-    //roq::MessageInfo info{};
+    if(leg.account.empty()) {
+        log::debug("pricer account empty - ignored leg {}", leg.market);
+        return;
+    }
+    if(leg.exec_quotes.buy.empty() && leg.exec_quotes.sell.empty()) {
+        log::debug("pricer quotes empty - ignored leg {}", leg.market);
+        return;
+    }
+    //roq::MessageInfo info{};^
     core::TargetQuotes target_quotes {
         .market = leg.market.market,
         .symbol = leg.market.symbol,        

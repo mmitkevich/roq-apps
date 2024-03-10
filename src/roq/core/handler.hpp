@@ -20,6 +20,7 @@ struct Handler {
     virtual void operator()(const roq::Event<roq::ParametersUpdate> &) {}  
     virtual void operator()(const roq::Event<roq::ReferenceData> &) {}  
 
+    virtual void operator()(const roq::Event<roq::DownloadBegin> &) {}  
     virtual void operator()(const roq::Event<roq::DownloadEnd> &) {}  
 };
 

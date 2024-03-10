@@ -28,7 +28,7 @@ $ cd ~/roq-apps && ./build.sh
 ### please run `roq-deribit` gateway first
 
 ```
-$ cd ~/roq-apps && ./run.sh lqs
+$ cd ~/roq-apps && USE_TOML_PARAMETERS=true ./run.sh lqs
 ```
 
 ### check processes:
@@ -59,3 +59,42 @@ for gateway
 ```
 $ tail -f ~/roq-setup/var/log/deribit-demo.log
 ```
+
+## using lqs_ctl.sh
+
+`roqa` could operate 
+1) with toml-based configuration setup (--use_toml_parameters=true or USE_TOML_PARAMETERS=true), when snapshot of parameters is read from toml file. This could be useful for debugging without touching gateway parameters sqlite3  database.
+
+2) with sqllite3 databse used as parameters storage (--use_toml_parameters=false), which is default.
+
+To import snapshot of parameters from toml file into sqlite3 database please use the following 
+
+```
+$ cd roq-apps
+$ ./pbin/roqa_ctl.py parameters import --config_file ./share/config-lqs.toml  --user mmaker
+```
+
+To verify snapshot of parameters from sqlite3 database in the gateway use the following
+
+```
+cd roq-apps
+$ ./pbin/roqa_ctl.py parameters get --user mmaker
+
+                      label  strategy_id      account exchange         symbol             value
+0     oms:post_fill_timeout          100  REN_DERIBIT  deribit  BTC-PERPETUAL              2000
+1     oms:post_fill_timeout          100  REN_DERIBIT  deribit    BTC-29MAR24              4000
+0   oms:post_cancel_timeout          100  REN_DERIBIT  deribit  BTC-PERPETUAL               200
+```
+
+
+To remove all parameters from sqlite3 database please use sqlite3 tool directly (with stopped gateway)
+
+```
+$ sudo systemctl stop roq-deribit
+$ sqlite3  ~/roq-setup/demo/auth/deribit/db.sqlite3 
+sqlite> delete from parameters;
+Ctrl+D [ENTER]
+
+$ sudo systemctl start roq-deribit
+```
+

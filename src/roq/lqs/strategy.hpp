@@ -3,6 +3,7 @@
 #include "roq/lqs/underlying.hpp"
 #include "roq/core/hash.hpp"
 #include "roq/reference_data.hpp"
+#include "roq/download_begin.hpp"
 #include "roq/download_end.hpp"
 
 namespace roq::lqs {
@@ -21,6 +22,7 @@ struct Strategy {
   bool operator()(core::Quotes const& u);
   bool operator()(core::Exposure const& e);
   bool operator()(roq::ReferenceData const& u);
+  bool operator()(roq::DownloadBegin const& u);
   bool operator()(roq::DownloadEnd const& u);
   std::pair<lqs::Underlying&, bool> emplace_underlying(core::Market const& key);
   std::pair<lqs::Leg&, bool> emplace_leg(core::Market const& key);
