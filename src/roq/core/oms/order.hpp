@@ -27,6 +27,7 @@ struct Order {
 
     uint32_t  strategy_id {0};
     roq::ExternalOrderId external_order_id;
+    uint32_t rejects_count {0};
 
     bool is_pending() const { return pending.type!=RequestType::UNDEFINED ; }
     bool is_confirmed() const { return confirmed.type!=RequestType::UNDEFINED; }

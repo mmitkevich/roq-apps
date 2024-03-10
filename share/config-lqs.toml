@@ -50,7 +50,7 @@
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24" ]
     exchange        = "deribit"
     account         = "REN_DERIBIT"
-    value           = "true"
+    value           = "false"
 
 # each strategy operates inside named portfolio
 [[parameter]]
@@ -84,10 +84,10 @@
 # underlying symbol for each contract.
 [[parameter]]
     strategy        = "100"
-    label           = "lqs:passive_mode"
+    label           = "lqs:execution_mode"
     exchange        = "deribit"        
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
-    value           = "JOIN" # ["CROSS",                      "CROSS"]             # CROSS, JOIN
+    value           = "JOIN_PLUS" # ["CROSS",                      "CROSS"]             # CROSS, JOIN, JOIN_PLUS, CROSS_MINUS
 
 
 # delta greek (price sensitivity to the underlying price)

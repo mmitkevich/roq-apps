@@ -6,7 +6,7 @@ each futures-like leg leg has underlying (either some existing spot instrument o
 
 underlying.delta is aggregated from the positions
 
-quoting is done either passively or aggressively (passive_mode=MAKER,TAKER)
+quoting is done either passively or aggressively (execution_mode=JOIN,CROSS,JOIN_PLUS,CROSS_MINUS)
 
 quoting volumes are calculated with two constraints
 a) to liquidate position (so the absolute position is never increasing)

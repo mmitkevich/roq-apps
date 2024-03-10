@@ -27,8 +27,9 @@ std::pair<lqs::Leg&, bool> Strategy::emplace_leg(core::Market const& key) {
         .underlying = static_cast<core::MarketIdent>(-1),
     });
     lqs::Leg &leg = iter->second;
+    leg.tick_size = info.tick_size;    
     if(is_new) {
-        log::debug("lqs emplace_leg {} portfolio {}", leg.market, portfolio);
+        log::debug("lqs emplace_leg {} portfolio {} tick_size {}", leg.market, portfolio, leg.tick_size);
     }
     return {leg, is_new};
 }
@@ -81,6 +82,24 @@ bool Strategy::operator()(roq::Parameter const & p, std::string_view label) {
     }
     return result;
 }
+
+bool Strategy::operator()(roq::ReferenceData const& u) {
+    core::Market key {
+        .symbol = u.symbol,
+        .exchange = u.exchange
+    };
+    bool found = true;
+    found &= pricer.core.markets.get_market(key, [&](core::market::Info const& info) {
+        assert(info.market);
+        found &= get_leg(info.market, [&](lqs::Leg& leg) {
+            leg.tick_size = u.tick_size;
+            leg.tick_size = info.tick_size;    
+            log::debug("lqs reference_data market {} tick_size {}", leg.market, leg.tick_size);
+        });        
+    });
+    return found;
+}
+  
 
 
 bool Strategy::compute(lqs::Leg& this_leg) {
@@ -140,6 +159,18 @@ bool Strategy::operator()(core::Exposure const& e) {
     }
     this_leg(e, *this);
     compute(this_leg);
+    return true;
+}
+
+bool Strategy::operator()(roq::DownloadEnd const& u) {
+    if(!u.account.empty())
+        return false;
+    // only process MD-related DownloadEnd (s)
+    get_legs([&](lqs::Leg& leg) {
+        auto [info, is_new_info] = pricer.core.markets.emplace_market(leg.market);
+        leg.tick_size = info.tick_size;    
+        log::debug("lqs download_end market {} tick_size {}", leg.market, leg.tick_size);
+    });
     return true;
 }
 

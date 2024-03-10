@@ -22,6 +22,9 @@ struct Pricer : core::Handler {
   void operator()(const roq::Event<roq::ParametersUpdate> & e) override;
   void operator()(const roq::Event<core::Quotes> &e) override;
   void operator()(const roq::Event<core::ExposureUpdate> &) override;
+  void operator()(const roq::Event<roq::ReferenceData> &) override;
+  
+  void operator()(const roq::Event<roq::DownloadEnd> &) override;
   
   std::pair<lqs::Strategy&,bool> emplace_strategy(core::StrategyIdent strategy_id);
   bool get_strategy(core::PortfolioIdent portfolio, std::invocable<lqs::Strategy&> auto fn);

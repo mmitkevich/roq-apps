@@ -18,6 +18,9 @@ struct Handler {
     virtual void operator()(const roq::Event<roq::core::Quotes> &) {}
     virtual void operator()(const roq::Event<roq::core::ExposureUpdate> &) {}
     virtual void operator()(const roq::Event<roq::ParametersUpdate> &) {}  
+    virtual void operator()(const roq::Event<roq::ReferenceData> &) {}  
+
+    virtual void operator()(const roq::Event<roq::DownloadEnd> &) {}  
 };
 
 } // roq::core

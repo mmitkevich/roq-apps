@@ -157,6 +157,10 @@ std::pair<bool,bool> Manager::can_modify(oms::Book& book, core::market::Info con
     //if(!order.is_confirmed())
     if(!order.confirmed.version)    
         return {false,false};   // still pending    
+
+    if(order.rejects_count)
+        return {false, false};  // cancel-only policy for rejected orders
+
     if(order.is_pending())
         return {false, false};   // something in-flight (modify chaining...)
 
@@ -472,6 +476,7 @@ void Manager::order_create_reject(oms::Book& market, oms::Order& order, const Or
     order.reject_version = u.version;
     order.reject_error = u.error;
     order.reject_reason = u.text;
+    order.rejects_count++;
     order.confirmed = order.pending;
     order.pending.type = RequestType::UNDEFINED;
     order.confirmed.quantity = 0;
@@ -492,6 +497,7 @@ void Manager::order_modify_reject(oms::Book& market, oms::Order& order, const Or
     order.reject_version = u.version;
     order.reject_error = u.error;
     order.reject_reason = u.text;
+    order.rejects_count++;
     order.expected = order.confirmed;
     order.pending.type = RequestType::UNDEFINED;
 }
@@ -712,7 +718,7 @@ void Manager::operator()(roq::Event<OrderUpdate> const& event) {
             order.confirmed.version = u.max_accepted_version;
             order.confirmed.status = u.order_status;
             order.confirmed.price = u.price;
-            order.confirmed.quantity = u.remaining_quantity;q
+            order.confirmed.quantity = u.remaining_quantity;
             order.external_order_id = u.external_order_id;
             order.pending.version = u.max_response_version;
             order.pending.type = RequestType::UNDEFINED;

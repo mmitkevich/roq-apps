@@ -6,7 +6,7 @@
 //#include "roq/lqs/underlying.hpp"
 #include <roq/parameter.hpp>
 #include "roq/core/contract_style.hpp"
-#include "roq/core/passive_mode.hpp"
+#include "roq/core/execution_mode.hpp"
 
 namespace roq::lqs {
 
@@ -28,7 +28,7 @@ struct Leg {
     .sell = { .volume = 0}
   };
   core::Volume target_position = {0};
-  core::PassiveMode passive_mode = core::PassiveMode::CROSS;
+  core::ExecutionMode execution_mode = core::ExecutionMode::CROSS;
   //core::Volume exposure; // = position.buy.volume - position.sell.volume
 
   core::Double delta_greek = 1.0;         // of leg price to underlying price, e.g. 1
@@ -38,6 +38,8 @@ struct Leg {
   core::Double slippage;
   core::Double delta_by_volume = 1.0;
   roq::Account account;
+
+  core::Price tick_size = 0;
   // BLA-BLA
 
   core::Duration ban_fill;    // don't place new orders after order has been filled in full for at least post_filled_delay

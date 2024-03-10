@@ -47,6 +47,13 @@ void Pricer::operator()(const roq::Event<roq::ParametersUpdate> & e) {
     }
 }
 
+void Pricer::operator()(const roq::Event<roq::ReferenceData> &event) {
+    get_strategies([&](lqs::Strategy& s) {
+        // broadcast to all strategies
+        s(event.value);
+    });
+}
+
 void Pricer::operator()(const roq::Event<core::ExposureUpdate> &event) {
     const auto& u = event.value;
     core::StrategyIdent strategy_id = u.portfolio;  // NOTE: portfolio id IS strategy id
@@ -64,6 +71,12 @@ void Pricer::operator()(const roq::Event<core::Quotes> &e) {
         s(u);
     });
     // return result;
+}
+
+void Pricer::operator()(const roq::Event<roq::DownloadEnd> &e) {
+    get_strategies([&](lqs::Strategy& s) {
+        s(e.value);
+    });
 }
 
 // called by strategy when leg changed

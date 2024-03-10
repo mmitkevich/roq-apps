@@ -20,8 +20,8 @@ void Leg::operator()(const roq::Parameter & p, lqs::Strategy& s, std::string_vie
         buy_volume = core::Double::parse(p.value);
     } else if(label=="sell_volume"sv) {
         sell_volume = core::Double::parse(p.value);
-    } else if(label=="passive_mode"sv) {
-        passive_mode = magic_enum::enum_cast<core::PassiveMode>(p.value).value_or(core::PassiveMode::UNDEFINED);
+    } else if(label=="execution_mode"sv) {
+        execution_mode = magic_enum::enum_cast<core::ExecutionMode>(p.value).value_or(core::ExecutionMode::UNDEFINED);
     } else if(label=="account"sv) {
         account = std::string_view {p.value};
         assert(!account.empty());
@@ -83,21 +83,38 @@ void Leg::compute(lqs::Strategy const & strategy, lqs::Underlying const* underly
         q.buy.volume = q.buy.volume.min( delta_plus / delta_by_volume );
         q.sell.volume = q.sell.volume.min( delta_minus /delta_by_volume );
     }
-
-    switch(passive_mode) {
-        case core::PassiveMode::CROSS:
+    
+    switch(execution_mode) {
+        case core::ExecutionMode::CROSS:
             // take market agressively
             if(q.buy.volume>0)
                 q.buy.price = m.sell.price;
             if(q.sell.volume>0)
                 q.sell.price = m.buy.price;
             break;
-        case core::PassiveMode::JOIN:
-            // take market agressively
+        case core::ExecutionMode::JOIN:
+            // join passive side
             if(q.buy.volume>0)
                 q.buy.price = m.buy.price;
             if(q.sell.volume>0)
                 q.sell.price = m.sell.price;
+            break;
+        case core::ExecutionMode::JOIN_PLUS:
+            assert(!core::is_empty_value(tick_size));
+            // join passive side or frontrun 1 tick
+            if(q.buy.volume>0)
+                q.buy.price = (m.buy.price + tick_size).min(m.sell.price-tick_size);
+            if(q.sell.volume>0)
+                q.sell.price = (m.sell.price - tick_size).max(m.buy.price+tick_size);
+            break;
+        case core::ExecutionMode::CROSS_MINUS:
+            assert(!core::is_empty_value(tick_size));
+         // take market agressively
+            if(q.buy.volume>0)
+                q.buy.price = m.sell.price-tick_size;
+            if(q.sell.volume>0)
+                q.sell.price = m.buy.price+tick_size;
+            break;
             break;
         default: assert(false);
     }
