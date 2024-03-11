@@ -5,6 +5,7 @@
 #include "roq/reference_data.hpp"
 #include "roq/download_begin.hpp"
 #include "roq/download_end.hpp"
+#include "roq/string_types.hpp"
 
 namespace roq::lqs {
 
@@ -28,10 +29,12 @@ struct Strategy {
   std::pair<lqs::Leg&, bool> emplace_leg(core::Market const& key);
   
   bool get_underlying(lqs::Leg& leg, std::invocable<lqs::Underlying &> auto fn);
-  bool get_underlying(core::MarketIdent underlying, std::invocable<lqs::Underlying &> auto fn);
-  bool get_leg(core::MarketIdent market, std::invocable<lqs::Leg &> auto fn);
+  bool get_underlying(core::Market const& key, std::invocable<lqs::Underlying &> auto fn);
+  bool get_leg(core::Market const& market, std::invocable<lqs::Leg &> auto fn);
   void get_legs(lqs::Underlying& underlying, std::invocable<Leg&> auto fn);
   void get_legs(std::invocable<Leg&> auto fn);
+
+  void get_accounts(std::invocable<std::string_view> auto fn);
   bool compute(lqs::Leg& this_leg);
 public:
   lqs::Pricer& pricer;
@@ -40,13 +43,18 @@ public:
   core::StrategyIdent strategy;
   core::PortfolioIdent portfolio; // NOTE: for now portfolio == strategy always
   core::Hash<core::MarketIdent, lqs::Underlying> underlyings;
-  core::Hash<core::MarketIdent, lqs::Leg> leg_by_market;
+  core::Hash<roq::Account, core::Hash<core::MarketIdent, lqs::Leg> > leg_by_market_by_account;
 };
 
+inline void Strategy::get_accounts(std::invocable<std::string_view> auto fn) {
+  for(auto& [account, _] : leg_by_market_by_account) {
+    fn(account);
+  }
+}
 
-
-inline bool Strategy::get_leg(core::MarketIdent market, std::invocable<lqs::Leg &> auto fn) {
-    auto iter = leg_by_market.find(market);
+inline bool Strategy::get_leg(core::Market const& key, std::invocable<lqs::Leg &> auto fn) {
+    auto& leg_by_market = leg_by_market_by_account[key.account];
+    auto iter = leg_by_market.find(key.market);
     if(iter == std::end(leg_by_market))
         return false;
     fn(iter->second);
@@ -56,10 +64,14 @@ inline bool Strategy::get_leg(core::MarketIdent market, std::invocable<lqs::Leg 
 inline bool Strategy::get_underlying(lqs::Leg& leg, std::invocable<lqs::Underlying &> auto fn) {
     if(!leg.underlying)
       return false;
-    return get_underlying(leg.underlying, fn);
+    core::Market key {
+      .market = leg.underlying,
+    };
+    return get_underlying(key, fn);
 }
 
-inline bool Strategy::get_underlying(core::MarketIdent underlying, std::invocable<lqs::Underlying &> auto fn) {
+inline bool Strategy::get_underlying(core::Market const& key, std::invocable<lqs::Underlying &> auto fn) {
+  core::MarketIdent underlying = key.market;
   assert(underlying);
   auto iter = underlyings.find(underlying);
     if(iter==std::end(underlyings))
@@ -69,15 +81,20 @@ inline bool Strategy::get_underlying(core::MarketIdent underlying, std::invocabl
 }
 
 inline void Strategy::get_legs(lqs::Underlying& underlying, std::invocable<Leg&> auto fn) {
-  for(auto market: underlying.legs) {
-    get_leg(market, fn);
+  for(auto item: underlying.legs) {
+    core::Market key {
+      .market = item.first,
+      .account = item.second,
+    };
+    get_leg(key, fn);
   }
 }
 
 inline void Strategy::get_legs(std::invocable<Leg&> auto fn) {
-  for(auto& [market, leg]: leg_by_market) {
-    fn(leg);
-  }
+  for(auto& [account, leg_by_market] : leg_by_market_by_account)
+    for(auto& [market, leg]: leg_by_market) {
+      fn(leg);
+    }
 }
 
 } // roq::lqs

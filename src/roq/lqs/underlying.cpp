@@ -35,8 +35,12 @@ void Underlying::compute(lqs::Strategy& s) {
     });
 }
 
-void Underlying::remove_leg(core::MarketIdent leg) {
-    std::remove_if(legs.begin(), legs.end(), [&](auto l) { return l == leg; });
+void Underlying::remove_leg(core::Market const& leg) {
+    std::remove_if(legs.begin(), legs.end(), [&](auto l) { return l.first == leg.market && l.second == leg.account; });
+}
+
+void  Underlying::add_leg(core::Market const& key) {
+    legs.push_back({key.market, key.account});
 }
 
 } // namespace roq::lqs

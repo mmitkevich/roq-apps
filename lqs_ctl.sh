@@ -7,5 +7,6 @@ fi
 STRATEGY_ID=${STRATEGY_ID:-100}
 EXCHANGE=${EXCHANGE:-deribit}
 SYMBOL=${SYMBOL:-"BTC-PERPETUAL"}
-$DIR/pbin/roqa_ctl.py parameters put  --label "$1" --value "$2" --symbol $SYMBOL --exchange $EXCHANGE  --strategy_id $STRATEGY_ID --user mmaker
+ACCOUNT=${ACCOUNT:-"REN_DERIBIT"}
+$DIR/pbin/roqa_ctl.py parameters put  --label "$1" --value "$2" --symbol "$SYMBOL" --exchange "$EXCHANGE"  --strategy_id $STRATEGY_ID --account "$ACCOUNT" --user mmaker
 

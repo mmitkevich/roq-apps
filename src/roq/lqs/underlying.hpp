@@ -3,7 +3,7 @@
 #include "roq/core/types.hpp"
 #include "roq/core/market.hpp"
 #include "roq/lqs/leg.hpp"
-
+#include "roq/string_types.hpp"
 
 namespace roq::lqs {
 
@@ -18,11 +18,12 @@ struct Underlying {
 
   core::BestQuotes market_quotes;
 
-  std::vector<core::MarketIdent> legs;
+  std::vector<std::pair<core::MarketIdent, roq::Account> > legs;
 
   core::Double get_delta_by_volume(const lqs::Leg& leg, lqs::Strategy& s);
 
-  void remove_leg(core::MarketIdent leg);
+  void remove_leg(core::Market const& key);
+  void add_leg(core::Market const& key);
 
   void operator()(const roq::Parameter& p, lqs::Strategy& s, std::string_view label);
 

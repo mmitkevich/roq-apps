@@ -22,9 +22,6 @@ void Leg::operator()(const roq::Parameter & p, lqs::Strategy& s, std::string_vie
         sell_volume = core::Double::parse(p.value);
     } else if(label=="execution_mode"sv) {
         execution_mode = magic_enum::enum_cast<core::ExecutionMode>(p.value).value_or(core::ExecutionMode::UNDEFINED);
-    } else if(label=="account"sv) {
-        account = std::string_view {p.value};
-        assert(!account.empty());
     } else if(label=="slippage"sv) {
         slippage = core::Double::parse(p.value);
     } else if(label=="contract_style"sv) {

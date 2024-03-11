@@ -16,6 +16,7 @@ struct Info {
             .market = market,
             .symbol = symbol,
             .exchange = exchange,
+            .account = account,
         };
     }
 

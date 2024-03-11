@@ -69,14 +69,16 @@
 [[parameter]]
     strategy        = "100"
     label           = "lqs:underlying"
-    exchange        = "deribit"        
+    exchange        = "deribit"      
+    account         = "REN_DERIBIT"  
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
     value           = ["deribit:BTC_USDT",          "deribit:BTC_USDT"]      # exchange:symbol
 
 [[parameter]]
     strategy        = "100"
     label           = "lqs:contract_style"
-    exchange        = "deribit"        
+    exchange        = "deribit"       
+    account         = "REN_DERIBIT" 
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
     value           = ["INVERSE",                   "INVERSE"]      # exchange:symbol
 
@@ -86,6 +88,7 @@
     strategy        = "100"
     label           = "lqs:execution_mode"
     exchange        = "deribit"        
+    account         = "REN_DERIBIT"
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
     value           = "JOIN_PLUS" # ["CROSS",                      "CROSS"]             # CROSS, JOIN, JOIN_PLUS, CROSS_MINUS
 
@@ -95,6 +98,7 @@
     strategy        = "100"
     label           = "lqs:delta_greek"
     exchange        = "deribit"
+    account         = "REN_DERIBIT"
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
     value           = ["1",                         "1"]
 
@@ -103,6 +107,7 @@
     strategy        = "100"
     label           = "lqs:slippage"
     exchange        = "deribit"
+    account         = "REN_DERIBIT"
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
     value           = ["100",                         "100"] # in B.P.
 
@@ -111,7 +116,8 @@
     strategy        = "100"
     label           = "lqs:underlying:delta_min"
     exchange        = "deribit"                             # here exchanges is namespace for symbols published by the lqs service
-    symbol          = "BTC_USDT"    
+    symbol          = "BTC_USDT"
+    account         = "REN_DERIBIT"
     value           = "-100"
 
 # max delta (in USD) for the whole combination
@@ -120,6 +126,7 @@
     label           = "lqs:underlying:delta_max"
     exchange        = "deribit"    
     symbol          = "BTC_USDT"
+    account         = "REN_DERIBIT"
     value           = "100"
 
 # multiplier contract volume -> delta in USD
@@ -127,21 +134,15 @@
     strategy        = "100"
     label           = "lqs:delta_by_volume"
     exchange        = "deribit"
+    account         = "REN_DERIBIT"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["10",                     "10"]
-
-# specify account to trade legs through
-[[parameter]]
-    strategy        = "100"
-    label           = "lqs:account"
-    exchange        = "deribit"
-    symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24",      "BTC-1MAR24"]
-    value           = ["REN_DERIBIT",           "REN_DERIBIT",      "REN_DERIBIT"]
 
 [[parameter]]
     strategy        = "100"
     label           = "lqs:buy_volume"
     exchange        = "deribit"
+    account         = "REN_DERIBIT"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24",      "BTC-1MAR24"]
     value           = ["10",                   "10",                "10"]
 
@@ -149,6 +150,7 @@
     strategy        = "100"
     label           = "lqs:sell_volume"
     exchange        = "deribit"    
+    account         = "REN_DERIBIT"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24",      "BTC-1MAR"]
     value           = ["10",                   "10",                "10"]
 
@@ -158,6 +160,7 @@
     strategy        = "100"
     label           = "lqs:price_threshold"
     exchange        = "deribit"
+    account         = "REN_DERIBIT"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["100",                   "100"]
 
@@ -165,6 +168,7 @@
     strategy        = "100"
     label           = "lqs:price_units"
     exchange        = "deribit"
+    account         = "REN_DERIBIT"
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["BP",                    "BP"]
 

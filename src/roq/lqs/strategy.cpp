@@ -17,14 +17,17 @@ std::pair<lqs::Underlying&, bool> Strategy::emplace_underlying(core::Market cons
 }
   
 std::pair<lqs::Leg&, bool> Strategy::emplace_leg(core::Market const& key) {
+    assert(!key.account.empty());
     auto [info, is_new_info] = pricer.core.markets.emplace_market(key);
+    auto& leg_by_market = leg_by_market_by_account[key.account];
     auto [iter, is_new] = leg_by_market.try_emplace(info.market, lqs::Leg {
         .market = {
             .market = info.market,
             .symbol = info.symbol,
-            .exchange = info.exchange
+            .exchange = info.exchange,
         },
         .underlying = static_cast<core::MarketIdent>(-1),
+        .account = key.account,
     });
     lqs::Leg &leg = iter->second;
     leg.tick_size = info.tick_size;    
@@ -42,25 +45,29 @@ bool Strategy::operator()(roq::Parameter const & p, std::string_view label) {
 
     core::Market key {
         .symbol = p.symbol,
-        .exchange = p.exchange
+        .exchange = p.exchange,
+        .account = p.account,
+        .strategy_id = p.strategy_id
     };
     if(label == "underlying"sv) {
         auto [leg, is_new_leg] = emplace_leg(key);
         auto [exchange, symbol] = core::split_prefix(p.value, ':');
         auto [underlying, is_new_underlying] = emplace_underlying(core::Market{
             .symbol = symbol,
-            .exchange = exchange
+            .exchange = exchange,
+            .strategy_id = p.strategy_id,
         });
         if(leg.underlying) {
             auto iter = underlyings.find(leg.underlying);
             if(iter!=std::end(underlyings)) {
                 auto& prev_underlying = iter->second;
-                prev_underlying.remove_leg(leg.market.market);
+                prev_underlying.remove_leg(leg.market);
                 log::debug("lqs remove leg {} from underlying {}", leg.market.market, underlying.market.market);
             }
         }
         leg.underlying = underlying.market.market;
-        underlying.legs.push_back(leg.market.market);
+        key.market = leg.market.market;
+        underlying.add_leg(key);
         log::debug("lqs add leg {} to underlying {}", leg.market.market, underlying.market.market);
     } else if(label == "enabled"sv) {
         enabled = (std::string_view {p.value} == "true"sv);
@@ -93,7 +100,7 @@ bool Strategy::operator()(roq::ReferenceData const& u) {
     bool found = true;
     found &= pricer.core.markets.get_market(key, [&](core::market::Info const& info) {
         assert(info.market);
-        found &= get_leg(info.market, [&](lqs::Leg& leg) {
+        found &= get_leg(info, [&](lqs::Leg& leg) {
             leg.tick_size = u.tick_size;
             leg.tick_size = info.tick_size;    
             log::debug("lqs reference_data market {} tick_size {}", leg.market, leg.tick_size);
@@ -127,17 +134,24 @@ bool Strategy::compute(lqs::Leg& this_leg) {
 bool Strategy::operator()(core::Quotes const& u) {
     bool result = false;
     auto& best_quotes = pricer.core.best_quotes;
-
-    result |= get_leg(u.market, [&](lqs::Leg & this_leg) {
-        result &= best_quotes.get_quotes(u.market, [&] (core::BestQuotes const& market_quotes) {
-            this_leg.market_quotes = market_quotes;            
-            log::debug("lqs quotes leg {} market_quotes {}", this_leg.market, this_leg.market_quotes);
+    core::Market key {
+        .market = u.market,
+        .symbol = u.symbol,
+        .exchange = u.exchange
+    };
+    get_accounts([&](std::string_view account) {
+        key.account = account;
+        result |= get_leg(key, [&](lqs::Leg & this_leg) {
+            result &= best_quotes.get_quotes(u.market, [&] (core::BestQuotes const& market_quotes) {
+                this_leg.market_quotes = market_quotes;            
+                log::debug("lqs quotes leg {} market_quotes {}", this_leg.market, this_leg.market_quotes);
+            });
+            // delegate to the strategy to compute things after this_leg changed
+            result &= compute(this_leg);
         });
-        // delegate to the strategy to compute things after this_leg changed
-        result &= compute(this_leg);
     });
 
-    result |= get_underlying(u.market, [&](lqs::Underlying & underlying) {
+    result |= get_underlying(key, [&](lqs::Underlying & underlying) {
         result &= best_quotes.get_quotes(u.market, [&] (core::BestQuotes const& market_quotes) {
             underlying.market_quotes = market_quotes;            
             log::debug("lqs quotes underlying {} market_quotes {}", underlying.market, underlying.market_quotes);
@@ -152,6 +166,7 @@ bool Strategy::operator()(core::Exposure const& e) {
         .market = e.market,
         .symbol = e.symbol,
         .exchange = e.exchange,
+        .account = e.account,
     };
     auto [this_leg, is_new_leg] = emplace_leg(key);
     if(is_new_leg) {
