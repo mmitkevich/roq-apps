@@ -111,7 +111,7 @@ void Manager::operator()(roq::Event<roq::ParametersUpdate> const & event) {
 
 void Manager::dispatch(client::Config::Handler& handler) const {
     handler(client::Settings {
-        .order_cancel_policy = OrderCancelPolicy::BY_ACCOUNT
+        //.order_cancel_policy = OrderCancelPolicy::BY_ACCOUNT,
     });
 
     toml.get_nodes("market", [&](auto node) {

@@ -17,6 +17,7 @@ std::pair<lqs::Underlying&, bool> Strategy::emplace_underlying(core::Market cons
 }
   
 std::pair<lqs::Leg&, bool> Strategy::emplace_leg(core::Market const& key) {
+    // NOTE: in lqs [parameter] should have account specified    
     assert(!key.account.empty());
     auto [info, is_new_info] = pricer.core.markets.emplace_market(key);
     auto& leg_by_market = leg_by_market_by_account[key.account];
