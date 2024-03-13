@@ -41,4 +41,4 @@ for GW in $GATEWAYS; do
  GWS="$GWS $ROQ_ROOT/run/$GW-$ROQ_MODE.sock"
 done
 
-cmd $ROQ_CONDA/bin/roqa --name=$ROQ_NAME --config_file=$PWD/share/config-$APP.toml --strategy=$APP --use_toml_parameters $USE_TOML_PARAMETETERS --log_path=$ROQ_ROOT/var/log/$APP-$ROQ_MODE.log $GWS $@
+cmd $ROQ_CONDA/bin/roqa --name=$ROQ_NAME --config_file=$PWD/share/config-$APP.toml --strategy=$APP --use_toml_parameters=$USE_TOML_PARAMETERS --log_path=$ROQ_ROOT/var/log/$APP-$ROQ_MODE.log $GWS $@

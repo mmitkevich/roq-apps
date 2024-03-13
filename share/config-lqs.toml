@@ -2,7 +2,7 @@
 
 # specify mdata and trade gateways for symbols, see market::Info
 [[market]]
-    symbol          = ["BTC-PERPETUAL", "BTC-29MAR24", "BTC_USDT"]
+    symbol          = ["BTC-PERPETUAL", "BTC-29MAR24",  "BTC-1MAR24", "BTC_USDT"]
     exchange        = "deribit"
     mdata_gateway   = "deribit"
 
@@ -52,14 +52,6 @@
     account         = "REN_DERIBIT"
     value           = "false"
 
-# each strategy operates inside named portfolio
-[[parameter]]
-    strategy        = "100"
-    label           = "core:portfolio"
-    value           = "LG100"
-
-# map each strategy instance to the portfolio, used to track positions
-
 [[parameter]]
     strategy        = "100"
     label           = "lqs:enabled"
@@ -80,10 +72,9 @@
     exchange        = "deribit"       
     account         = "REN_DERIBIT" 
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
-    value           = ["INVERSE",                   "INVERSE"]      # exchange:symbol
+    value           = ["INVERSE",                   "INVERSE"]      # LINEAR, INVERSE, SPOT
 
 
-# underlying symbol for each contract.
 [[parameter]]
     strategy        = "100"
     label           = "lqs:execution_mode"
@@ -164,6 +155,7 @@
     symbol          = ["BTC-PERPETUAL",         "BTC-29MAR24"]
     value           = ["100",                   "100"]
 
+### not-implemented yet
 [[parameter]]
     strategy        = "100"
     label           = "lqs:price_units"
