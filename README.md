@@ -67,7 +67,7 @@ $ tail -f ~/roq-setup/var/log/deribit-demo.log
 
 2) with sqllite3 databse used as parameters storage (--use_toml_parameters=false), which is default.
 
-To import snapshot of parameters from toml file into sqlite3 database please use the following 
+Initially, to import snapshot of parameters from toml file into sqlite3 database please use the following 
 
 ```
 $ cd roq-apps
@@ -98,3 +98,11 @@ Ctrl+D [ENTER]
 $ sudo systemctl start roq-deribit
 ```
 
+To modify parameters in sqlite db using running gateway,
+from command line use lqs_ctl.sh script as follows
+
+```
+$ SYMBOL=BTC-PERPETUAL EXCHANGE=deribit STRATEGY_ID=100 ./lqs_ctl.sh lqs:buy_volume 20
+```
+
+Above sets parameter 'lqs:buy_volume' to 20 for specified symbol,exchange,strategy_id

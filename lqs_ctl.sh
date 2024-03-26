@@ -1,7 +1,7 @@
 DIR=$(dirname $0)
 if [[ $# < 2 ]]; then
-	echo example:
-	echo SYMBOL=BTC-PERPETUAL EXCHANGE=deribit STRATEGY_ID=100 ./lqs_ctl lqs:buy_volume 20
+	echo usage:
+	echo SYMBOL=BTC-PERPETUAL EXCHANGE=deribit STRATEGY_ID=100 $0 lqs:buy_volume 20
 	exit 1
 fi
 STRATEGY_ID=${STRATEGY_ID:-100}
