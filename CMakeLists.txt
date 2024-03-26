@@ -40,8 +40,8 @@ include(GNUInstallDirs)
 message(STATUS "CMAKE_BUILD_TYPE:${CMAKE_BUILD_TYPE} CMAKE_CXX_FLAGS_DEBUG:${CMAKE_CXX_FLAGS_DEBUG}")
 
 option(USE_LQS "USE_LQS" ON)
-option(USE_DAG "USE_DAG" ON)
-option(USE_SPREADER "USE_SPREADER" ON)
+option(USE_DAG "USE_DAG" OFF)
+option(USE_SPREADER "USE_SPREADER" OFF)
 
 # dependencies
 
@@ -66,10 +66,16 @@ include_directories("${CMAKE_SOURCE_DIR}/src")
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/core")
 
+if(USE_DAG)
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/dag")
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/dag/ops")
+endif()
+if(USE_SPERADER)
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/spreader")
+endif()
+if(USE_LQS)
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/lqs")
+endif()
 
 #add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/roq/app")
 
