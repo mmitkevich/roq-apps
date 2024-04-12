@@ -20,7 +20,7 @@ echo "ROQ_CONDA=$ROQ_CONDA"
 if [ ! -d $ROQ_CONDA ]; then
 echo "please install roq first"
 fi
-# note: for M1 osx ROQ_ARCH="MacOSX-aarch64"
+# note: for M1 osx ROQ_ARCH="MacOSX-arm64"
 . $ROQ_CONDA/bin/activate
 CXXFLAGS="-isystem $ROQ_CONDA/include"
 if [[ "$ROQ_ARCH" =~ MacOSX.* ]]; then
