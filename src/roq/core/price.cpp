@@ -15,17 +15,24 @@ core::Shift Shift::parse(std::string_view s, core::ShiftUnits dflt/* = ShiftUnit
     core::Shift result {};
     result.units = dflt;
     
-    auto [p, ec] = std::from_chars(s.data(), s.data()+s.size(), result.value);
+    /*auto [p, ec] = std::from_chars(s.data(), s.data()+s.size(), result.value);
 
     if (ec != std::errc()) {
         throw roq::RuntimeError("Invalid Shift {}", s);
-    }
+    }*/
+    
+    result.value = core::to_double(s);
+    
+    // NOTE: drop support for BP/TICKS for now due to clang++
+
+/*
     auto units = core::trim_left(std::string_view(p, s.data()+s.size()-p), " "sv);
     if(units=="BP"sv) {
         result.units = ShiftUnits::BP;
     } else if(units=="TICK"sv) {
         result.units = ShiftUnits::TICKS;
     }
+*/    
     return result;
 }
 

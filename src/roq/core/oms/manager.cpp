@@ -968,6 +968,7 @@ void Manager::operator()(roq::Event<RateLimitTrigger> const& event) {
                }
             });
        } break;
+       default: break;
    }
 }
 

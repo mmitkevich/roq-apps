@@ -81,7 +81,7 @@
     exchange        = "deribit"        
     account         = "REN_DERIBIT"
     symbol          = ["BTC-PERPETUAL",             "BTC-29MAR24"]
-    value           = "JOIN" # ["CROSS",                      "CROSS"]             # CROSS, JOIN, JOIN_PLUS, CROSS_MINUS
+    value           = "CROSS" # ["CROSS",                      "CROSS"]             # CROSS, JOIN, JOIN_PLUS, CROSS_MINUS
 
 
 # delta greek (price sensitivity to the underlying price)

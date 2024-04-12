@@ -90,10 +90,10 @@ struct Strategy final
         }
     }
 
-    void operator()(const Event<TopOfBook> &event);
-    void operator()(const Event<MarketByPriceUpdate>& event);
+    void operator()(const Event<TopOfBook> &event) override;
+    void operator()(const Event<MarketByPriceUpdate>& event) override;
+    
     void operator()(const Event<core::ExposureUpdate>& event);
-
     void operator()(const Event<core::Quotes>& event);
     
 public:
@@ -104,7 +104,7 @@ public:
     core::Manager core;
     core::oms::Manager oms;
     std::unique_ptr<core::Handler> pricer;
-    core::Factory & factory;
+    core::Factory factory;
 private:
     std::vector<Layer> layers_;
 };

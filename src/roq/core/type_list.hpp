@@ -1,5 +1,6 @@
 #pragma once
 #include <utility>
+#include <type_traits>
 // https://github.com/veselink1/refl-cpp/blob/master/include/refl.hpp
 
 namespace roq {

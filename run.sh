@@ -24,7 +24,7 @@ fi
 
 ROQ_NAME=${ROQ_NAME:-"mmaker"}
 ROQ_MODE=${ROQ_MODE:-"demo"}
-ROQ_ROOT=${ROQ_ROOT:-"$HOME/roq-setup"}
+ROQ_ROOT=${ROQ_ROOT:-"$(PWD)/../roq-setup"}
 
 USE_TOML_PARAMETERS=${USE_TOML_PARAMETERS:-"false"}
 

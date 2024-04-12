@@ -8,6 +8,17 @@
 
 namespace roq::core {
 
+inline double to_double(std::string_view s) {
+    double v = NAN;
+    char buf [128];
+    memcpy(buf, s.data(), std::min(s.size(),sizeof(buf)-1));
+    buf[std::min(s.size(),sizeof(buf)-1)]=0;
+    if(1!=sscanf(buf,"%lf", &v)) {
+        throw roq::RuntimeError("invalid floating point number {}", s);
+    }
+    return v;
+}
+
 struct Double  {
     double value {NAN};
     
@@ -71,6 +82,7 @@ struct Double  {
     ROQ_CORE_COMPARE_OPS_DECL(>=)
 
     static core::Double parse(std::string_view s) {
+/*
         double v = NAN;
         auto [p, ec] = std::from_chars(s.data(), s.data() + s.size(), v);
         if (ec == std::errc()) {
@@ -81,6 +93,8 @@ struct Double  {
             throw roq::RuntimeError("invalid floating point number {}", s);
         }
         return v;
+*/
+        return core::to_double(s);
     }
 
     core::Double max(core::Double const& rhs) {

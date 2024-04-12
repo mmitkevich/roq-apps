@@ -39,18 +39,24 @@ add_executable(
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE ROQ_PACKAGE_NAME="${PROJECT_NAME}")
 
+if(USE_SPREADER)
+target_link_libraries("${PROJECT_NAME}" PRIVATE  roqa-spreader)
+endif()
+if(USE_DAG)
+target_link_libraries("${PROJECT_NAME}" PRIVATE  roqa-dag roqa-dag-ops)
+endif()
+
+if(USE_LQS)
+target_link_libraries("${PROJECT_NAME}" PRIVATE  roqa-lqs)
+endif()
+
 target_link_libraries("${PROJECT_NAME}" PRIVATE  
-  roqa-spreader
-  
-  roqa-lqs
-  
-  roqa-dag
-  roqa-dag-ops
-
-
   roqa-oms
   roqa-core  
   roqa-config    
+)
+
+target_link_libraries("${PROJECT_NAME}" PRIVATE  
 
   roq-logging::roq-logging 
   ${PROJECT_NAME}-flags 
@@ -63,9 +69,9 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE
   roq-logging::roq-logging-flags
   roq-io::roq-io
   roq-web::roq-web
-  )
+)
 
-target_compile_features("${TARGET_NAME}" PUBLIC cxx_std_20)
+target_compile_features("${TARGET_NAME}" PUBLIC cxx_std_23)
 
 install(TARGETS ${TARGET_NAME})
 install(TARGETS ${PROJECT_NAME})

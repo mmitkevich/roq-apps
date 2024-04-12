@@ -47,13 +47,13 @@ bool hash_get_value(Hash & hash, Key const& key, Fn&& fn) {
     return false;
 }
 
-template<class K, class V, class...Args>
+template<class K, class V>
 struct Hash : 
-roq::utils::unordered_map<K,V,Args...>
+roq::utils::unordered_map<K,V>
 //absl::flat_hash_map<K, V, Args...> 
 {
     using Base = //absl::flat_hash_map<K, V, Args...> ;
-    roq::utils::unordered_map<K,V,Args...>;
+    roq::utils::unordered_map<K,V>;
     using Base::Base;
 
     template<class Key>
@@ -72,14 +72,14 @@ roq::utils::unordered_map<K,V,Args...>
     }
 };
 
-template<class K, class V, class...Args>
+template<class K, class V>
 struct UHash : 
-roq::utils::unordered_map<K, std::unique_ptr<V>, Args...>
-//absl::flat_hash_map<K, std::unique_ptr<V>, Args...> 
+roq::utils::unordered_map<K, std::unique_ptr<V>>
+//absl::flat_hash_map<K, std::unique_ptr<V>> 
 {
     using Base = 
-        roq::utils::unordered_map<K, std::unique_ptr<V>, Args...>;
-        //absl::flat_hash_map<K, std::unique_ptr<V>, Args...> ;
+        roq::utils::unordered_map<K, std::unique_ptr<V>>;
+        //absl::flat_hash_map<K, std::unique_ptr<V>> ;
     using Base::Base;
 
     using Base::find;

@@ -92,9 +92,11 @@ void Manager::operator()(const roq::Event<roq::PositionUpdate>& event) {
             if(!is_downloading) 
                 return; 
         break;
+
         case core::PositionSource::PORTFOLIO:   // before download_end take snapshot from PORTFOLIO
 
         break;
+        default: break;
     }
 
     core::Exposure exposure {

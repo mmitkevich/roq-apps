@@ -3,7 +3,6 @@
 #include "roq/core/type_list.hpp"
 #include "string_view"
 #include "roq/core/best_quotes_source.hpp"
-#include <absl/container/node_hash_map.h>
 #include <roq/gateway_status.hpp>
 #include <roq/reference_data.hpp>
 #include <roq/string_types.hpp>
