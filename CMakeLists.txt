@@ -6,6 +6,8 @@ project(roqa)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 23)
 
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
 # conda
 
 if(DEFINED ENV{CONDA_PREFIX} AND NOT DEFINED ENV{CONDA_BUILD})
@@ -45,12 +47,13 @@ option(USE_SPREADER "USE_SPREADER" OFF)
 
 # dependencies
 
-find_package(absl REQUIRED)
 find_package(fmt REQUIRED)
+find_package(absl REQUIRED)
+find_package(magic_enum REQUIRED)
+find_package(tomlplusplus REQUIRED)
 find_package(roq-api REQUIRED)
 find_package(roq-client REQUIRED)
 find_package(roq-logging REQUIRED)
-find_package(tomlplusplus REQUIRED)
 find_package(roq-flags REQUIRED)
 find_package(roq-cache REQUIRED)
 find_package(roq-io REQUIRED)
