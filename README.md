@@ -39,7 +39,7 @@ $ vi ~/roq-apps/share/config-lqs.toml
 you need to set ROQ_ARCH to build with clang++ on Mac M1
 
 ```
-export ROQ_ARCH="MacOSX-aarch64"
+export ROQ_ARCH="MacOSX-arm64"
 ```
 
 to build:
