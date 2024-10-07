@@ -3,7 +3,7 @@ see [LICENSE](./LICENSE)
 
 # Prerequisites
 ## Install ROQ and ensure gateways are running
-You may use https://github.com/mtxpt/roq-setup
+You may use https://github.com/mmitkevich/roq-setup
 
 The following is assuming `~/roq-setup` installed and roq conda is in `~/roq-conda`
 
@@ -45,7 +45,7 @@ export ROQ_ARCH="MacOSX-arm64"
 to build:
 
 ```
-$ git clone git@github.com:mtxpt/roq-apps.git
+$ git clone git@github.com:mmitkevich/roq-apps.git
 $ source ~/roq-conda/bin/activate
 $ cd ~/roq-apps && ./build.sh
 ```
